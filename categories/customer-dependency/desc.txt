@@ -1,0 +1,1 @@
+Issues acknowledged as originating from external dependencies, such as Lambda functions invoking on-premises APIs.  The dependancy lies somewhere on the customer network or may be the customer network directly.

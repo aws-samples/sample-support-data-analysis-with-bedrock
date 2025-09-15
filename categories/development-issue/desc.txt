@@ -1,0 +1,5 @@
+This category is where the customer has questions or issues developing applications on AWS with services such as the below;
+
+AWS APIs
+AWS SDKs
+AWS CDK

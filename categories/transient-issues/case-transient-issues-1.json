@@ -1,0 +1,29 @@
+{
+    "caseId": "case-534123678901-use1-2025-567de89f2340gh8d",
+    "displayId": "2278901234890",
+    "subject": "Intermittent API Gateway latency spikes without clear cause",
+    "status": "resolved",
+    "serviceCode": "Amazon API Gateway",
+    "categoryCode": "Transient Issue | Service Latency",
+    "submittedBy": "alex.martinez@digitalco.com",
+    "timeCreated": "2025-04-08T16:45:23.678Z",
+    "recentCommunications": {
+        "communications": [
+            {
+            "caseId": "case-534123678901-use1-2025-567de89f2340gh8d",
+            "body": "Hello Alex,\n\nThank you for contacting AWS Support. I am Dev from the API Gateway team, and I've reviewed your case regarding the intermittent latency spikes.\n\nI understand that you're experiencing:\n1. Random latency spikes (2-5 seconds)\n2. No clear pattern in occurrence\n3. Self-resolving issues without intervention\n\nInvestigation Results:\n\n1. API Gateway Metrics Analysis:\n\naws cloudwatch get-metric-statistics \\\n    --namespace AWS/ApiGateway \\\n    --metric-name Latency \\\n    --dimensions Name=ApiName,Value=payment-api \\\n    --start-time 2025-04-08T15:45:23Z \\\n    --end-time 2025-04-08T16:45:23Z \\\n    --period 60 \\\n    --statistics Average Maximum\n\n\n2. Network Analysis:\n\naws ec2 describe-network-insights-analyses \\\n    --network-insights-analysis-ids nia-0123456789abcdef0\n\n\nFindings:\n1. No persistent patterns identified\n2. No correlation with:\n   - Traffic volume\n   - Time of day\n   - Specific endpoints\n   - Backend service issues\n\nRecommended Monitoring Enhancements:\n\n1. Enhanced Logging Setup:\n\naws apigateway update-stage \\\n    --rest-api-id abcd123456 \\\n    --stage-name prod \\\n    --patch-operations op=replace,path=/accessLogSettings/destinationArn,value=$CLOUDWATCH_LOG_GROUP\n\n\n2. Detailed Metrics Configuration:\n\naws apigateway update-stage \\\n    --rest-api-id abcd123456 \\\n    --stage-name prod \\\n    --patch-operations op=replace,path=/metricsEnabled,value=true\n\n\nProactive Measures Implemented:\n1. Added X-Ray tracing\n2. Configured detailed CloudWatch metrics\n3. Set up latency anomaly detection\n\nMonitoring Dashboard:\n\naws cloudwatch put-dashboard \\\n    --dashboard-name \"APIGateway-Monitoring\" \\\n    --dashboard-body file://apigw-dashboard.json\n\n\nAlerts Configuration:\n\naws cloudwatch put-metric-alarm \\\n    --alarm-name \"APIGateway-LatencySpike\" \\\n    --alarm-description \"Alert on abnormal latency\" \\\n    --metric-name \"Latency\" \\\n    --namespace \"AWS/ApiGateway\" \\\n    --statistic \"Average\" \\\n    --period 60 \\\n    --threshold 1000 \\\n    --comparison-operator \"GreaterThanThreshold\" \\\n    --evaluation-periods 2 \\\n    --alarm-actions arn:aws:sns:us-east-1:123456789012:APIAlerts\n\n\nRecommendations for Future Incidents:\n1. Implement circuit breakers\n2. Add request/response caching\n3. Configure multi-region failover\n\nNext Steps:\n1. Continue monitoring for pattern emergence\n2. Gather additional telemetry data\n3. Review application-level metrics\n\nWhile we haven't identified a specific root cause, we've implemented enhanced monitoring to better track future occurrences. Would you like me to:\n1. Share the monitoring dashboard template?\n2. Help configure additional alerts?\n3. Provide best practices documentation?\n\nBest regards,\nDev\nAWS API Gateway Team",
+            "submittedBy": "Amazon Web Services",
+            "timeCreated": "2025-04-08T16:52:45.123Z"
+            },
+            {
+            "caseId": "case-534123678901-use1-2025-567de89f2340gh8d",
+            "body": "We're experiencing random latency spikes in our API Gateway endpoints. These issues appear and disappear without any clear pattern or root cause.\n\nEnvironment Details:\n- Account ID: 123456789012\n- Region: us-east-1\n- API Gateway ID: abcd123456\n- Stage: prod\n- Affected APIs: payment-api, inventory-api\n\nObserved Issues:\n1. Random latency spikes (2-5 seconds)\n2. No correlation with traffic patterns\n3. Self-resolving after 3-5 minutes\n4. Occurs across multiple endpoints\n\nMonitoring Data:\n- Normal Latency: 100-200ms\n- Spike Latency: 2000-5000ms\n- No CPU/Memory correlation\n- No concurrent request correlation\n\nTroubleshooting Done:\n1. Reviewed CloudWatch metrics\n2. Analyzed access logs\n3. Checked backend services\n4. Verified network connectivity\n\nImpact:\n- Intermittent user experience degradation\n- Payment processing delays\n- ~5% of requests affected\n- No clear pattern of occurrence\n\nPlease help investigate these transient issues and suggest monitoring improvements to better identify root cause.",
+            "submittedBy": "alex.martinez@digitalco.com",
+            "timeCreated": "2025-04-08T16:45:23.678Z",
+            "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": ["platform.team@digitalco.com", "ops@digitalco.com"],
+    "language": "en"
+    }

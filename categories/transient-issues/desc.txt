@@ -1,0 +1,1 @@
+Transient issues within AWS services or customer networks, exhibiting symptoms like service latency, with the root cause remaining elusive despite monitoring efforts, and the problem eventually resolving itself.

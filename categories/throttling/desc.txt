@@ -1,0 +1,2 @@
+Throttling limits of an AWS service was reached.
+Workloads exceeding AWS service quotas, resulting in throttling, often due to inadequate performance testing in production environments.  This throttling would have caused critical impact.

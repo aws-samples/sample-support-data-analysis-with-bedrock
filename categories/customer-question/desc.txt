@@ -1,0 +1,3 @@
+Customer has a technical question.
+This is usually a question about, a specific question on how to use an AWS Service, or an AWS API or AWS SDK. 
+

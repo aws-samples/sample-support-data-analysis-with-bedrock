@@ -1,0 +1,29 @@
+{
+    "caseId": "case-923456781234-use1-2025-234bc67d1450ef8a",
+    "displayId": "1645789230167",
+    "subject": "ECS Service Discovery issues after platform update 1.4.1",
+    "status": "working",
+    "serviceCode": "Amazon Elastic Container Service",
+    "categoryCode": "AWS Release | Service Discovery Degradation",
+    "submittedBy": "sarah.chen@startup.io",
+    "timeCreated": "2025-04-08T16:45:23.891Z",
+    "recentCommunications": {
+        "communications": [
+            {
+            "caseId": "case-923456781234-use1-2025-234bc67d1450ef8a",
+            "body": "Hello Sarah,\n\nThank you for contacting AWS Support. My name is James, and I will be assisting you with the ECS Service Discovery issues you're experiencing after the recent platform update.\n\nI understand that after updating to ECS platform version 1.4.1, you are experiencing:\n- Delayed Service Discovery DNS updates (30-60 seconds)\n- Increased task startup times\n- Service-to-service communication failures\n- 25% of customer requests failing\n\nAfter investigating your case and correlating with our internal systems, I can confirm:\n1. This is a known issue with ECS platform version 1.4.1 released on April 7, 2025\n2. Root cause: Regression in Service Discovery integration code\n3. Impact is specific to rapid task scaling events\n4. Engineering team has developed a fix (version 1.4.2)\n\nImmediate Action Plan:\n1. Roll back to platform version 1.4.0:\nbash\naws ecs update-service --cluster prod-microservices \\\n    --service your-service \\\n    --platform-version 1.4.0\n\n\n2. Implement temporary workarounds:\n   - Increase DNS TTL values\n   - Add application-level DNS caching\n\nNext Steps:\n1. Your account has been added to priority update list for version 1.4.2\n2. Expected fix deployment: April 9, 2025, 00:00 UTC\n3. We will notify you when the fix is available in us-east-1\n4. A detailed incident report will be shared\n\nWould you like me to assist with the rollback process to version 1.4.0? Please let me know if you have any questions about the proposed actions.\n\nBest regards,\nJames\nAWS Support",
+            "submittedBy": "Amazon Web Services",
+            "timeCreated": "2025-04-08T16:52:17.234Z"
+            },
+            {
+            "caseId": "case-923456781234-use1-2025-234bc67d1450ef8a",
+            "body": "We're experiencing significant issues with ECS Service Discovery after automatically updating to platform version 1.4.1. Our microservices are failing to discover each other intermittently, causing cascading failures across our production environment.\n\nEnvironment Details:\n- Account ID: 789012345678\n- Region: us-east-1\n- ECS Cluster: prod-microservices\n- Services Affected: All services using Service Discovery\n- Platform Version: 1.4.1\n\nObserved Issues:\n1. Service Discovery DNS updates taking 30-60 seconds longer than normal\n2. Increased task startup times\n3. Service-to-service communication failures\n4. Error rates increased by 40% since update\n\nImpact:\n- 25% of customer requests failing during service discovery delays\n- Affecting all production services\n- Started immediately after platform update to 1.4.1\n\nTroubleshooting Done:\n1. Verified Route 53 configuration\n2. Confirmed no changes to task definitions\n3. Network ACLs and security groups unchanged\n4. CloudWatch metrics show normal resource utilization\n\nPlease investigate if this is a known issue with the new platform version and advise on immediate mitigation steps.\n\nUrgent assistance needed as this is affecting our production environment.",
+            "submittedBy": "sarah.chen@startup.io",
+            "timeCreated": "2025-04-08T16:45:23.891Z",
+            "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": ["platform.team@startup.io", "oncall@startup.io"],
+    "language": "en"
+    }

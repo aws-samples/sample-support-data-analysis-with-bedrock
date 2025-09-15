@@ -1,0 +1,6 @@
+pypdf>=3.8,<4
+datasets
+matplotlib
+pymupdf 
+xmltodict==0.13.0
+pandas_datareader

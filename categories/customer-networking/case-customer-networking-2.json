@@ -1,0 +1,29 @@
+{
+    "caseId": "case-78067293441094-muen-2023-954ed91f2080ab1c",
+    "displayId": "1212868713122",
+    "subject": "Chat: Not able to login to EC2",
+    "status": "resolved",
+    "serviceCode": "Elastic Compute Cloud (EC2 - Windows)",
+    "categoryCode": "OS Issues | Unable to RDP - NLA Issue",
+    "submittedBy": "chojoe@amazon.com",
+    "timeCreated": "2023-03-02T21:41:51.096Z",
+    "recentCommunications": {
+        "communications": [
+            {
+                "caseId": "case-780672931094-muen-2023-954ed91f2080ab1c",
+                "body": "Hello Team,  Thanks for contacting AWS Premium support. My name is Rakshak and I will be assisting with your query today.  From the case description, I understand that you are unable to RDP into your server and getting NLA error message. You need assistance on troubleshooting this issue so that you can RDP into the instance. Please feel free to correct me if I misunderstood your concern.  I can comprehend the inconvenience such issue can cause. After reviewing your EC2 instance "i-0c048cb3a3dfc0624" I see it is deployed in the region us-east-1 of instance type "c6id.32xlarge". On checking system and instance status checks, I confirm that the instance is passing both 2/2 status checks this confirms that both underlying hardware and instance are healthy.  System Status check: https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=~%28metrics~%28~%28~'AWS*2fEC2~'StatusCheckFailed_System~'InstanceId~'i-0c048cb3a3dfc0624%29%29~stat~'Sum~period~'300~start~'2023-06-22T05*3a00*3a00.000Z~end~'2023-06-22T08*3a00*3a00.000Z~region~'us-east-1%29  Instance Status check: https://us-east-1.console.aws.amazon.com/cloudwatch/deeplink.js?region=us-east-1#metricsV2:graph=~%28metrics~%28~%28~'AWS*2fEC2~'StatusCheckFailed_Instance~'InstanceId~'i-0c048cb3a3dfc0624%29%29~stat~'Sum~period~'300~start~'2023-06-22T05*3a00*3a00.000Z~end~'2023-06-22T08*3a00*3a00.000Z~region~'us-east-1%29  Note: Please do consider taking snapshot / AMI of the instance before proceeding with the action plan.  As an initial action plan, I would request you to try our SSM automation document "AWSSupport-TroubleshootRDP". This automation document allows the you to check or modify common settings on the target instance which may impact Remote Desktop Protocol (RDP) connections, such as the RDP port, Network Layer Authentication (NLA) and Windows Firewall profiles.  Action Plan 1: ================  You can try to troubleshoot RDP issue using the AWS Systems Manager:  a) Click on the link to be directed to AWS Systems manager Automation page in the AWS console: https://us-east-1.console.aws.amazon.com/systems-manager/automation/executions?region=us-east-1  b) On the Automation page please click ” Execute Automation “.  c) Using the search bar for Automation Document search for ” AWSSupport-TroubleshootRDP ” select the document and click next.  d) Select the instance which you are not able to RDP into.  e) Please select the following options for the parameter below:      Action---> FixAll      Firewall----> Disbable      RDPServiceAction---> Force-Restart      NLASettingAction---> Disable      AllowOffline---> False      RDPServiceStartupType---> Auto      RDPPortAction---> Modify      RemoteConnections---> Enable Note: Leave the other fields blank.'  f) Click on “Execute”.  Once running the above automation you will be able to RDP into the EC2 instance successfully. If you are still facing the same issue, please get back to us so that we can look into your issue further.  I hope the above information helps. In case if you have any additional query/concern, then please feel free to write back to us and we would be more than happy to assist you.  Looking forward for your valuable response.  Thank you and have a wonderful day ahead!  We value your feedback. Please share your experience by rating this and other correspondences in the AWS Support Center. You can rate a correspondence by selecting the stars in the top right corner of the correspondence.  Best regards, Rakshak K. Amazon Web Services",
+                "submittedBy": "Amazon Web Services",
+                "timeCreated": "2023-03-07T12:57:09.119Z",
+            },
+            {
+                "caseId": "case-780672931094-muen-2023-954ed91f2080ab1c",
+                "body": "Not able to login to EC2,      Instance id: i-0c048cb3a3dfc0624",
+                "submittedBy": "Admin/chojoe-Isengard (Role) <chojoe@amazon.com>",
+                "timeCreated": "2023-03-02T21:41:52.010Z",
+                "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": [],
+    "language": "en"
+}

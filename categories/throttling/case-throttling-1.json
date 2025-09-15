@@ -1,0 +1,38 @@
+{
+    "caseId": "case-780672931094-muen-2023-954ed91f2080ab1c",
+    "displayId": "12128687131",
+    "subject": "Chat: EMR Job Failureha",
+    "status": "resolved",
+    "serviceCode": "Elastic MapReduce (EMR)",
+    "categoryCode": "Tuning/Performance | EMR - Steps",
+    "severityCode": "low",
+    "submittedBy": "chojoe@amazon.com",
+    "timeCreated": "2023-03-02T21:41:51.096Z",
+    "recentCommunications": {
+        "communications": [
+            {
+                "caseId": "case-780672931094-muen-2023-954ed91f2080ab1c",
+                "body": "The instance id of the node with ip address ip-10-116-152-127.us.aegon.com is i-0193597300cbb0d00 . From the instance state logs of this instance we can see that the disk space was low (> 90% used) and hence this instance was marked as unhealthy by EMR service.",
+                "submittedBy": "Amazon Web Services",
+                "timeCreated": "2023-03-07T12:57:09.119Z",
+                "attachmentSet": []
+            },
+            {
+                "caseId": "case-780672931094-muen-2023-954ed91f2080ab1c",
+                "body": "From the instance controller logs we can see that two instances having low disk memory available:",
+                "submittedBy": "Amazon Web Services",
+                "timeCreated": "2023-03-03T10:30:41.565Z",
+                "attachmentSet": []
+            },
+            {
+                "caseId": "case-780672931094-muen-2023-954ed91f2080ab1c",
+                "body": "EMR Job Failure, EMR Cluster-id: j-1AGZK2N7ZZ231",
+                "submittedBy": "Admin/chojoe-Isengard (Role) <chojoe@amazon.com>",
+                "timeCreated": "2023-03-02T21:41:52.010Z",
+                "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": [],
+    "language": "en"
+}

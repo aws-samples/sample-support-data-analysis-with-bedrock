@@ -1,0 +1,29 @@
+{
+    "caseId": "case-892347120594-usw2-2025-847bc23f1970cd2a",
+    "displayId": "1398762450981",
+    "subject": "ICE Error when launching c5.4xlarge instances in us-west-2a",
+    "status": "working",
+    "serviceCode": "Elastic Compute Cloud (EC2)",
+    "categoryCode": "Launch Issues | Insufficient Capacity Error",
+    "submittedBy": "john.doe@company.com",
+    "timeCreated": "2025-04-07T15:23:42.183Z",
+    "recentCommunications": {
+        "communications": [
+        {
+            "caseId": "case-892347120594-usw2-2025-847bc23f1970cd2a",
+            "body": "Hello John,\n\nThank you for contacting AWS Premium Support. My name is Sarah, and I'll be assisting you with the Insufficient Capacity Error (ICE) you're experiencing.\n\nI understand that you're unable to launch c5.4xlarge instances in us-west-2a and have been receiving ICE errors for the past 24 hours. I've reviewed your account and can confirm the following:\n\n1. Your account is in good standing\n2. You are within your service quotas\n3. The issue is specific to c5.4xlarge instances in us-west-2a\n\nImmediate Workaround Options:\n\n1. Launch in different AZs:\n   - us-west-2b and us-west-2c currently have capacity for c5.4xlarge instances\n\n2. Alternative instance types in us-west-2a:\n   - m5.4xlarge (confirmed available)\n   - c5a.4xlarge (confirmed available)\n   - c6i.4xlarge (confirmed available)\n\n3. Use Capacity Reservations:\n   - I can help you set up a Capacity Reservation to ensure future availability\n\n4. Configure Auto Scaling with multiple AZ strategy:\n   - This will help prevent similar issues in the future\n\nFor your immediate scaling needs, I recommend either:\n1. Launching in us-west-2b/c if AZ flexibility is possible\n2. Using c6i.4xlarge in us-west-2a as it's the newest generation with similar specifications\n\nPlease let me know which option would work best for your use case, and I'll provide detailed implementation steps.\n\nRegarding capacity restoration in us-west-2a for c5.4xlarge:\n- We don't have an exact ETA\n- Our capacity management team has been notified\n- We recommend implementing a multi-AZ strategy for better resilience\n\nPlease let me know if you have any questions or need assistance implementing any of the suggested workarounds.\n\nBest regards,\nSarah\nAWS Premium Support",
+            "submittedBy": "Amazon Web Services",
+            "timeCreated": "2025-04-07T15:28:15.427Z"
+        },
+        {
+            "caseId": "case-892347120594-usw2-2025-847bc23f1970cd2a",
+            "body": "Getting Insufficient Capacity Error when trying to launch c5.4xlarge instances in us-west-2a. This has been ongoing for 24 hours and is blocking our application scaling. Need immediate assistance.\n\nAccount ID: 123456789012\nInstance Type: c5.4xlarge\nRegion: us-west-2\nAZ: us-west-2a\n\nTried launching in other AZs successfully but need capacity specifically in us-west-2a for our application architecture.",
+            "submittedBy": "john.doe@company.com",
+            "timeCreated": "2025-04-07T15:23:42.183Z",
+            "attachmentSet": []
+        }
+        ]
+    },
+    "ccEmailAddresses": [],
+    "language": "en"
+    }

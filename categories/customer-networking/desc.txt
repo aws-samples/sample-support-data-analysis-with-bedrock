@@ -1,0 +1,2 @@
+These issues are caused by Networking issues on the Customer side.
+Common causes are Customer's VPN, misconfigured AWS VPC or onpremise networking systems.

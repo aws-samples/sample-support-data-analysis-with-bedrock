@@ -1,0 +1,29 @@
+{
+    "caseId": "case-756234891045-use1-2025-912de45f1780gh3b",
+    "displayId": "2056789012678",
+    "subject": "Urgent: DDoS Attack in Progress - Increased Traffic on ALB",
+    "status": "working",
+    "serviceCode": "AWS Shield",
+    "categoryCode": "Security Issue | DDoS Attack",
+    "submittedBy": "jennifer.chen@securecorp.com",
+    "timeCreated": "2025-04-08T18:23:45.123Z",
+    "recentCommunications": {
+        "communications": [
+            {
+            "caseId": "case-756234891045-use1-2025-912de45f1780gh3b",
+            "body": "Hello Jennifer,\n\nThank you for contacting AWS Support. I am Mark from the AWS Shield Response Team (SRT), and I am treating this case with high priority.\n\nI understand you are experiencing:\n1. Abnormal traffic patterns indicating a DDoS attack\n2. Increased latency on your Application Load Balancer\n3. Elevated costs from unexpected traffic\n\nImmediate Actions Taken:\n1. Enabled AWS Shield Advanced:\n\naws shield update-subscription \\\n    --auto-renew ENABLED\n\n\n2. Created WAF rule to filter attack traffic:\n\naws wafv2 create-rule-group \\\n    --name \"EmergencyDDoSMitigation\" \\\n    --scope REGIONAL \\\n    --region us-east-1 \\\n    --capacity 1000 \\\n    --rules '[{         \"Name\": \"RateBasedRule\",         \"Priority\": 1,         \"Statement\": {             \"RateBasedStatement\": {                 \"Limit\": 2000,                 \"AggregateKeyType\": \"IP\"             }         },         \"Action\": {             \"Block\": {}         },         \"VisibilityConfig\": {             \"SampledRequestsEnabled\": true,             \"CloudWatchMetricsEnabled\": true,             \"MetricName\": \"DDoSRateLimit\"         }     }]'\n\n\nAttack Analysis:\n1. Traffic Pattern:\n   - Source: Multiple global locations\n   - Type: Layer 7 HTTP flood\n   - Peak Rate: 150,000 requests/second\n   - Target: /api/authentication endpoint\n\n2. Mitigation Actions Applied:\n   - AWS Shield Advanced protection enabled\n   - WAF rate-based rules implemented\n   - ALB scaling policy adjusted\n   - Traffic fingerprinting enabled\n\nImmediate Recommendations:\n\n1. Enable additional logging:\n\naws wafv2 create-logging-configuration \\\n    --resource-arn $WAF_ARN \\\n    --log-destination-configs '[{\"ARN\":\"$KINESIS_ARN\"}]' \\\n    --redacted-fields '[{\"SingleHeader\":{\"Name\":\"authorization\"}}]'\n\n\n2. Configure Shield Advanced Protection:\n\naws shield create-protection \\\n    --name \"ALB-DDoS-Protection\" \\\n    --resource-arn $ALB_ARN\n\n\nLong-term Security Recommendations:\n\n1. Infrastructure Hardening:\n   - Implement AWS WAF security automations\n   - Enable AWS Shield Advanced on all endpoints\n   - Configure CloudWatch anomaly detection\n\n2. Response Plan:\n   - Create DDoS response runbook\n   - Set up automated notifications\n   - Configure backup endpoints\n\nMonitoring Dashboard Created:\n\naws cloudwatch put-dashboard \\\n    --dashboard-name \"SecurityMonitoring\" \\\n    --dashboard-body file://security-dashboard.json\n\n\nNext Steps:\n1. Continue monitoring attack patterns\n2. Fine-tune WAF rules based on traffic analysis\n3. Implement remaining security recommendations\n\nWould you like me to:\n1. Enable additional protections?\n2. Schedule a detailed security assessment?\n3. Share the DDoS response playbook?\n\nI will continue to monitor this incident and update you regularly.\n\nBest regards,\nMark\nAWS Shield Response Team",
+            "submittedBy": "Amazon Web Services",
+            "timeCreated": "2025-04-08T18:28:12.456Z"
+            },
+            {
+            "caseId": "case-756234891045-use1-2025-912de45f1780gh3b",
+            "body": "We are currently experiencing what appears to be a DDoS attack on our production environment. Our Application Load Balancer is showing unprecedented traffic levels and increased latency.\n\nEnvironment Details:\n- Account ID: 123456789012\n- Region: us-east-1\n- ALB ARN: arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/prod-alb/abc123def456\n- Current Traffic: 150,000 requests/second (normal is 5,000)\n\nSecurity Indicators:\n1. Sudden traffic spike starting at 18:15 UTC\n2. Multiple source IPs from various geographic locations\n3. Targeting specific API endpoints\n4. Increased error rates and latency\n\nCurrent Impact:\n- Application response time increased by 500%\n- 30% of legitimate requests failing\n- Estimated revenue loss: $5,000 per minute\n- 50,000 users affected\n\nUrgent Needs:\n1. Immediate DDoS mitigation\n2. Traffic analysis and filtering\n3. Implementation of protective measures\n\nPlease help with immediate mitigation and provide guidance on long-term protection strategies.",
+            "submittedBy": "jennifer.chen@securecorp.com",
+            "timeCreated": "2025-04-08T18:23:45.123Z",
+            "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": ["security.team@securecorp.com", "ciso@securecorp.com"],
+    "language": "en"
+    }

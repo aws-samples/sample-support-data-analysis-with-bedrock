@@ -1,0 +1,29 @@
+{
+    "caseId": "case-645123789034-use1-2025-348de67f1920gh4c",
+    "displayId": "2167890123789",
+    "subject": "ECS Tasks failing to launch due to AWS Fargate service impairment",
+    "status": "working",
+    "serviceCode": "AWS Fargate",
+    "categoryCode": "Service Event | Service Degradation",
+    "submittedBy": "thomas.baker@techstart.com",
+    "timeCreated": "2025-04-08T14:12:33.891Z",
+    "recentCommunications": {
+        "communications": [
+            {
+            "caseId": "case-645123789034-use1-2025-348de67f1920gh4c",
+            "body": "Hello Thomas,\n\nThank you for contacting AWS Support. I am Sarah from the AWS ECS team, and I'm responding to your case regarding Fargate task launch failures.\n\nI can confirm that AWS is currently experiencing a service event affecting Fargate task launches in us-east-1. Our internal teams are actively working on this issue.\n\nService Event Details:\n- Event ID: AWS-789023\n- Start Time: 2025-04-08 13:45 UTC\n- Affected Service: AWS Fargate\n- Affected Region: us-east-1\n- Affected Availability Zones: us-east-1a, us-east-1b\n\nCurrent Status:\n1. Engineering teams identified root cause: Control plane capacity issues\n2. Mitigation in progress\n3. ETR (Estimated Time to Resolution): 2 hours\n\nImpact Verification:\nI can see your affected resources:\n\naws ecs list-tasks \\\n    --cluster production-cluster \\\n    --desired-status STOPPED \\\n    --started-by ServiceEvent\n\n\nTemporary Workarounds:\n\n1. Immediate Action - Redirect traffic to another region:\n\naws ecs update-service \\\n    --cluster production-cluster-us-west-2 \\\n    --service web-app \\\n    --desired-count 10 \\\n    --region us-west-2\n\n\n2. Configure Multi-Region Strategy:\n\naws servicediscovery create-service \\\n    --name web-app \\\n    --dns-config 'NamespaceId=\"ns-xxx\",DnsRecords=[{Type=\"A\",TTL=\"30\"}]' \\\n    --health-check-custom-config 'FailureThreshold=1'\n\n\nNext Steps:\n1. We will update you every 30 minutes with progress\n2. Monitor service health dashboard: https://status.aws.amazon.com\n3. Review our multi-region deployment recommendations\n\nCompensation:\n- Service credits will be automatically applied for affected resources\n- Detailed post-mortem report will be provided\n\nRecommendations for Future Resilience:\n1. Implement multi-region architecture\n2. Set up automated failover procedures\n3. Configure regional backup services\n\nWould you like me to:\n1. Help configure multi-region failover?\n2. Provide detailed logging of affected tasks?\n3. Set up automated notifications for service events?\n\nI will continue to monitor this event and provide updates. You can also follow the status at:\nhttps://status.aws.amazon.com/rss/fargate-us-east-1.rss\n\nBest regards,\nSarah\nAWS ECS Team",
+            "submittedBy": "Amazon Web Services",
+            "timeCreated": "2025-04-08T14:18:45.234Z"
+            },
+            {
+            "caseId": "case-645123789034-use1-2025-348de67f1920gh4c",
+            "body": "Our production ECS tasks are failing to launch in Fargate. All new task launches have been failing for the past 30 minutes with the error "service fargate is currently unavailable".\n\nEnvironment Details:\n- Account ID: 123456789012\n- Region: us-east-1\n- ECS Cluster: production-cluster\n- Service Name: web-app\n- Task Definition: web-app:235\n\nObserved Issues:\n1. All new task launches failing\n2. Existing tasks remain running but cannot scale\n3. Auto-scaling events failing\n4. Multiple AZs affected\n\nImpact:\n- Unable to scale during peak traffic\n- 40% reduced capacity\n- Affecting 100,000 users\n- Revenue impact: $20,000 per hour\n\nError Message:\n"Service fargate is currently unavailable in the following availability zones: us-east-1a, us-east-1b"\n\nUrgent Needs:\n1. Confirmation if this is a known AWS issue\n2. ETA for resolution\n3. Possible workarounds or mitigation strategies\n\nPlease provide urgent assistance as this is affecting our production workload.",
+            "submittedBy": "thomas.baker@techstart.com",
+            "timeCreated": "2025-04-08T14:12:33.891Z",
+            "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": ["operations.team@techstart.com", "cto@techstart.com"],
+    "language": "en"
+    }

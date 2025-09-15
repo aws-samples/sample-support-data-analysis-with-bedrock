@@ -1,0 +1,29 @@
+{
+    "caseId": "case-912345678901-use1-2025-789de34f1230gh5d",
+    "displayId": "1834567890456",
+    "subject": "RDS instance hitting IOPS limits - Need scaling recommendations",
+    "status": "working",
+    "serviceCode": "Amazon RDS",
+    "categoryCode": "Exceeding Capability | Performance Limits",
+    "submittedBy": "michael.zhao@fintech.com",
+    "timeCreated": "2025-04-08T09:30:15.789Z",
+    "recentCommunications": {
+        "communications": [
+            {
+            "caseId": "case-912345678901-use1-2025-789de34f1230gh5d",
+            "body": "Hello Michael,\n\nThank you for contacting AWS Support. My name is David, and I will be helping you address your RDS performance challenges.\n\nI understand that your RDS r6g.2xlarge instance is:\n1. Consistently hitting IOPS limits\n2. Experiencing high write latency during peak hours\n3. Showing signs of connection pooling exhaustion\n\nAfter analyzing your CloudWatch metrics and Enhanced Monitoring data, I've identified several areas where your current implementation is exceeding its capabilities:\n\n1. Current Limitations:\n- IOPS consistently at 6,000 (100% of provisioned)\n- Write latency averaging 50ms (recommended < 10ms)\n- Connection count reaching 1,000 (max capacity)\n\n2. Workload Analysis:\n- 70% write operations\n- 30% read operations\n- Peak usage: 8 AM - 6 PM EDT\n- 40% growth month-over-month\n\nRecommended Solutions (in order of implementation complexity):\n\n1. Immediate Relief:\n\naws rds modify-db-instance \\\n    --db-instance-identifier your-instance-id \\\n    --iops 12000 \\\n    --apply-immediately true\n\n\n2. Short-term Optimization:\n- Implement RDS Proxy for connection pooling:\n\naws rds create-db-proxy \\\n    --db-proxy-name financial-transactions-proxy \\\n    --engine-family MYSQL \\\n    --role-arn arn:aws:iam::123456789012:role/rds-proxy-role \\\n    --vpc-subnet-ids subnet-12345678 subnet-87654321 \\\n    --vpc-security-group-ids sg-12345678\n\n\n3. Long-term Architecture Changes:\n\nA. Recommended Architecture:\n- Primary RDS instance (writes)\n- 2 Read Replicas (reads)\n- Aurora Global Database for cross-region resilience\n\nEstimated costs:\nCurrent: $1,240/month\nProposed: $2,890/month\nROI: 3 months based on current downtime costs\n\nImplementation Plan:\n\nPhase 1 (Immediate - 24 hours):\n- Increase IOPS to 12,000\n- Implement RDS Proxy\n\nPhase 2 (Week 1):\n- Set up Read Replicas\n- Modify application for read/write splitting\n\nPhase 3 (Weeks 2-4):\n- Migrate to Aurora MySQL\n- Configure Global Database\n\nMonitoring Strategy:\n\naws cloudwatch put-dashboard \\\n    --dashboard-name RDS-Performance \\\n    --dashboard-body file://rds-dashboard.json\n\n\nWould you like me to:\n1. Proceed with the immediate IOPS increase?\n2. Provide the detailed Aurora migration plan?\n3. Share the CloudWatch dashboard template?\n\nBest regards,\nDavid\nAWS Support",
+            "submittedBy": "Amazon Web Services",
+            "timeCreated": "2025-04-08T09:45:23.456Z"
+            },
+            {
+            "caseId": "case-912345678901-use1-2025-789de34f1230gh5d",
+            "body": "Our RDS MySQL instance (r6g.2xlarge) is experiencing severe performance issues during peak trading hours. We're consistently hitting IOPS limits and experiencing high write latency.\n\nEnvironment Details:\n- Account ID: 123456789012\n- Region: us-east-1\n- RDS Instance ID: trading-db-prod\n- Instance Type: r6g.2xlarge\n- Storage: 2TB gp3\n- Provisioned IOPS: 6,000\n\nCurrent Issues:\n1. IOPS consistently maxed out\n2. Write latency >50ms\n3. Connection pool exhaustion\n4. Frequent query timeouts\n\nImpact:\n- Trading operations delayed\n- Customer complaints about transaction processing\n- Revenue impact estimated at $50K/day\n\nMetrics:\n- Average CPU: 85%\n- Peak CPU: 95%\n- Available Storage: 40%\n- Active Connections: ~1,000\n\nWe need recommendations for:\n1. Immediate performance improvement\n2. Long-term scaling strategy\n3. High availability architecture\n\nPlease provide both immediate actions and long-term architectural recommendations.",
+            "submittedBy": "michael.zhao@fintech.com",
+            "timeCreated": "2025-04-08T09:30:15.789Z",
+            "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": ["operations.team@fintech.com", "cto@fintech.com"],
+    "language": "en"
+    }
