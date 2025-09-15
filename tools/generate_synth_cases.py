@@ -1,0 +1,91 @@
+# this generates synthetic cases using examples from the categories
+import sys
+import os
+import boto3
+import logging
+import random
+import argparse
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir) # for config.py 
+sys.path.append(os.path.join(parent_dir, 'lambda', 'layers', 's3_utils'))
+sys.path.append(os.path.join(parent_dir, 'lambda', 'layers', 'prompt_gen_cases_input'))
+
+import config
+from s3 import get_category_examples, get_category_desc, store_data
+from prompt_gen_cases_input import gen_synth_prompt, gen_batch_record 
+
+boto3_bedrock = boto3.client('bedrock')
+model_id_text = config.BEDROCK_TEXT_MODEL
+
+categoryBucketName = config.KEY + '-' + config.BUCKET_NAME_CATEGORY_BASE
+genCasesBucketName = config.KEY + '-' + config.BUCKET_NAME_CASES_AGG_BASE
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Generate synthetic cases')
+    parser.add_argument('--min-cases', type=int, default=1,
+                      help='minimum number of cases generated (default: 1)')
+    parser.add_argument('--max-cases', type=int, default=config.SYNTH_CASES_NUMBER_SEED,
+                      help="max number of cases generated (default: config.SYNTH_CASES_NUMBER_SEED)")
+    
+    return parser.parse_args()
+
+def main():
+    logging.basicConfig(level=logging.INFO,
+                        format="%(levelname)s: %(message)s")
+
+    args = parse_arguments()
+
+    # for each category configured, create some synth records
+    for category in config.CATEGORIES:
+        examples_category = get_category_examples(categoryBucketName,category)
+        desc_category = get_category_desc(categoryBucketName,category)
+
+        desc_category = '\n'.join(desc_category.splitlines()[1:])
+
+        min = 1
+        if args.min_cases:
+            min = args.min_cases
+        
+        max = config.SYNTH_CASES_NUMBER_SEED
+        if args.max_cases:
+            max = args.max_cases
+            
+        start = 0
+        end = random.randint(min, max)
+
+        logging.info("\ngenerating " + str(end) + " cases for " + category)
+
+        for i in range (start, end):
+            # output must be in jsonl for Bedrock batch inerence
+            n = i + 1
+            key = 'case-gen-' + category + '-' + str(n) + '.jsonl'
+        
+            # first create the synth case, for the given category, for the given number of category cases
+            synth_case = gen_synth_prompt(model_id_text=model_id_text,
+                        examples=examples_category,
+                        desc=desc_category,
+                        category=category,
+                        temperature=config.SYNTH_CASES_TEMPERATURE)
+        
+            logging.info("generating " + genCasesBucketName + '/' + key) 
+
+            # then create a batch input record for each synth case
+            # this now includes all categories for examples
+            batch_record = gen_batch_record(synth_case, 
+                config.SYNTH_CASES_TEMPERATURE, 
+                config.SYNTH_CASES_MAX_TOKENS, 
+                config.SYNTH_CASES_CATEGORIZE_TOP_P,
+                categoryBucketName,
+                str(config.CATEGORIES),
+                str(config.CATEGORY_OUTPUT_FORMAT)
+            )
+
+            store_data(batch_record, genCasesBucketName, key)
+
+if __name__ == '__main__':
+   main()
+
+       
+
