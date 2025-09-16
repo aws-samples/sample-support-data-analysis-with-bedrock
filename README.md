@@ -127,11 +127,11 @@ This script is meant for development and testing, and checks for each AWS Step F
 ```
 tools$ python3 ./runMaki.py
 Executing: 
-  arn:aws:states:us-east-1:903312288484:stateMachine:maki-903312288484-us-east-1-state-machine
-State machine execution started: arn:aws:states:us-east-1:903312288484:execution:maki-903312288484-us-east-1-state-machine:a91b4fcc-4a95-47bb-b749-77b302afbca7
+  arn:aws:states:us-east-1:<ACCOUNT-ID>:stateMachine:maki-<ACCOUNT-ID>-us-east-1-state-machine
+State machine execution started: arn:aws:states:us-east-1:<ACCOUNT-ID>:execution:maki-<ACCOUNT-ID>-us-east-1-state-machine:
 {
     "Step Name": "check-enabled_models",
-    "Function ARN": "arn:aws:lambda:us-east-1:903312288484:function:maki-903312288484-us-east-1-check-enabled_models"
+    "Function ARN": "arn:aws:lambda:us-east-1:<ACCOUNT-ID>:function:maki-<ACCOUNT-ID>-us-east-1-check-enabled_models"
 }
 ...
 Execution succeeded!
