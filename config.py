@@ -31,9 +31,6 @@ CATEGORIES = [
 ]
 # where example category files are stored, relative to base
 CATEGORY_DIR =  'categories'
-# where local example categories are uploaded from initially
-CATEGORY_LOCAL = '../categories'
-
 
 ###
 # General
