@@ -90,11 +90,16 @@ And puts the raw support cases in the following S3 bucket.
 
 If CID is not being used, the above Lambda function can be modified to pull the support cases from an alternative source.
 
-For testing and development purposes, the following utility function also generates synthetic support cases and puts them into the above S3 bucket.
+You can also set the below line in `config.py` to skip the data pull from CID.  If you want to populate the above S3 bucket directly, without pulling from CID, this is a useful parameter to set to `true`.
+
+`CID_SKIP = 'true'` 
+
+For testing and development purposes, the following utility function also generates synthetic support cases and puts them into the above S3 bucket.  Combined with the above `CID_SKIP` parameter set to `true`, this allows you to run MAKI as is, using synthetic support cases, without having to pull data from CID.
 
 `tools/generate_synth_cases.py`
 
-This tool will create a controlled number of synthetic support cases of various support case categories.   
+This tool will create a controlled number of synthetic support cases for each support case category.   
+
 
 ```sample-support-data-analysis-with-bedrock/tools$ python ./generate_synth_cases.py --help
 usage: generate_synth_cases.py [-h] [--min-cases MIN_CASES] [--max-cases MAX_CASES]
