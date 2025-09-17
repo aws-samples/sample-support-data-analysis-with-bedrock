@@ -259,12 +259,6 @@ BEDROCK_PROCESS_ONDEMAND_OUTPUT_HANDLER_FILE = 'bedrockProcessOnDemandOutput_han
 BEDROCK_PROCESS_ONDEMAND_OUTPUT_HANDLER_FUNC = 'handler'
 BEDROCK_PROCESS_ONDEMAND_OUTPUT_RETRIES = 0
 
-# lambda layer for boto3
-# change the zip file to dynamically generated later
-BOTO3_LAYER_PATH = 'lambda/layers/boto3/boto3-layer.zip'
-BOTO3_LAYER_NAME_BASE = 'MakiBoto3'
-BOTO3_LAYER_DESC = 'MAKI Boto3 Layer'
-
 # this Lambda layer is used to store prompts that generate Bedrock batch inference records from CID and synthetic records
 PROMPT_GEN_CASES_INPUT_LAYER_PATH = 'lambda/layers/prompt_gen_cases_input'
 PROMPT_GEN_CASES_INPUT_LAYER_NAME_BASE = 'MakiPromptGenCasesInput'
