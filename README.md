@@ -86,7 +86,7 @@ This Lambda function pulls the records from CID;
 
 And puts the raw support cases in the following S3 bucket.
 
-`maki-<ACCOUNT-ID>-<REGION>-east-1-cases-agg`
+`maki-<ACCOUNT-ID>-<REGION>-cases-agg`
 
 If CID is not being used, the above Lambda function can be modified to pull the support cases from an alternative source.
 
@@ -245,6 +245,9 @@ MAKI takes each record to be processed, and determines which of the above catego
 
 
 ## What's in development for MAKI?
+
+### AWS Health Ingestion
+The current patterns exemplify analysis of support cases.  We will be publishing patterns on the ingestion of AWS Health events as well!
 
 ### Amazon S3 Vectors
 With MAKI's Amazon S3-based data architecture, implementing vector support using Amazon S3 Vectors aligns well.  This additional stack is actively being developed! 
