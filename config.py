@@ -3,9 +3,6 @@ import boto3
 
 ####
 # Cases
-CASES_LANGUAGE='en'
-CASES_INCLUDE_COMMUNICATIONS=True
-CASES_INCLUDE_RESOLVED=True
 CASES_AFTER_TIME='2023-01-01T00:00:00Z'  # Adjust the date as needed
 
 ###
@@ -123,9 +120,6 @@ CRON_REPORT_YEAR = '*'
 
 # CloudWatch
 LOG_GROUP_NAME_BASE = 'log-group'
-# these aren't used yet - see BuildCW.  Need to do.
-LOG_GROUP_RETENTION_DAYS = 7
-LOG_GROUP_REMOVAL_POLICY = 'DESTROY'
 
 # S3 bucket lifecycle to S3-int
 LCDAYS = 90 
@@ -153,8 +147,6 @@ BUCKET_NAME_CASES_AGG_BASE = 'cases-agg'
 EXEC_ROLE = 'maki-exec-role'
 
 ###
-BEDROCK_INF_METHOD = 'batch'
-BEDROCK_INF_METHOD = 'ondemand'
 BEDROCK_INF_METHOD_ROUTER_NAME_BASE = 'inference-method-router'
 
 ####
