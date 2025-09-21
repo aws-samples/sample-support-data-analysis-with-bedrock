@@ -140,6 +140,15 @@ BUCKET_NAME_CID = 'cid-data-' + account_id
 CID_SKIP = 'true' 
 
 BUCKET_NAME_CASES_AGG_BASE = 'cases-agg'
+BUCKET_NAME_HEALTH_AGG_BASE = 'health-agg'
+
+###
+# OpenSearch Health Events
+OPENSEARCH_DOMAIN_NAME = 'maki-health'
+OPENSEARCH_ENDPOINT = ''  # Will be set after domain creation
+OPENSEARCH_INDEX = 'aws-health-events'
+OPENSEARCH_SKIP = 'false'  # Set to 'true' to skip OpenSearch queries
+HEALTH_EVENTS_AFTER_TIME = '2023-01-01T00:00:00Z'  # Adjust the date as needed
 
 
 ####
@@ -190,6 +199,16 @@ GET_CID_CASES_PATH = 'lambda/getCasesFromCID'
 GET_CID_CASES_HANDLER_FILE = 'getCasesFromCID_handler'
 GET_CID_CASES_HANDLER_FUNC = 'handler'
 GET_CID_CASES_RETRIES = 0
+
+# Lambda configs for getting health events from OpenSearch
+GET_HEALTH_FROM_OPENSEARCH_NAME_BASE = 'GetHealthFromOpenSearch'
+GET_HEALTH_FROM_OPENSEARCH_TIMEOUT = 900
+GET_HEALTH_FROM_OPENSEARCH_MEMORY = 10240
+GET_HEALTH_FROM_OPENSEARCH_DESC = 'get health events from OpenSearch'
+GET_HEALTH_FROM_OPENSEARCH_PATH = 'lambda/getHealthFromOpenSearch'
+GET_HEALTH_FROM_OPENSEARCH_HANDLER_FILE = 'getHealthFromOpenSearch_handler'
+GET_HEALTH_FROM_OPENSEARCH_HANDLER_FUNC = 'handler'
+GET_HEALTH_FROM_OPENSEARCH_RETRIES = 0
 
 # Lambda configs for using Bedrock ondemand inference
 BEDROCK_ONDEMAND_INF_NAME_BASE = 'ondemand-inference'
