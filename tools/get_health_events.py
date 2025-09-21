@@ -3,10 +3,123 @@
 import boto3
 import json
 import argparse
+import os
 from datetime import datetime, timedelta
 from botocore.exceptions import ClientError
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
+
+def generate_embedding(text, bedrock_client, region='us-east-1'):
+    """Generate embedding using Bedrock Titan Text Embeddings V2"""
+    if not text or not text.strip():
+        return None
+    
+    try:
+        body = json.dumps({
+            "inputText": text,
+            "dimensions": 1024,
+            "normalize": True
+        })
+        
+        response = bedrock_client.invoke_model(
+            modelId='amazon.titan-embed-text-v2:0',
+            body=body,
+            contentType='application/json',
+            accept='application/json'
+        )
+        
+        response_body = json.loads(response['body'].read())
+        return response_body['embedding']
+        
+    except ClientError as e:
+        if 'AccessDeniedException' in str(e):
+            print(f"  Error: Access denied to Titan model. Request access at Bedrock console.")
+        return None
+    except Exception as e:
+        print(f"  Error generating embedding: {e}")
+        return None
+
+def write_to_files(events, event_details, affected_entities, output_dir, verbose=False):
+    """Write health events to JSON files in specified directory"""
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Initialize Bedrock client for embeddings
+        bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
+        
+        # Create mappings
+        details_map = {detail['event']['arn']: detail for detail in event_details}
+        entities_map = {}
+        for entity in affected_entities:
+            event_arn = entity['eventArn']
+            if event_arn not in entities_map:
+                entities_map[event_arn] = []
+            entities_map[event_arn].append(entity)
+        
+        # Process and write each event
+        written_count = 0
+        for event in events:
+            event_arn = event['arn']
+            
+            # Merge event with its details
+            if event_arn in details_map:
+                detail = details_map[event_arn]
+                
+                # Start with the detailed event data and merge with original
+                detailed_event = detail['event'].copy()
+                detailed_event.update(event)  # Add any fields from describe_events that aren't in details
+                event.clear()
+                event.update(detailed_event)
+                
+                # Add the additional fields from describe_event_details
+                if 'eventDescription' in detail:
+                    event['eventDescription'] = detail['eventDescription']
+                    
+                    # Generate embedding for latestDescription
+                    latest_desc = detail['eventDescription'].get('latestDescription', '')
+                    if latest_desc:
+                        embedding = generate_embedding(latest_desc, bedrock_client)
+                        if embedding:
+                            event['eventDescription']['latestDescriptionVector'] = embedding
+                            if verbose:
+                                print(f"  Generated embedding for event: {event_arn}")
+                
+                if 'eventMetadata' in detail:
+                    event['eventMetadata'] = detail['eventMetadata']
+                event['affectedEntities'] = detail.get('affectedEntities', [])
+                
+                if verbose:
+                    latest_desc = event['eventDescription'].get('latestDescription', '')
+                    print(f"  Added event description: {'YES' if latest_desc else 'NO (empty)'}")
+                    print(f"  Description length: {len(latest_desc) if latest_desc else 0}")
+                    print(f"  Added {len(event['affectedEntities'])} affected entities")
+                    print(f"  Full describe_event_details output: {json.dumps(detail, indent=2, default=str)}")
+            else:
+                event.update({
+                    'eventDescription': {},
+                    'affectedEntities': []
+                })
+            
+            # Add detailed affected entities
+            if event_arn in entities_map:
+                event['detailedAffectedEntities'] = entities_map[event_arn]
+            
+            # Write to file
+            filename = f"{event_arn.replace(':', '_').replace('/', '_')}.json"
+            filepath = os.path.join(output_dir, filename)
+            
+            with open(filepath, 'w') as f:
+                json.dump(event, f, indent=2, default=str)
+            
+            written_count += 1
+            
+            if verbose:
+                print(f"Written event to: {filepath}")
+        
+        print(f"Written {written_count} health events to directory: {output_dir}")
+        
+    except Exception as e:
+        print(f"Error writing to files: {e}")
 
 def load_to_opensearch(events, event_details, affected_entities, opensearch_endpoint, index_name, region, verbose=False):
     """Load health events into OpenSearch index"""
@@ -14,6 +127,9 @@ def load_to_opensearch(events, event_details, affected_entities, opensearch_endp
         host = opensearch_endpoint.replace('https://', '')
         session = boto3.Session()
         credentials = session.get_credentials()
+        
+        # Initialize Bedrock client for embeddings
+        bedrock_client = boto3.client('bedrock-runtime', region_name=region)
         
         awsauth = AWS4Auth(
             credentials.access_key,
@@ -61,23 +177,52 @@ def load_to_opensearch(events, event_details, affected_entities, opensearch_endp
             # Merge event with its details
             if event_arn in details_map:
                 detail = details_map[event_arn]
-                event_description = detail['event'].get('eventDescription', {})
-                affected_entities = detail.get('affectedEntities', [])
                 
-                event.update({
-                    'eventDescription': event_description,
-                    'affectedEntities': affected_entities
-                })
+                # Start with the detailed event data and merge with original
+                detailed_event = detail['event'].copy()
+                detailed_event.update(event)  # Add any fields from describe_events that aren't in details
+                event.clear()
+                event.update(detailed_event)
+                
+                # Add the additional fields from describe_event_details
+                if 'eventDescription' in detail:
+                    event['eventDescription'] = detail['eventDescription']
+                    
+                    # Generate embedding for latestDescription
+                    latest_desc = detail['eventDescription'].get('latestDescription', '')
+                    if latest_desc:
+                        embedding = generate_embedding(latest_desc, bedrock_client, region)
+                        if embedding:
+                            event['eventDescription']['latestDescriptionVector'] = embedding
+                            if verbose:
+                                print(f"  Generated embedding for event: {event_arn}")
+                
+                if 'eventMetadata' in detail:
+                    event['eventMetadata'] = detail['eventMetadata']
+                event['affectedEntities'] = detail.get('affectedEntities', [])
                 
                 if verbose:
-                    latest_desc = event_description.get('latestDescription', '')
+                    latest_desc = event.get('eventDescription', {}).get('latestDescription', '')
+                    vector = event.get('eventDescription', {}).get('latestDescriptionVector', [])
                     print(f"  Added event description: {'YES' if latest_desc else 'NO (empty)'}")
                     print(f"  Description length: {len(latest_desc) if latest_desc else 0}")
-                    print(f"  Added {len(affected_entities)} affected entities")
+                    print(f"  Vector embedding: {'YES' if vector else 'NO'}")
+                    if vector:
+                        print(f"  Vector dimensions: {len(vector)}")
+                        print(f"  Vector sample (first 5): {vector[:5]}")
+                    print(f"  Added {len(event.get('affectedEntities', []))} affected entities")
+                    
+                    # Create a copy of detail for printing with truncated vector
+                    detail_for_print = json.loads(json.dumps(detail, default=str))
+                    if 'eventDescription' in detail_for_print and 'latestDescriptionVector' in detail_for_print['eventDescription']:
+                        full_vector = detail_for_print['eventDescription']['latestDescriptionVector']
+                        detail_for_print['eventDescription']['latestDescriptionVector'] = full_vector[:5] + [f"... ({len(full_vector)-5} more values)"] if len(full_vector) > 5 else full_vector
+                    
+                    print(f"  Full describe_event_details output: {json.dumps(detail_for_print, indent=2, default=str)}")
             else:
                 if verbose:
                     print(f"  No details found for event: {event_arn}")
-                # Add empty eventDescription to maintain structure
+                # Add empty structures to maintain consistency
                 event.update({
                     'eventDescription': {},
                     'affectedEntities': []
@@ -107,7 +252,7 @@ def load_to_opensearch(events, event_details, affected_entities, opensearch_endp
     except Exception as e:
         print(f"Error loading to OpenSearch: {e}")
 
-def get_health_events(opensearch_endpoint, index_name, region='us-east-1', verbose=False):
+def get_health_events(opensearch_endpoint, index_name, region='us-east-1', verbose=False, output_dir=None):
     """Query AWS Health API for events from the past year and load into OpenSearch"""
     
     # Calculate date range (past year)
@@ -132,8 +277,7 @@ def get_health_events(opensearch_endpoint, index_name, region='us-east-1', verbo
                         'from': start_time,
                         'to': end_time
                     }
-                ],
-                'eventTypeCategories': ['issue', 'accountNotification', 'scheduledChange', 'investigation']
+                ]
             }
         )
         
@@ -170,8 +314,7 @@ def get_health_events(opensearch_endpoint, index_name, region='us-east-1', verbo
                         'from': start_time,
                         'to': end_time
                     }
-                ],
-                'eventTypeCategories': ['issue', 'accountNotification', 'scheduledChange', 'investigation']
+                ]
             }
         )
         
@@ -220,7 +363,9 @@ def get_health_events(opensearch_endpoint, index_name, region='us-east-1', verbo
                             print(f"Retrieved details for: {detail['event']['arn']}")
                             print(f"  Has description: {'YES' if latest_desc else 'NO'}")
                             if latest_desc:
-                                print(f"  Description preview: {latest_desc[:100]}...")
+                                print(f"  Description: {latest_desc}")
+                            else:
+                                print(f"  Description: (empty)")
                         
                         for failed in failed_details:
                             print(f"Failed to get details for: {failed.get('eventArn', 'Unknown')}")
@@ -251,8 +396,11 @@ def get_health_events(opensearch_endpoint, index_name, region='us-east-1', verbo
             
             print(f"Fetched details for {len(event_details)} events and {len(affected_entities)} affected entities")
             
-            # Load to OpenSearch
-            load_to_opensearch(events, event_details, affected_entities, opensearch_endpoint, index_name, region, verbose)
+            # Output to files or load to OpenSearch
+            if output_dir:
+                write_to_files(events, event_details, affected_entities, output_dir, verbose)
+            else:
+                load_to_opensearch(events, event_details, affected_entities, opensearch_endpoint, index_name, region, verbose)
         
     except ClientError as e:
         if e.response['Error']['Code'] == 'SubscriptionRequiredException':
@@ -264,14 +412,19 @@ def get_health_events(opensearch_endpoint, index_name, region='us-east-1', verbo
 
 def main():
     parser = argparse.ArgumentParser(description='Query AWS Health API and load events directly into OpenSearch')
-    parser.add_argument('--opensearch-endpoint', required=True, help='OpenSearch endpoint URL (required)')
-    parser.add_argument('--index-name', required=True, help='OpenSearch index name (required)')
+    parser.add_argument('--opensearch-endpoint', help='OpenSearch endpoint URL')
+    parser.add_argument('--index-name', help='OpenSearch index name')
     parser.add_argument('--region', default='us-east-1', help='AWS region (default: us-east-1)')
     parser.add_argument('--verbose', action='store_true', help='Show detailed output for each record retrieved and loaded')
+    parser.add_argument('--output-dir', help='Write JSON files to directory instead of loading to OpenSearch')
     
     args = parser.parse_args()
     
-    get_health_events(args.opensearch_endpoint, args.index_name, args.region, args.verbose)
+    # Validate required arguments based on mode
+    if not args.output_dir and (not args.opensearch_endpoint or not args.index_name):
+        parser.error('--opensearch-endpoint and --index-name are required unless --output-dir is specified')
+    
+    get_health_events(args.opensearch_endpoint, args.index_name, args.region, args.verbose, args.output_dir)
 
 if __name__ == '__main__':
     main()
