@@ -286,83 +286,67 @@ def create_opensearch_domain(domain_name, region='us-east-1'):
         print(f"Error creating domain: {e}")
         raise e
 
-def generate_sample_health_events():
-    """Generate sample AWS Health events"""
-    base_time = datetime.utcnow() - timedelta(days=30)
-    
-    sample_events = []
-    
-    # Sample event types and services
-    event_types = [
-        ('AWS_EC2_INSTANCE_RETIREMENT', 'EC2', 'scheduledChange'),
-        ('AWS_RDS_MAINTENANCE', 'RDS', 'scheduledChange'),
-        ('AWS_S3_OPERATIONAL_ISSUE', 'S3', 'issue'),
-        ('AWS_LAMBDA_OPERATIONAL_ISSUE', 'LAMBDA', 'issue'),
-        ('AWS_ELB_OPERATIONAL_ISSUE', 'ELB', 'issue')
-    ]
-    
-    regions = ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1']
-    
-    for i in range(50):
-        event_type, service, category = event_types[i % len(event_types)]
-        region = regions[i % len(regions)]
-        
-        start_time = base_time + timedelta(days=i//10, hours=i%24)
-        end_time = start_time + timedelta(hours=2)
-        
-        event = {
-            'eventArn': f'arn:aws:health:{region}::event/{service.lower()}/{region}/{event_type.lower()}/{int(start_time.timestamp())}',
-            'service': service,
-            'eventTypeCode': event_type,
-            'eventTypeCategory': category,
-            'region': region,
-            'startTime': start_time.isoformat() + 'Z',
-            'endTime': end_time.isoformat() + 'Z',
-            'lastUpdatedTime': (start_time + timedelta(minutes=30)).isoformat() + 'Z',
-            'statusCode': 'closed' if i % 3 == 0 else 'open',
-            'eventDescription': {
-                'latestDescription': f'Sample {category} event for {service} in {region}. This is a test event for demonstration purposes.'
-            },
-            'affectedEntities': [
-                {
-                    'entityArn': f'arn:aws:{service.lower()}:{region}:123456789012:instance/i-{i:010d}',
-                    'entityValue': f'test-resource-{i}',
-                    'lastUpdatedTime': start_time.isoformat() + 'Z',
-                    'statusCode': 'IMPAIRED' if category == 'issue' else 'PENDING'
-                }
-            ]
-        }
-        
-        sample_events.append(event)
-    
-    return sample_events
-
 def create_health_index(client, index_name='aws-health-events'):
-    """Create AWS Health events index with proper mapping"""
+    """Create AWS Health events index with comprehensive mapping for describe_event_details output"""
     mapping = {
         'mappings': {
             'properties': {
-                'eventArn': {'type': 'keyword'},
+                # Fields from describe_events
+                'arn': {'type': 'keyword'},
                 'service': {'type': 'keyword'},
                 'eventTypeCode': {'type': 'keyword'},
                 'eventTypeCategory': {'type': 'keyword'},
+                'eventScopeCode': {'type': 'keyword'},
                 'region': {'type': 'keyword'},
+                'availabilityZone': {'type': 'keyword'},
                 'startTime': {'type': 'date'},
                 'endTime': {'type': 'date'},
                 'lastUpdatedTime': {'type': 'date'},
                 'statusCode': {'type': 'keyword'},
+                
+                # Fields from describe_event_details
                 'eventDescription': {
                     'properties': {
-                        'latestDescription': {'type': 'text'}
+                        'latestDescription': {'type': 'text', 'analyzer': 'standard'}
                     }
                 },
+                'eventMetadata': {
+                    'type': 'object',
+                    'dynamic': True
+                },
+                
+                # Affected entities from describe_event_details
                 'affectedEntities': {
                     'type': 'nested',
                     'properties': {
                         'entityArn': {'type': 'keyword'},
                         'entityValue': {'type': 'keyword'},
+                        'entityUrl': {'type': 'keyword'},
+                        'awsAccountId': {'type': 'keyword'},
+                        'lastUpdatedTime': {'type': 'date'},
                         'statusCode': {'type': 'keyword'},
-                        'lastUpdatedTime': {'type': 'date'}
+                        'tags': {
+                            'type': 'object',
+                            'dynamic': True
+                        }
+                    }
+                },
+                
+                # Detailed affected entities from describe_affected_entities
+                'detailedAffectedEntities': {
+                    'type': 'nested',
+                    'properties': {
+                        'entityArn': {'type': 'keyword'},
+                        'entityValue': {'type': 'keyword'},
+                        'entityUrl': {'type': 'keyword'},
+                        'awsAccountId': {'type': 'keyword'},
+                        'lastUpdatedTime': {'type': 'date'},
+                        'statusCode': {'type': 'keyword'},
+                        'tags': {
+                            'type': 'object',
+                            'dynamic': True
+                        },
+                        'eventArn': {'type': 'keyword'}
                     }
                 }
             }
@@ -371,7 +355,7 @@ def create_health_index(client, index_name='aws-health-events'):
     
     if not client.indices.exists(index=index_name):
         client.indices.create(index=index_name, body=mapping)
-        print(f"Created AWS Health index: {index_name}")
+        print(f"Created blank AWS Health index: {index_name}")
     else:
         print(f"AWS Health index {index_name} already exists")
 
@@ -637,7 +621,7 @@ def create_health_dashboard(client, index_name='aws-health-events'):
             print("Dashboard can be created manually in OpenSearch Dashboards UI")
 
 def create_index_and_load_data(endpoint, index_name='aws-health-events'):
-    """Create index and load sample data"""
+    """Create blank index ready for health events data"""
     region = boto3.Session().region_name or 'us-east-1'
     host = endpoint.replace('https://', '')
     
@@ -670,22 +654,11 @@ def create_index_and_load_data(endpoint, index_name='aws-health-events'):
             timeout=30
         )
     
-        # Create AWS Health index
+        # Create blank AWS Health index
         create_health_index(client, index_name)
         
         # Create dashboard
         create_health_dashboard(client, index_name)
-        
-        # Check if data already exists
-        try:
-            count_response = client.count(index=index_name)
-            existing_count = count_response['count']
-            
-            if existing_count > 0:
-                print(f"Index already contains {existing_count} documents")
-                return existing_count
-        except Exception:
-            existing_count = 0
         
         print(f"AWS Health index '{index_name}' created and ready for data")
         return 0
