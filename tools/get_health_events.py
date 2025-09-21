@@ -4,13 +4,18 @@ import boto3
 import json
 import argparse
 import os
+import sys
+sys.path.append('..')
+import config
 from datetime import datetime, timedelta
 from botocore.exceptions import ClientError
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 
+import config
+
 def generate_embedding(text, bedrock_client, region='us-east-1'):
-    """Generate embedding using Bedrock Titan Text Embeddings V2"""
+    """Generate embedding using Bedrock model from config"""
     if not text or not text.strip():
         return None
     
@@ -22,7 +27,7 @@ def generate_embedding(text, bedrock_client, region='us-east-1'):
         })
         
         response = bedrock_client.invoke_model(
-            modelId='amazon.titan-embed-text-v2:0',
+            modelId=config.BEDROCK_EMBEDDING_MODEL,
             body=body,
             contentType='application/json',
             accept='application/json'
@@ -33,7 +38,7 @@ def generate_embedding(text, bedrock_client, region='us-east-1'):
         
     except ClientError as e:
         if 'AccessDeniedException' in str(e):
-            print(f"  Error: Access denied to Titan model. Request access at Bedrock console.")
+            print(f"  Error: Access denied to {config.BEDROCK_EMBEDDING_MODEL} model. Request access at Bedrock console.")
         return None
     except Exception as e:
         print(f"  Error generating embedding: {e}")
@@ -45,7 +50,7 @@ def write_to_files(events, event_details, affected_entities, output_dir, verbose
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize Bedrock client for embeddings
-        bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
+        bedrock_client = boto3.client('bedrock-runtime', region_name=config.REGION)
         
         # Create mappings
         details_map = {detail['event']['arn']: detail for detail in event_details}
@@ -252,7 +257,7 @@ def load_to_opensearch(events, event_details, affected_entities, opensearch_endp
     except Exception as e:
         print(f"Error loading to OpenSearch: {e}")
 
-def get_health_events(opensearch_endpoint, index_name, region='us-east-1', verbose=False, output_dir=None):
+def get_health_events(opensearch_endpoint, index_name, region=config.REGION, verbose=False, output_dir=None):
     """Query AWS Health API for events from the past year and load into OpenSearch"""
     
     # Calculate date range (past year)
@@ -414,7 +419,7 @@ def main():
     parser = argparse.ArgumentParser(description='Query AWS Health API and load events directly into OpenSearch')
     parser.add_argument('--opensearch-endpoint', help='OpenSearch endpoint URL')
     parser.add_argument('--index-name', help='OpenSearch index name')
-    parser.add_argument('--region', default='us-east-1', help='AWS region (default: us-east-1)')
+    parser.add_argument('--region', default=config.REGION, help=f'AWS region (default: {config.REGION})')
     parser.add_argument('--verbose', action='store_true', help='Show detailed output for each record retrieved and loaded')
     parser.add_argument('--output-dir', help='Write JSON files to directory instead of loading to OpenSearch')
     

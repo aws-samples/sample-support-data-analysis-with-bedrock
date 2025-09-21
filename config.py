@@ -31,8 +31,14 @@ CATEGORY_DIR =  'categories'
 
 ###
 # General
-ec2 = boto3.client('ec2')
-REGION = ec2.meta.region_name
+def get_region():
+    try:
+        ec2 = boto3.client('ec2')
+        return ec2.meta.region_name
+    except:
+        return 'us-east-1'  # fallback
+
+REGION = get_region()
 
 #####
 # Tags 
@@ -51,6 +57,7 @@ KEY = PROJ + '-' + account_id + '-' + REGION
 # must use cross region inference profiles
 # must support prompt caching
 BEDROCK_TEXT_MODEL = "us.amazon.nova-micro-v1:0"
+BEDROCK_EMBEDDING_MODEL = "amazon.titan-embed-text-v2:0"
 BEDROCK_THROTTLE_DELAY_SECONDS = 3
 BEDROCK_MAX_TOKENS = 10240
 BEDROCK_CATEGORIZE_TEMPERATURE = 0.5
