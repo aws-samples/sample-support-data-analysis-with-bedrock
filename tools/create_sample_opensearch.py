@@ -307,7 +307,16 @@ def create_health_index(client, index_name='aws-health-events'):
                 # Fields from describe_event_details
                 'eventDescription': {
                     'properties': {
-                        'latestDescription': {'type': 'text', 'analyzer': 'standard'}
+                        'latestDescription': {'type': 'text', 'analyzer': 'standard'},
+                        'latestDescriptionVector': {
+                            'type': 'knn_vector',
+                            'dimension': 1024,
+                            'method': {
+                                'name': 'hnsw',
+                                'space_type': 'cosinesimil',
+                                'engine': 'nmslib'
+                            }
+                        }
                     }
                 },
                 'eventMetadata': {
@@ -656,9 +665,6 @@ def create_index_and_load_data(endpoint, index_name='aws-health-events'):
     
         # Create blank AWS Health index
         create_health_index(client, index_name)
-        
-        # Create dashboard
-        create_health_dashboard(client, index_name)
         
         print(f"AWS Health index '{index_name}' created and ready for data")
         return 0
