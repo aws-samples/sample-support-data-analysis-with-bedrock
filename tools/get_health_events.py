@@ -303,12 +303,6 @@ def load_to_opensearch(events, event_details, affected_entities, opensearch_endp
                 failed_count += 1
                 print(f"  ✗ Failed to load event {event_arn}: {e}")
         
-        # Refresh index (non-blocking if it fails)
-        try:
-            client.indices.refresh(index=index_name)
-        except Exception as refresh_error:
-            print(f"Warning: Could not refresh index: {refresh_error}")
-        
         # Summary report
         print(f"\n=== LOAD SUMMARY ===")
         print(f"Successfully loaded: {loaded_count} events")
