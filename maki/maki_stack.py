@@ -210,3 +210,54 @@ class MakiData(Stack):
         for category in config.CATEGORIES:
             sourceCategoryDir = config.CATEGORY_DIR + '/' + category
             BuildS3.deployS3(self, categoryBucketName, sourceCategoryDir, category) 
+
+class MakiEmbeddings(Stack):
+    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
+
+        # Get existing resources from foundations stack
+        makiRole = iam.Role.from_role_arn(
+            self, "ImportedMakiRole",
+            role_arn=f"arn:aws:iam::{config.account_id}:role/{utils.returnName(config.EXEC_ROLE)}"
+        )
+
+        log_group = logs.LogGroup.from_log_group_name(
+            self, "ImportedLogGroup",
+            log_group_name=utils.returnName(config.LOG_GROUP_NAME_BASE)
+        )
+
+        # Create health aggregation S3 bucket
+        healthAggBucketName = utils.returnName(config.BUCKET_NAME_HEALTH_AGG_BASE)
+        BuildS3.buildS3Bucket(self, makiRole, healthAggBucketName)
+
+        # Create layers in this stack since they may not exist yet
+        s3_utils_layer = BuildLambda.buildLambdaLayer(
+            self, 
+            makiRole, 
+            config.S3_UTILS_LAYER_PATH, 
+            config.S3_UTILS_LAYER_DESC, 
+            config.S3_UTILS_LAYER_NAME_BASE + "-embeddings")
+        
+        json_utils_layer = BuildLambda.buildLambdaLayer(
+            self, 
+            makiRole, 
+            config.JSON_UTILS_LAYER_PATH, 
+            config.JSON_UTILS_LAYER_DESC, 
+            config.JSON_UTILS_LAYER_NAME_BASE + "-embeddings")      
+
+        prompt_gen_cases_input_layer = BuildLambda.buildLambdaLayer(
+            self, 
+            makiRole, 
+            config.PROMPT_GEN_CASES_INPUT_LAYER_PATH, 
+            config.PROMPT_GEN_CASES_INPUT_LAYER_DESC, 
+            config.PROMPT_GEN_CASES_INPUT_LAYER_NAME_BASE + "-embeddings") 
+
+        # Build the getHealthFromOpenSearch Lambda function
+        BuildLambda.buildGetHealthFromOpenSearch(
+            self, 
+            makiRole, 
+            log_group, 
+            prompt_gen_cases_input_layer, 
+            s3_utils_layer, 
+            json_utils_layer
+        )

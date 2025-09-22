@@ -518,28 +518,46 @@ def buildCleanOutputFiles(
 
     return lambdaCleanOutputFile
 
-def buildOpenSearchIndexData(self, execution_role, log_group):
-    func_name = utils.returnName(config.OPENSEARCH_INDEX_DATA_NAME_BASE)
-    
-    lambdaOpenSearchIndexData = _lambda.Function(
-        self, func_name,
+# Lambda function to retrieve health events from OpenSearch
+def buildGetHealthFromOpenSearch(self, execution_role, log_group, prompt_gen_cases_input_layer, s3_utils_layer, json_utils_layer):
+
+    categoryBucketName = config.KEY + '-' + config.BUCKET_NAME_CATEGORY_BASE
+    healthAggBucketName = config.KEY + '-' + config.BUCKET_NAME_HEALTH_AGG_BASE
+
+    environment={
+        "OPENSEARCH_SKIP": config.OPENSEARCH_SKIP,
+        "OPENSEARCH_ENDPOINT": config.OPENSEARCH_ENDPOINT,
+        "OPENSEARCH_INDEX": config.OPENSEARCH_INDEX,
+        "HEALTH_EVENTS_SINCE": config.HEALTH_EVENTS_SINCE,
+        "S3_HEALTH_AGG": healthAggBucketName,
+        "BEDROCK_CATEGORIZE_TEMPERATURE": str(config.BEDROCK_CATEGORIZE_TEMPERATURE),
+        "BEDROCK_MAX_TOKENS": str(config.BEDROCK_MAX_TOKENS),
+        "BEDROCK_CATEGORIZE_TOP_P": str(config.BEDROCK_CATEGORIZE_TOP_P),
+        "CATEGORY_BUCKET_NAME": categoryBucketName,
+        "CATEGORIES": str(config.CATEGORIES),
+        "CATEGORY_OUTPUT_FORMAT": str(config.CATEGORY_OUTPUT_FORMAT),
+        "BEDROCK_EMBEDDING_MODEL": config.BEDROCK_EMBEDDING_MODEL
+    }
+
+    func_name = utils.returnName(config.GET_HEALTH_FROM_OPENSEARCH_NAME_BASE) 
+
+    lambdaGetHealthFromOpenSearch = _lambda.Function(
+        self, func_name, 
         runtime=_lambda.Runtime.PYTHON_3_13,
-        code=_lambda.Code.from_asset(config.OPENSEARCH_INDEX_DATA_PATH),
+        code=_lambda.Code.from_asset(config.GET_HEALTH_FROM_OPENSEARCH_PATH),
         function_name=func_name,
         role=execution_role,
-        timeout=cdk.Duration.seconds(config.OPENSEARCH_INDEX_DATA_TIMEOUT),
+        timeout=cdk.Duration.seconds(config.GET_HEALTH_FROM_OPENSEARCH_TIMEOUT),
         architecture=_lambda.Architecture.X86_64,
-        memory_size=config.OPENSEARCH_INDEX_DATA_MEMORY,
-        description=config.OPENSEARCH_INDEX_DATA_DESC,
-        handler=config.OPENSEARCH_INDEX_DATA_HANDLER_FILE + '.' + config.OPENSEARCH_INDEX_DATA_HANDLER_FUNC,
-        retry_attempts=config.OPENSEARCH_INDEX_DATA_RETRIES,
+        memory_size=config.GET_HEALTH_FROM_OPENSEARCH_MEMORY,
+        description=config.GET_HEALTH_FROM_OPENSEARCH_DESC,
+        handler=config.GET_HEALTH_FROM_OPENSEARCH_HANDLER_FILE + '.' + config.GET_HEALTH_FROM_OPENSEARCH_HANDLER_FUNC,
+        retry_attempts=config.GET_HEALTH_FROM_OPENSEARCH_RETRIES,
+        layers=[prompt_gen_cases_input_layer,s3_utils_layer,json_utils_layer],
         log_group=log_group,
-        environment={
-            "OPENSEARCH_ENDPOINT": config.OPENSEARCH_ENDPOINT
-        }
+        environment=environment
     )
-    
-    lambdaOpenSearchIndexData.node.add_dependency(log_group)
-    lambdaOpenSearchIndexData.node.add_dependency(execution_role)
-    
-    return lambdaOpenSearchIndexData
+
+    lambdaGetHealthFromOpenSearch.node.add_dependency(log_group)
+
+    return lambdaGetHealthFromOpenSearch
