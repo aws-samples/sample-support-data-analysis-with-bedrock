@@ -1,84 +1,88 @@
-# Builds OpenSearch components of MAKI
+# Builds OpenSearch Serverless components of MAKI
 import aws_cdk as cdk
 import aws_cdk.aws_opensearchserverless as opensearch
-import aws_cdk.aws_ec2 as ec2
 import aws_cdk.aws_iam as iam
 import config
 import sys
 sys.path.append('utils')
 import utils
 
-def buildOpenSearchDomain(self, vpc, security_group, execution_role):
-    """Build OpenSearch domain for health events"""
+def buildOpenSearchCollection(self, execution_role):
+    """Build OpenSearch Serverless collection for health events"""
     
-    domain_name = config.OPENSEARCH_DOMAIN_NAME
+    collection_name = config.OPENSEARCH_COLLECTION_NAME
     
-    # Create OpenSearch domain
-    domain = opensearch.CfnCollection(
-        self, utils.returnName("opensearch-domain"),
-        name=domain_name,
-        type="SEARCH"
-    )
+    # Get current caller identity to add to access policy
+    import boto3
+    sts_client = boto3.client("sts")
+    caller_arn = sts_client.get_caller_identity()["Arn"]
     
-    # Create access policy
-    access_policy = opensearch.CfnAccessPolicy(
-        self, utils.returnName("opensearch-access-policy"),
-        name=f"{domain_name}-access-policy",
-        type="data",
-        policy=f"""[{{
-            "Rules": [{{
-                "ResourceType": "index",
-                "Resource": ["index/{domain_name}/*"],
-                "Permission": ["aoss:*"]
-            }}, {{
-                "ResourceType": "collection",
-                "Resource": ["collection/{domain_name}"],
-                "Permission": ["aoss:*"]
-            }}],
-            "Principal": ["{execution_role.role_arn}"]
-        }}]"""
-    )
-    
-    # Create network policy for VPC access
-    network_policy = opensearch.CfnSecurityPolicy(
-        self, utils.returnName("opensearch-network-policy"),
-        name=f"{domain_name}-network-policy",
-        type="network",
-        policy=f"""[{{
-            "Rules": [{{
-                "ResourceType": "collection",
-                "Resource": ["collection/{domain_name}"]
-            }}],
-            "AllowFromPublic": true
-        }}]"""
-    )
-    
-    # Create encryption policy
+    # Create encryption policy first
     encryption_policy = opensearch.CfnSecurityPolicy(
         self, utils.returnName("opensearch-encryption-policy"),
-        name=f"{domain_name}-encryption-policy",
+        name=f"{collection_name}-encryption-policy",
         type="encryption",
         policy=f"""{{
             "Rules": [{{
                 "ResourceType": "collection",
-                "Resource": ["collection/{domain_name}"]
+                "Resource": ["collection/{collection_name}"]
             }}],
             "AWSOwnedKey": true
         }}"""
     )
     
+    # Create network policy for public access
+    network_policy = opensearch.CfnSecurityPolicy(
+        self, utils.returnName("opensearch-network-policy"),
+        name=f"{collection_name}-network-policy",
+        type="network",
+        policy=f"""[{{
+            "Rules": [{{
+                "ResourceType": "collection",
+                "Resource": ["collection/{collection_name}"]
+            }}],
+            "AllowFromPublic": true
+        }}]"""
+    )
+    
+    # Create access policy including both execution role and current caller
+    access_policy = opensearch.CfnAccessPolicy(
+        self, utils.returnName("opensearch-access-policy"),
+        name=f"{collection_name}-access-policy",
+        type="data",
+        policy=f"""[{{
+            "Rules": [{{
+                "ResourceType": "index",
+                "Resource": ["index/{collection_name}/*"],
+                "Permission": ["aoss:CreateIndex", "aoss:DeleteIndex", "aoss:UpdateIndex", "aoss:DescribeIndex", "aoss:ReadDocument", "aoss:WriteDocument"]
+            }}, {{
+                "ResourceType": "collection",
+                "Resource": ["collection/{collection_name}"],
+                "Permission": ["aoss:CreateCollectionItems", "aoss:DeleteCollectionItems", "aoss:UpdateCollectionItems", "aoss:DescribeCollectionItems"]
+            }}],
+            "Principal": ["{execution_role.role_arn}", "{caller_arn}"]
+        }}]"""
+    )
+    
+    # Create OpenSearch Serverless collection
+    collection = opensearch.CfnCollection(
+        self, utils.returnName("opensearch-collection"),
+        name=collection_name,
+        type="SEARCH"
+    )
+    
     # Add dependencies
-    domain.add_dependency(access_policy)
-    domain.add_dependency(network_policy)
-    domain.add_dependency(encryption_policy)
+    collection.add_dependency(encryption_policy)
+    collection.add_dependency(network_policy)
+    collection.add_dependency(access_policy)
     
     # Output the endpoint for reference
-    endpoint = f"https://{domain.attr_collection_endpoint}"
+    endpoint = f"https://{collection.attr_collection_endpoint}"
     
     cdk.CfnOutput(
         self, "OpenSearchEndpoint",
         value=endpoint,
-        description="OpenSearch collection endpoint"
+        description="OpenSearch Serverless collection endpoint"
     )
     
-    return domain, endpoint
+    return collection, endpoint

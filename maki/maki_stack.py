@@ -234,21 +234,11 @@ class MakiEmbeddings(Stack):
             log_group_name=utils.returnName(config.LOG_GROUP_NAME_BASE)
         )
 
-        # Import VPC and security group from foundations stack
-        vpc = ec2.Vpc.from_lookup(
-            self, "ImportedVPC",
-            is_default=False,
-            tags={"project": "maki"}
-        )
+        # OpenSearch Serverless doesn't require VPC configuration
 
-        security_group = ec2.SecurityGroup.from_security_group_id(
-            self, "ImportedSecurityGroup",
-            security_group_id=Fn.import_value("MakiSecurityGroupId")
-        )
-
-        # Create OpenSearch domain first
-        opensearch_domain, opensearch_endpoint = BuildOpenSearch.buildOpenSearchDomain(
-            self, vpc, security_group, makiRole
+        # Create OpenSearch Serverless collection first
+        opensearch_collection, opensearch_endpoint = BuildOpenSearch.buildOpenSearchCollection(
+            self, makiRole
         )
 
         # Create health aggregation S3 bucket
@@ -287,5 +277,5 @@ class MakiEmbeddings(Stack):
             json_utils_layer
         )
 
-        # Add dependency to ensure OpenSearch is created before Lambda
-        health_lambda.node.add_dependency(opensearch_domain)
+        # Add dependency to ensure OpenSearch Serverless collection is created before Lambda
+        health_lambda.node.add_dependency(opensearch_collection)

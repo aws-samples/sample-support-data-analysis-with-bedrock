@@ -127,7 +127,7 @@ def write_to_files(events, event_details, affected_entities, output_dir, verbose
         print(f"Error writing to files: {e}")
 
 def load_to_opensearch(events, event_details, affected_entities, opensearch_endpoint, index_name, region, verbose=False):
-    """Load health events into OpenSearch index"""
+    """Load health events into OpenSearch Serverless index"""
     try:
         host = opensearch_endpoint.replace('https://', '')
         session = boto3.Session()
@@ -136,11 +136,12 @@ def load_to_opensearch(events, event_details, affected_entities, opensearch_endp
         # Initialize Bedrock client for embeddings
         bedrock_client = boto3.client('bedrock-runtime', region_name=region)
         
+        # Use 'aoss' service for OpenSearch Serverless
         awsauth = AWS4Auth(
             credentials.access_key,
             credentials.secret_key,
             region,
-            'es',
+            'aoss',
             session_token=credentials.token
         )
         
@@ -153,9 +154,49 @@ def load_to_opensearch(events, event_details, affected_entities, opensearch_endp
             timeout=30
         )
         
-        # Check if index exists
-        if not client.indices.exists(index=index_name):
-            print(f"Error: Index {index_name} does not exist. Create it first.")
+        # Create index if it doesn't exist
+        try:
+            if not client.indices.exists(index=index_name):
+                print(f"Creating index: {index_name}")
+                index_mapping = {
+                    "mappings": {
+                        "properties": {
+                            "arn": {"type": "keyword"},
+                            "service": {"type": "keyword"},
+                            "eventTypeCode": {"type": "keyword"},
+                            "eventTypeCategory": {"type": "keyword"},
+                            "statusCode": {"type": "keyword"},
+                            "region": {"type": "keyword"},
+                            "startTime": {"type": "date"},
+                            "endTime": {"type": "date"},
+                            "lastUpdatedTime": {"type": "date"},
+                            "eventDescription": {
+                                "properties": {
+                                    "latestDescription": {"type": "text"}
+                                }
+                            }
+                        }
+                    }
+                }
+                client.indices.create(index=index_name, body=index_mapping)
+                print(f"✓ Created index: {index_name}")
+        except Exception as e:
+            print(f"Error creating index {index_name}: {e}")
+            
+            # Get current user/role ARN for troubleshooting
+            try:
+                sts = boto3.client('sts')
+                identity = sts.get_caller_identity()
+                current_arn = identity['Arn']
+                print(f"Current identity: {current_arn}")
+            except:
+                print("Could not determine current identity")
+            
+            print("Please ensure the current user/role has the necessary permissions for OpenSearch Serverless:")
+            print("- aoss:CreateIndex")
+            print("- aoss:WriteDocument") 
+            print("- aoss:UpdateIndex")
+            print("Add this ARN to the OpenSearch Serverless collection's access policy.")
             return
         
         # Create mappings
@@ -169,6 +210,9 @@ def load_to_opensearch(events, event_details, affected_entities, opensearch_endp
         
         # Load events into OpenSearch
         loaded_count = 0
+        failed_count = 0
+        category_counts = {}
+        
         for event in events:
             event_arn = event['arn']
             
@@ -240,25 +284,57 @@ def load_to_opensearch(events, event_details, affected_entities, opensearch_endp
                     print(f"  Added {len(entities_map[event_arn])} detailed affected entities")
             
             # Index the event
-            client.index(
-                index=index_name,
-                body=event,
-                id=event_arn
-            )
-            loaded_count += 1
-            
-            if verbose:
-                print(f"  ✓ Loaded into index {index_name}")
-                print()
+            try:
+                client.index(
+                    index=index_name,
+                    body=event,
+                    id=event_arn
+                )
+                loaded_count += 1
+                
+                # Count by category
+                category = event.get('eventTypeCategory', 'Unknown')
+                category_counts[category] = category_counts.get(category, 0) + 1
+                
+                if verbose:
+                    print(f"  ✓ Loaded into index {index_name}")
+                    print()
+            except Exception as e:
+                failed_count += 1
+                print(f"  ✗ Failed to load event {event_arn}: {e}")
         
-        client.indices.refresh(index=index_name)
-        print(f"Loaded {loaded_count} health events into OpenSearch index: {index_name}")
+        # Refresh index (non-blocking if it fails)
+        try:
+            client.indices.refresh(index=index_name)
+        except Exception as refresh_error:
+            print(f"Warning: Could not refresh index: {refresh_error}")
+        
+        # Summary report
+        print(f"\n=== LOAD SUMMARY ===")
+        print(f"Successfully loaded: {loaded_count} events")
+        print(f"Failed to load: {failed_count} events")
+        print(f"Total processed: {loaded_count + failed_count} events")
+        
+        if category_counts:
+            print(f"\n=== BY EVENT TYPE CATEGORY ===")
+            for category, count in sorted(category_counts.items()):
+                print(f"{category}: {count} events")
+        
+        print(f"\nLoaded into OpenSearch index: {index_name}")
         
     except Exception as e:
         print(f"Error loading to OpenSearch: {e}")
 
 def get_health_events(opensearch_endpoint, index_name, region=config.REGION, verbose=False, output_dir=None):
     """Query AWS Health API for events from the past year and load into OpenSearch"""
+    
+    # Show current identity
+    try:
+        sts = boto3.client('sts')
+        identity = sts.get_caller_identity()
+        print(f"Current AWS identity: {identity['Arn']}")
+    except Exception as e:
+        print(f"Could not determine current identity: {e}")
     
     # Calculate date range (past year)
     end_time = datetime.now()
@@ -417,19 +493,23 @@ def get_health_events(opensearch_endpoint, index_name, region=config.REGION, ver
 
 def main():
     parser = argparse.ArgumentParser(description='Query AWS Health API and load events directly into OpenSearch')
-    parser.add_argument('--opensearch-endpoint', help='OpenSearch endpoint URL')
-    parser.add_argument('--index-name', help='OpenSearch index name')
+    parser.add_argument('--opensearch-endpoint', help=f'OpenSearch endpoint URL (default: from config.py)')
+    parser.add_argument('--index-name', help=f'OpenSearch index name (default: {config.OPENSEARCH_INDEX})')
     parser.add_argument('--region', default=config.REGION, help=f'AWS region (default: {config.REGION})')
     parser.add_argument('--verbose', action='store_true', help='Show detailed output for each record retrieved and loaded')
     parser.add_argument('--output-dir', help='Write JSON files to directory instead of loading to OpenSearch')
     
     args = parser.parse_args()
     
-    # Validate required arguments based on mode
-    if not args.output_dir and (not args.opensearch_endpoint or not args.index_name):
-        parser.error('--opensearch-endpoint and --index-name are required unless --output-dir is specified')
+    # Use config.py values if not specified
+    opensearch_endpoint = args.opensearch_endpoint or config.OPENSEARCH_ENDPOINT
+    index_name = args.index_name or config.OPENSEARCH_INDEX
     
-    get_health_events(args.opensearch_endpoint, args.index_name, args.region, args.verbose, args.output_dir)
+    # Validate required arguments based on mode
+    if not args.output_dir and (not opensearch_endpoint or not index_name):
+        parser.error('--opensearch-endpoint and --index-name are required unless --output-dir is specified or values are set in config.py')
+    
+    get_health_events(opensearch_endpoint, index_name, args.region, args.verbose, args.output_dir)
 
 if __name__ == '__main__':
     main()
