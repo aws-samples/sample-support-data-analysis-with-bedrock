@@ -152,7 +152,8 @@ BUCKET_NAME_HEALTH_AGG_BASE = 'health-agg'
 ###
 # OpenSearch Health Events
 OPENSEARCH_DOMAIN_NAME = 'maki-health'
-OPENSEARCH_ENDPOINT = 'https://vpc-maki-health-mmjnk4rbsnmfewygyvtizuxt3m.us-east-1.es.amazonaws.com'  # Will be set after domain creation
+OPENSEARCH_ENDPOINT = ''  # Will be set after domain creation
+#OPENSEARCH_ENDPOINT = 'https://vpc-maki-health-mmjnk4rbsnmfewygyvtizuxt3m.us-east-1.es.amazonaws.com'  # Will be set after domain creation
 OPENSEARCH_INDEX = 'aws-health-events'
 OPENSEARCH_SKIP = 'false'  # Set to 'true' to skip OpenSearch queries
 HEALTH_EVENTS_SINCE = '2023-01-01T00:00:00Z'  # Adjust the date as needed

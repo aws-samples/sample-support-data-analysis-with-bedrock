@@ -48,6 +48,8 @@ def buildSecurityGroup(self, vpc):
         allow_all_outbound=True
     )        
     
+    cdk.Tags.of(sg).add("Name", "maki-sg")
+    
     sg.add_ingress_rule(
         peer=ec2.Peer.ipv4("192.168.0.0/24"),
         connection=ec2.Port.tcp(22),
