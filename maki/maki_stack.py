@@ -6,6 +6,8 @@ import utils
 
 from aws_cdk import (
     Stack,
+    CfnOutput,
+    Fn,
     aws_lambda as lambda_,
     aws_iam as iam,
     aws_s3 as s3,
@@ -198,7 +200,12 @@ class MakiFoundations(Stack):
         )
 
         # build SageMaker notebook
-        notebook = BuildSageMaker.buildNotebookInstance(self, makiRole, vpc, sg)        
+        notebook = BuildSageMaker.buildNotebookInstance(self, makiRole, vpc, sg)
+        
+        # Export security group for other stacks
+        CfnOutput(self, "SecurityGroupId", 
+                 value=sg.security_group_id,
+                 export_name="MakiSecurityGroupId")        
 
 class MakiData(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
@@ -234,10 +241,9 @@ class MakiEmbeddings(Stack):
             tags={"project": "maki"}
         )
 
-        security_group = ec2.SecurityGroup.from_lookup_by_name(
+        security_group = ec2.SecurityGroup.from_security_group_id(
             self, "ImportedSecurityGroup",
-            security_group_name="maki-sg",
-            vpc=vpc
+            security_group_id=Fn.import_value("MakiSecurityGroupId")
         )
 
         # Create OpenSearch domain first

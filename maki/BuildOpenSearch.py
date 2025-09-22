@@ -47,10 +47,9 @@ def buildOpenSearchDomain(self, vpc, security_group, execution_role):
         policy=f"""[{{
             "Rules": [{{
                 "ResourceType": "collection",
-                "Resource": ["collection/{domain_name}"],
-                "AllowFromPublic": false
+                "Resource": ["collection/{domain_name}"]
             }}],
-            "AllowFromPublic": false
+            "AllowFromPublic": true
         }}]"""
     )
     
