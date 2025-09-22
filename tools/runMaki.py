@@ -4,18 +4,31 @@ import json
 from time import sleep
 from datetime import datetime, timedelta
 
-# Create a Step Functions client
+# Create clients
 sfn_client = boto3.client('stepfunctions')
+ssm_client = boto3.client('ssm')
 
-# Define the state machine ARN
+# Get account and region info
 sts_client = boto3.client("sts")
 account_id = sts_client.get_caller_identity()["Account"]
 region = boto3.session.Session().region_name
 state_machine_arn = 'arn:aws:states:' + region + ':' + account_id + ':stateMachine:maki-' + account_id + '-' + region + '-state-machine' 
 
+# Get MODE from SSM Parameter Store
+def get_mode_from_ssm():
+    try:
+        response = ssm_client.get_parameter(Name=f"maki-{account_id}-{region}-maki-mode")
+        return response['Parameter']['Value']
+    except Exception as e:
+        print(f"⚠️  Warning: Could not get MODE from SSM: {e}")
+        return "unknown"
+
+current_mode = get_mode_from_ssm()
+
 print("🚀 MAKI State Machine Execution")
 print("=" * 50)
 print(f"📍 State Machine: {state_machine_arn}")
+print(f"🎯 MODE: {current_mode}")
 print("=" * 50)
 
 # Define the input data for the state machine execution

@@ -82,7 +82,7 @@ def buildStateMachine(self, functions, log_group):
         )
     )
 
-    stepBedrockOnDemandInference = tasks.LambdaInvoke(
+    stepBedrockOnDemandInferenceCase = tasks.LambdaInvoke(
         self, config.BEDROCK_ONDEMAND_INF_NAME_BASE,
         lambda_function=lambdaBedrockOnDemandInference,
         payload_response_only=True,
@@ -90,7 +90,15 @@ def buildStateMachine(self, functions, log_group):
         output_path = "$"
     )
 
-    stepBedrockBatchInference = tasks.LambdaInvoke(
+    stepBedrockOnDemandInferenceHealth = tasks.LambdaInvoke(
+        self, "health-" + config.BEDROCK_ONDEMAND_INF_NAME_BASE,
+        lambda_function=lambdaBedrockOnDemandInference,
+        payload_response_only=True,
+        input_path="$",
+        output_path = "$"
+    )
+
+    stepBedrockBatchInferenceCase = tasks.LambdaInvoke(
         self, config.BEDROCK_BATCH_INF_JOB_NAME_BASE,
         lambda_function=lambdaBedrockBatchInference,
         payload_response_only=True,
@@ -98,15 +106,38 @@ def buildStateMachine(self, functions, log_group):
         output_path = "$"
     )
 
-    stepPostCheckBatchInferenceJobs = tasks.LambdaInvoke(
+    stepBedrockBatchInferenceHealth = tasks.LambdaInvoke(
+        self, "health-" + config.BEDROCK_BATCH_INF_JOB_NAME_BASE,
+        lambda_function=lambdaBedrockBatchInference,
+        payload_response_only=True,
+        input_path="$",
+        output_path = "$"
+    )
+
+    stepPostCheckBatchInferenceJobsCase = tasks.LambdaInvoke(
         self, f"post-{config.CHECK_BATCH_INFERENCE_JOBS_NAME_BASE}",
         lambda_function=lambdaCheckBatchInferenceJobs,
         payload_response_only=True,
         output_path = "$"
     )
 
-    stepProcessBatchOutput = tasks.LambdaInvoke(
+    stepPostCheckBatchInferenceJobsHealth = tasks.LambdaInvoke(
+        self, f"health-post-{config.CHECK_BATCH_INFERENCE_JOBS_NAME_BASE}",
+        lambda_function=lambdaCheckBatchInferenceJobs,
+        payload_response_only=True,
+        output_path = "$"
+    )
+
+    stepProcessBatchOutputCase = tasks.LambdaInvoke(
         self, config.BEDROCK_PROCESS_BATCH_OUTPUT_NAME_BASE,
+        lambda_function=functions[config.BEDROCK_PROCESS_BATCH_OUTPUT_NAME_BASE],
+        payload_response_only=True,
+        input_path="$",
+        output_path = "$"
+    )
+
+    stepProcessBatchOutputHealth = tasks.LambdaInvoke(
+        self, "health-" + config.BEDROCK_PROCESS_BATCH_OUTPUT_NAME_BASE,
         lambda_function=functions[config.BEDROCK_PROCESS_BATCH_OUTPUT_NAME_BASE],
         payload_response_only=True,
         input_path="$",
@@ -114,14 +145,31 @@ def buildStateMachine(self, functions, log_group):
     )
     
     # Wait state for batch inference job completion check
-    waitForBatchCompletion = sfn.Wait(
+    waitForBatchCompletionCase = sfn.Wait(
         self,
         "WaitForBatchCompletion",
         time=sfn.WaitTime.duration(cdk.Duration.minutes(config.POST_BATCH_CHECK_INTERVAL_MIN))
     )
+
+    waitForBatchCompletionHealth = sfn.Wait(
+        self,
+        "WaitForBatchCompletionHealth",
+        time=sfn.WaitTime.duration(cdk.Duration.minutes(config.POST_BATCH_CHECK_INTERVAL_MIN))
+    )
     
-    stepProcessOnDemandOutput = tasks.LambdaInvoke(
+    stepProcessOnDemandOutputCase = tasks.LambdaInvoke(
         self, config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_NAME_BASE,
+        lambda_function=functions[config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_NAME_BASE],
+        payload_response_only=True,
+        input_path="$",
+        output_path = "$",
+        payload=sfn.TaskInput.from_object({
+            "ondemand_run_datetime.$": "$.ondemand_run_datetime"
+        })
+    )
+
+    stepProcessOnDemandOutputHealth = tasks.LambdaInvoke(
+        self, "health-" + config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_NAME_BASE,
         lambda_function=functions[config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_NAME_BASE],
         payload_response_only=True,
         input_path="$",
@@ -176,18 +224,16 @@ def buildStateMachine(self, functions, log_group):
 
 
     # Modified definition to include the enabled models check and execution check
-    definition = start_state \
-        .next(stepCheckEnabledModels) \
-        .next(
-            sfn.Choice(self, routerEnabledModels)
-            .when(
-                sfn.Condition.boolean_equals("$.enabledModels", False),
-                not_enabled
-            )
-            .otherwise(
-                stepCheckRunningJobs
-                .next(
-                    sfn.Choice(self, routerCheckJobs)
+    definition = start_state.next(stepCheckEnabledModels).next(
+        sfn.Choice(self, routerEnabledModels)
+        .when(
+            sfn.Condition.boolean_equals("$.enabledModels", False),
+            not_enabled
+        )
+        .otherwise(
+            stepCheckRunningJobs
+            .next(
+                sfn.Choice(self, routerCheckJobs)
                     .when(
                         sfn.Condition.number_greater_than("$.runningExecutions", 1),
                         already_running
@@ -207,49 +253,90 @@ def buildStateMachine(self, functions, log_group):
                                     .when(
                                         sfn.Condition.string_equals("$.modeConfig.Parameter.Value", "cases"),
                                         stepGetCasesFromCID
+                                        .next(
+                                            sfn.Choice(self, router)
+                                            .when(
+                                                sfn.Condition.number_equals("$.eventsTotal", 0),
+                                                no_cases_to_process
+                                            )
+                                            .when(
+                                                sfn.Condition.number_less_than("$.eventsTotal", config.BEDROCK_ONDEMAND_BATCH_INFLECTION),
+                                                sfn.Map(
+                                                    self,
+                                                    config.EVENT_ITERATOR,
+                                                    max_concurrency=config.EVENT_ITERATOR_MAX_PARALLEL,
+                                                    items_path="$.events",
+                                                    result_path="$.mapResults",
+                                                    parameters={
+                                                        "case.$": "$$.Map.Item.Value",
+                                                        "eventsTotal.$": "$.eventsTotal",
+                                                        "ondemand_run_datetime.$": "$.ondemand_run_datetime"
+                                                    }
+                                                ).iterator(
+                                                    stepBedrockOnDemandInferenceCase
+                                                )
+                                                .next(stepProcessOnDemandOutputCase)
+                                                .next(end_state)
+                                            )
+                                            .otherwise(
+                                                stepBedrockBatchInferenceCase
+                                                .next(stepPostCheckBatchInferenceJobsCase)
+                                                .next(
+                                                    sfn.Choice(self, "CheckBatchJobsCompletion")
+                                                    .when(
+                                                        sfn.Condition.number_greater_than("$.incompleteJobsCount", 0),
+                                                        waitForBatchCompletionCase
+                                                        .next(stepPostCheckBatchInferenceJobsCase)
+                                                    )
+                                                    .otherwise(
+                                                        stepProcessBatchOutputCase
+                                                        .next(end_state)
+                                                    )
+                                                )
+                                            )
+                                        )
                                     )
                                     .otherwise(
                                         stepGetHealthFromOpenSearch
-                                    )
-                                    .afterwards()
-                                    .next(
-                                        sfn.Choice(self, router)
-                                        .when(
-                                            sfn.Condition.number_equals("$.eventsTotal", 0),
-                                            no_cases_to_process
-                                        )
-                                        .when(
-                                            sfn.Condition.number_less_than("$.eventsTotal", config.BEDROCK_ONDEMAND_BATCH_INFLECTION),
-                                            sfn.Map(
-                                                self,
-                                                config.EVENT_ITERATOR,
-                                                max_concurrency=config.EVENT_ITERATOR_MAX_PARALLEL,
-                                                items_path="$.events",
-                                                result_path="$.mapResults",
-                                                parameters={
-                                                    "case.$": "$$.Map.Item.Value",
-                                                    "eventsTotal.$": "$.eventsTotal",
-                                                    "ondemand_run_datetime.$": "$.ondemand_run_datetime"
-                                                }
-                                            ).iterator(
-                                                stepBedrockOnDemandInference
+                                        .next(
+                                            sfn.Choice(self, "health-router")
+                                            .when(
+                                                sfn.Condition.number_equals("$.eventsTotal", 0),
+                                                no_cases_to_process
                                             )
-                                            .next(stepProcessOnDemandOutput)
-                                            .next(end_state)
-                                        )
-                                        .otherwise(
-                                            stepBedrockBatchInference
-                                            .next(stepPostCheckBatchInferenceJobs)
-                                            .next(
-                                                sfn.Choice(self, "CheckBatchJobsCompletion")
-                                                .when(
-                                                    sfn.Condition.number_greater_than("$.incompleteJobsCount", 0),
-                                                    waitForBatchCompletion
-                                                    .next(stepPostCheckBatchInferenceJobs)
+                                            .when(
+                                                sfn.Condition.number_less_than("$.eventsTotal", config.BEDROCK_ONDEMAND_BATCH_INFLECTION),
+                                                sfn.Map(
+                                                    self,
+                                                    "health-event-iterator",
+                                                    max_concurrency=config.EVENT_ITERATOR_MAX_PARALLEL,
+                                                    items_path="$.events",
+                                                    result_path="$.mapResults",
+                                                    parameters={
+                                                        "case.$": "$$.Map.Item.Value",
+                                                        "eventsTotal.$": "$.eventsTotal",
+                                                        "ondemand_run_datetime.$": "$.ondemand_run_datetime"
+                                                    }
+                                                ).iterator(
+                                                    stepBedrockOnDemandInferenceHealth
                                                 )
-                                                .otherwise(
-                                                    stepProcessBatchOutput
-                                                    .next(end_state)
+                                                .next(stepProcessOnDemandOutputHealth)
+                                                .next(end_state)
+                                            )
+                                            .otherwise(
+                                                stepBedrockBatchInferenceHealth
+                                                .next(stepPostCheckBatchInferenceJobsHealth)
+                                                .next(
+                                                    sfn.Choice(self, "CheckHealthBatchJobsCompletion")
+                                                    .when(
+                                                        sfn.Condition.number_greater_than("$.incompleteJobsCount", 0),
+                                                        waitForBatchCompletionHealth
+                                                        .next(stepPostCheckBatchInferenceJobsHealth)
+                                                    )
+                                                    .otherwise(
+                                                        stepProcessBatchOutputHealth
+                                                        .next(end_state)
+                                                    )
                                                 )
                                             )
                                         )
@@ -261,7 +348,6 @@ def buildStateMachine(self, functions, log_group):
                 )
             )
         )
-        
 
     state_machine = sfn.StateMachine(
         self, 
