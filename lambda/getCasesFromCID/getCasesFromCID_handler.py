@@ -125,7 +125,9 @@ def handler(event, context):
         out = file['Key']
         files.append(out)
     
-    ondemand_run_datetime = datetime.now().strftime("%Y%m%d-%H%M%S")
+    start_time = get_events_since_from_ssm()
+    end_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    ondemand_run_datetime = f"{start_time}-{end_time}"
     # this is used to create the bucket prefix for ondemand runs.  Not used for batch
          
     return {

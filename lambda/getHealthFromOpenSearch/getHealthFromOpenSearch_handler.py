@@ -35,7 +35,7 @@ def get_events_since_from_ssm():
         return '2023-01-01T00:00:00Z'  # default fallback
 
 def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, start_time, region):
-    """Query health events from OpenSearch Serverless since start_time"""
+    """Query health events from OpenSearch Serverless since start_time based on when event was received"""
     try:
         host = opensearch_endpoint.replace('https://', '')
         
@@ -51,17 +51,17 @@ def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, sta
             connection_class=RequestsHttpConnection
         )
 
-        # Query for health events after the specified time
+        # Query for health events after the specified time based on when event was received
         query = {
             "query": {
                 "range": {
-                    "startTime": {
+                    "@timestamp": {
                         "gte": start_time
                     }
                 }
             },
             "size": 10000,
-            "sort": [{"startTime": {"order": "desc"}}]
+            "sort": [{"@timestamp": {"order": "desc"}}]
         }
 
         response = client.search(index=opensearch_index, body=query)
@@ -88,10 +88,12 @@ def handler(event, context):
 
     if opensearch_skip == 'true':
         print("Skipping getting health events from OpenSearch")
+        start_time = get_events_since_from_ssm()
+        end_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         return {
             'eventsTotal': 0,
             'events': [],
-            'ondemand_run_datetime': datetime.now().strftime("%Y%m%d-%H%M%S"),
+            'ondemand_run_datetime': f"{start_time}-{end_time}",
             'mode': get_mode_from_ssm()
         }
 
@@ -148,7 +150,9 @@ def handler(event, context):
             'error': f"Could not get health events from OpenSearch: {e}"
         }
 
-    ondemand_run_datetime = datetime.now().strftime("%Y%m%d-%H%M%S")
+    start_time = get_events_since_from_ssm()
+    end_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    ondemand_run_datetime = f"{start_time}-{end_time}"
     
     return {
         'eventsTotal': len(processed_files),
