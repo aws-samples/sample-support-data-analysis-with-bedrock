@@ -3,8 +3,7 @@ import sys
 import json
 import boto3
 from datetime import datetime, timedelta
-from opensearchpy import OpenSearch, RequestsHttpConnection
-from requests_aws4auth import AWS4Auth
+from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 from botocore.exceptions import ClientError
 
 sys.path.append('/opt')
@@ -113,23 +112,17 @@ def get_health_events_from_api(region, start_time):
         return [], [], []
 
 def load_to_opensearch(events, event_details, affected_entities, opensearch_endpoint, index_name, region, bedrock_client, embedding_model):
-    """Load health events into OpenSearch index"""
+    """Load health events into OpenSearch Serverless collection"""
     try:
         host = opensearch_endpoint.replace('https://', '')
-        session = boto3.Session()
-        credentials = session.get_credentials()
         
-        awsauth = AWS4Auth(
-            credentials.access_key,
-            credentials.secret_key,
-            region,
-            'es',
-            session_token=credentials.token
-        )
+        # Use AWSV4SignerAuth for OpenSearch Serverless
+        credentials = boto3.Session().get_credentials()
+        auth = AWSV4SignerAuth(credentials, region, 'aoss')
         
         client = OpenSearch(
             hosts=[{'host': host, 'port': 443}],
-            http_auth=awsauth,
+            http_auth=auth,
             use_ssl=True,
             verify_certs=True,
             connection_class=RequestsHttpConnection,
@@ -199,23 +192,17 @@ def load_to_opensearch(events, event_details, affected_entities, opensearch_endp
         return 0
 
 def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, start_time, region):
-    """Query health events from OpenSearch since start_time"""
+    """Query health events from OpenSearch Serverless since start_time"""
     try:
         host = opensearch_endpoint.replace('https://', '')
-        session = boto3.Session()
-        credentials = session.get_credentials()
         
-        awsauth = AWS4Auth(
-            credentials.access_key,
-            credentials.secret_key,
-            region,
-            'es',
-            session_token=credentials.token
-        )
+        # Use AWSV4SignerAuth for OpenSearch Serverless
+        credentials = boto3.Session().get_credentials()
+        auth = AWSV4SignerAuth(credentials, region, 'aoss')
         
         client = OpenSearch(
             hosts=[{'host': host, 'port': 443}],
-            http_auth=awsauth,
+            http_auth=auth,
             use_ssl=True,
             verify_certs=True,
             connection_class=RequestsHttpConnection

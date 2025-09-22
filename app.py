@@ -8,9 +8,16 @@ from cdk_nag import AwsSolutionsChecks, NagSuppressions
 from maki.maki_stack import MakiFoundations, MakiData, MakiEmbeddings
 
 app = cdk.App()
-foundations_stack = MakiFoundations(app, "MakiFoundations", description='Machine Augmented Key Insights (MAKI) foundational layer')
-data_stack = MakiData(app, "MakiData", description='Machine Augmented Key Insights (MAKI) data layer')
-embeddings_stack = MakiEmbeddings(app, "MakiEmbeddings", description='Machine Augmented Key Insights (MAKI) embeddings layer')
+
+# Define environment
+env = cdk.Environment(
+    account=os.environ.get('CDK_DEFAULT_ACCOUNT'),
+    region=os.environ.get('CDK_DEFAULT_REGION', 'us-east-1')
+)
+
+foundations_stack = MakiFoundations(app, "MakiFoundations", env=env, description='Machine Augmented Key Insights (MAKI) foundational layer')
+data_stack = MakiData(app, "MakiData", env=env, description='Machine Augmented Key Insights (MAKI) data layer')
+embeddings_stack = MakiEmbeddings(app, "MakiEmbeddings", env=env, description='Machine Augmented Key Insights (MAKI) embeddings layer')
 
 data_stack.add_dependency(foundations_stack)
 embeddings_stack.add_dependency(foundations_stack)

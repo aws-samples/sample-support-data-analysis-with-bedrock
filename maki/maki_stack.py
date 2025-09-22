@@ -22,7 +22,8 @@ from . import (
     BuildCloudWatch,
     BuildStateMachine,
     BuildEventBridge,
-    BuildSageMaker
+    BuildSageMaker,
+    BuildOpenSearch
 )
 
 from constructs import Construct
@@ -226,6 +227,24 @@ class MakiEmbeddings(Stack):
             log_group_name=utils.returnName(config.LOG_GROUP_NAME_BASE)
         )
 
+        # Import VPC and security group from foundations stack
+        vpc = ec2.Vpc.from_lookup(
+            self, "ImportedVPC",
+            is_default=False,
+            tags={"project": "maki"}
+        )
+
+        security_group = ec2.SecurityGroup.from_lookup_by_name(
+            self, "ImportedSecurityGroup",
+            security_group_name="maki-sg",
+            vpc=vpc
+        )
+
+        # Create OpenSearch domain first
+        opensearch_domain, opensearch_endpoint = BuildOpenSearch.buildOpenSearchDomain(
+            self, vpc, security_group, makiRole
+        )
+
         # Create health aggregation S3 bucket
         healthAggBucketName = utils.returnName(config.BUCKET_NAME_HEALTH_AGG_BASE)
         BuildS3.buildS3Bucket(self, makiRole, healthAggBucketName)
@@ -252,8 +271,8 @@ class MakiEmbeddings(Stack):
             config.PROMPT_GEN_CASES_INPUT_LAYER_DESC, 
             config.PROMPT_GEN_CASES_INPUT_LAYER_NAME_BASE + "-embeddings") 
 
-        # Build the getHealthFromOpenSearch Lambda function
-        BuildLambda.buildGetHealthFromOpenSearch(
+        # Build the getHealthFromOpenSearch Lambda function (depends on OpenSearch)
+        health_lambda = BuildLambda.buildGetHealthFromOpenSearch(
             self, 
             makiRole, 
             log_group, 
@@ -261,3 +280,6 @@ class MakiEmbeddings(Stack):
             s3_utils_layer, 
             json_utils_layer
         )
+
+        # Add dependency to ensure OpenSearch is created before Lambda
+        health_lambda.node.add_dependency(opensearch_domain)

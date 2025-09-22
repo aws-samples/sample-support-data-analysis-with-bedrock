@@ -15,7 +15,7 @@ def buildCheckEnabledModels(self, execution_role, log_group):
 
     lambdaCheckEnabledModels = _lambda.Function(
         self, utils.returnName(config.CHECK_ENABLED_MODELS_NAME_BASE),
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.CHECK_ENABLED_MODELS_PATH),
         function_name=utils.returnName(config.CHECK_ENABLED_MODELS_NAME_BASE),
         role=execution_role,
@@ -43,7 +43,7 @@ def buildCheckBatchInferenceJobs(self, execution_role, log_group):
 
     lambdaCheckBatchInferenceJobs = _lambda.Function(
         self, utils.returnName(config.CHECK_BATCH_INFERENCE_JOBS_NAME_BASE),
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.CHECK_BATCH_INFERENCE_JOBS_PATH),
         function_name=utils.returnName(config.CHECK_BATCH_INFERENCE_JOBS_NAME_BASE),
         role=execution_role,
@@ -69,7 +69,7 @@ def buildCheckRunningJobs(self, execution_role, log_group):
 
     lambdaCheckRunningJobs = _lambda.Function(
         self, utils.returnName(config.CHECK_RUNNING_JOBS_NAME_BASE),
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.CHECK_RUNNING_JOBS_PATH),
         function_name=utils.returnName(config.CHECK_RUNNING_JOBS_NAME_BASE),
         role=execution_role,
@@ -113,7 +113,7 @@ def buildGetCasesFromCID(self, execution_role, log_group, prompt_gen_cases_input
 
     lambdaGetCasesFromCID = _lambda.Function(
         self, func_name, 
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.GET_CID_CASES_PATH),
         function_name=func_name,
         role=execution_role,
@@ -138,7 +138,7 @@ def buildLambdaLayer(self, execution_role, layer_path, layer_desc, layer_name):
     layer = _lambda.LayerVersion(
         self, layer_name,
         code=_lambda.Code.from_asset(layer_path),
-        compatible_runtimes=[_lambda.Runtime.PYTHON_3_13],
+        compatible_runtimes=[_lambda.Runtime.PYTHON_3_12],
         compatible_architectures=[_lambda.Architecture.X86_64],
         description=layer_desc,
         layer_version_name=utils.returnName(layer_name)
@@ -155,7 +155,7 @@ def buildOpenSearchLayer(self, execution_role):
     layerOpenSearch = _lambda.LayerVersion(
         self, "layerOpenSearch",
         code=_lambda.Code.from_asset(config.OPENSEARCH_LAYER_PATH),
-        compatible_runtimes=[_lambda.Runtime.PYTHON_3_13],
+        compatible_runtimes=[_lambda.Runtime.PYTHON_3_12],
         compatible_architectures=[_lambda.Architecture.X86_64],
         description=config.OPENSEARCH_LAYER_DESC,
         layer_version_name=utils.returnName(config.OPENSEARCH_LAYER_NAME_BASE)
@@ -170,7 +170,7 @@ def buildRequestsLayer(self, execution_role):
     layerRequests = _lambda.LayerVersion(
         self, "layerRequests",
         code=_lambda.Code.from_asset(config.REQUESTS_LAYER_PATH),
-        compatible_runtimes=[_lambda.Runtime.PYTHON_3_13],
+        compatible_runtimes=[_lambda.Runtime.PYTHON_3_12],
         compatible_architectures=[_lambda.Architecture.X86_64],
         description=config.REQUESTS_LAYER_DESC,
         layer_version_name=utils.returnName(config.REQUESTS_LAYER_NAME_BASE)
@@ -187,7 +187,7 @@ def buildLangChainLayer(self, execution_role):
     layerLangChain = _lambda.LayerVersion(
         self, "layerLangChain",
         code=_lambda.Code.from_asset(config.LANGCHAIN_LAYER_PATH),
-        compatible_runtimes=[_lambda.Runtime.PYTHON_3_13],
+        compatible_runtimes=[_lambda.Runtime.PYTHON_3_12],
         compatible_architectures=[_lambda.Architecture.X86_64],
         description=config.LANGCHAIN_LAYER_DESC,
         layer_version_name=utils.returnName(config.LANGCHAIN_LAYER_NAME_BASE)
@@ -205,7 +205,7 @@ def buildChunkCases(self, execution_role, s3raw, log_group, langChainLayer, dopm
 
     lambdaChunkCases = _lambda.Function(
         self, func_name,
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.CHUNK_CASES_PATH),
         function_name=func_name,
         role=execution_role,
@@ -237,7 +237,7 @@ def buildIndex(self, execution_role, log_group, requestsLayer, opensearchLayer, 
 
     lambdaIndex = _lambda.Function(
         self, func_name,
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.INDEX_PATH),
         function_name=func_name,
         role=execution_role,
@@ -271,7 +271,7 @@ def buildStoreCases(self, execution_role, s3raw, log_group, openSearchLayer, dom
 
     lambdaChunkCases = _lambda.Function(
         self, func_name,
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.STORE_CASES_PATH),
         function_name=func_name,
         role=execution_role,
@@ -301,7 +301,7 @@ def genBatchInferenceRecords(self, execution_role, s3_utils_layer, json_utils_la
     func_name = utils.returnName(config.GEN_BATCH_INF_RECORDS_NAME_BASE)
     lambdaGenBatchInferenceRecords = _lambda.Function(
         self, func_name,
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.GEN_BATCH_INF_RECORDS_PATH),
         function_name=func_name,
         role=execution_role,
@@ -330,7 +330,7 @@ def buildOnDemandInference(self, execution_role, log_group, s3_utils_layer, json
 
     lambdaBedrockOnDemandInference = _lambda.Function(
         self, func_name,
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.BEDROCK_ONDEMAND_INF_PATH),
         function_name=func_name,
         role=execution_role,
@@ -370,7 +370,7 @@ def buildBedrockBatchInferenceJob(self, execution_role, log_group, s3_utils_laye
 
     lambdaBatchInfJob = _lambda.Function(
         self, func_name,
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.BEDROCK_BATCH_INF_JOB_PATH),
         function_name=func_name,
         role=execution_role,
@@ -429,7 +429,7 @@ def buildBedrockProcessBatchOutput(
 
     lambdaProcessBatchOutput = _lambda.Function(
         self, func_name,
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.BEDROCK_PROCESS_BATCH_OUTPUT_PATH),
         function_name=func_name,
         role=execution_role,
@@ -462,7 +462,7 @@ def buildBedrockProcessOnDemandOputput(
 
     lambdaProcessOnDemandOutput = _lambda.Function(
         self, func_name,
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_PATH),
         function_name=func_name,
         role=execution_role,
@@ -499,7 +499,7 @@ def buildCleanOutputFiles(
     func_name = utils.returnName(config.CLEAN_OUTPUT_FILES_NAME_BASE)
     lambdaCleanOutputFile = _lambda.Function(
             self, func_name,
-            runtime=_lambda.Runtime.PYTHON_3_13,
+            runtime=_lambda.Runtime.PYTHON_3_12,
             code=_lambda.Code.from_asset(config.CLEAN_OUTPUT_FILES_PATH),
             function_name=func_name,
             role=makiRole,
@@ -543,7 +543,7 @@ def buildGetHealthFromOpenSearch(self, execution_role, log_group, prompt_gen_cas
 
     lambdaGetHealthFromOpenSearch = _lambda.Function(
         self, func_name, 
-        runtime=_lambda.Runtime.PYTHON_3_13,
+        runtime=_lambda.Runtime.PYTHON_3_12,
         code=_lambda.Code.from_asset(config.GET_HEALTH_FROM_OPENSEARCH_PATH),
         function_name=func_name,
         role=execution_role,
