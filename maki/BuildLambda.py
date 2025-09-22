@@ -519,14 +519,14 @@ def buildCleanOutputFiles(
     return lambdaCleanOutputFile
 
 # Lambda function to retrieve health events from OpenSearch
-def buildGetHealthFromOpenSearch(self, execution_role, log_group, prompt_gen_cases_input_layer, s3_utils_layer, json_utils_layer):
+def buildGetHealthFromOpenSearch(self, execution_role, log_group, prompt_gen_cases_input_layer, s3_utils_layer, json_utils_layer, opensearch_utils_layer, opensearch_endpoint):
 
     categoryBucketName = config.KEY + '-' + config.BUCKET_NAME_CATEGORY_BASE
     healthAggBucketName = config.KEY + '-' + config.BUCKET_NAME_HEALTH_AGG_BASE
 
     environment={
         "OPENSEARCH_SKIP": config.OPENSEARCH_SKIP,
-        "OPENSEARCH_ENDPOINT": config.OPENSEARCH_ENDPOINT,
+        "OPENSEARCH_ENDPOINT": opensearch_endpoint,
         "OPENSEARCH_INDEX": config.OPENSEARCH_INDEX,
         "HEALTH_EVENTS_SINCE": config.HEALTH_EVENTS_SINCE,
         "S3_HEALTH_AGG": healthAggBucketName,
@@ -553,7 +553,7 @@ def buildGetHealthFromOpenSearch(self, execution_role, log_group, prompt_gen_cas
         description=config.GET_HEALTH_FROM_OPENSEARCH_DESC,
         handler=config.GET_HEALTH_FROM_OPENSEARCH_HANDLER_FILE + '.' + config.GET_HEALTH_FROM_OPENSEARCH_HANDLER_FUNC,
         retry_attempts=config.GET_HEALTH_FROM_OPENSEARCH_RETRIES,
-        layers=[prompt_gen_cases_input_layer,s3_utils_layer,json_utils_layer],
+        layers=[prompt_gen_cases_input_layer,s3_utils_layer,json_utils_layer,opensearch_utils_layer],
         log_group=log_group,
         environment=environment
     )

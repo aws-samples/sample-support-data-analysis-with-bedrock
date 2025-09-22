@@ -296,6 +296,10 @@ JSON_UTILS_LAYER_PATH = 'lambda/layers/json_utils'
 JSON_UTILS_LAYER_NAME_BASE = 'MakiJsonUtils'
 JSON_UTILS_LAYER_DESC = 'MAKI JSON Utils Layer'
 
+OPENSEARCH_UTILS_LAYER_PATH = 'lambda/layers/opensearch_utils'
+OPENSEARCH_UTILS_LAYER_NAME_BASE = 'MakiOpenSearchUtils'
+OPENSEARCH_UTILS_LAYER_DESC = 'MAKI OpenSearch Utils Layer'
+
 #Sagemaker
 SAGEMAKER_INSTANCE_TYPE = "ml.t3.medium"
 SAGEMAKER_NOTEBOOK_NAME = "maki-notebook"

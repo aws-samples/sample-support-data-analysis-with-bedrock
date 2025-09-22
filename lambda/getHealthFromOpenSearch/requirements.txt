@@ -1,1 +1,4 @@
-opensearch-py==2.4.0
+boto3
+botocore
+opensearch-py
+aiohttp
