@@ -10,6 +10,30 @@ from prompt_gen_cases_input import gen_batch_record
 from s3 import store_data
 from validate_jsonl import dict_to_jsonl
 
+def get_mode_from_ssm():
+    """Get MODE value from SSM Parameter Store"""
+    ssm = boto3.client('ssm')
+    try:
+        account_id = boto3.client('sts').get_caller_identity()['Account']
+        region = boto3.Session().region_name
+        response = ssm.get_parameter(Name=f"maki-{account_id}-{region}-mode")
+        return response['Parameter']['Value']
+    except Exception as e:
+        print(f"Error getting mode from SSM: {e}")
+        return 'health'  # default fallback
+
+def get_events_since_from_ssm():
+    """Get EVENTS_SINCE value from SSM Parameter Store"""
+    ssm = boto3.client('ssm')
+    try:
+        account_id = boto3.client('sts').get_caller_identity()['Account']
+        region = boto3.Session().region_name
+        response = ssm.get_parameter(Name=f"maki-{account_id}-{region}-events-since")
+        return response['Parameter']['Value']
+    except Exception as e:
+        print(f"Error getting events-since from SSM: {e}")
+        return '2023-01-01T00:00:00Z'  # default fallback
+
 def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, start_time, region):
     """Query health events from OpenSearch Serverless since start_time"""
     try:
@@ -52,7 +76,7 @@ def handler(event, context):
     opensearch_skip = os.environ['OPENSEARCH_SKIP']
     opensearch_endpoint = os.environ['OPENSEARCH_ENDPOINT']
     opensearch_index = os.environ['OPENSEARCH_INDEX']
-    start_time = os.environ['HEALTH_EVENTS_SINCE']
+    start_time = get_events_since_from_ssm()
     
     s3_health_agg = os.environ['S3_HEALTH_AGG']
     bedrock_categorize_temperature = float(os.environ['BEDROCK_CATEGORIZE_TEMPERATURE'])
@@ -65,9 +89,10 @@ def handler(event, context):
     if opensearch_skip == 'true':
         print("Skipping getting health events from OpenSearch")
         return {
-            'healthEventsTotal': 0,
-            'healthEvents': [],
-            'ondemand_run_datetime': datetime.now().strftime("%Y%m%d-%H%M%S")
+            'eventsTotal': 0,
+            'events': [],
+            'ondemand_run_datetime': datetime.now().strftime("%Y%m%d-%H%M%S"),
+            'mode': get_mode_from_ssm()
         }
 
     try:
@@ -126,7 +151,8 @@ def handler(event, context):
     ondemand_run_datetime = datetime.now().strftime("%Y%m%d-%H%M%S")
     
     return {
-        'healthEventsTotal': len(processed_files),
-        'healthEvents': processed_files,
-        'ondemand_run_datetime': ondemand_run_datetime
+        'eventsTotal': len(processed_files),
+        'events': processed_files,
+        'ondemand_run_datetime': ondemand_run_datetime,
+        'mode': 'health'
     }

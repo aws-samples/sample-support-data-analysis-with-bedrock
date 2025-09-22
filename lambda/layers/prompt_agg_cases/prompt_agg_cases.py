@@ -28,17 +28,17 @@ def generate_conversation(bedrock_client,
 
     return response
 
-def aggregate_prompt(model_id_input, cases, temperature, summary_output_format, max_tokens):
+def aggregate_prompt(model_id_input, events, temperature, summary_output_format, max_tokens):
 
     logging.basicConfig(level=logging.INFO,
                         format="%(levelname)s: %(message)s")
 
     # Setup the system prompts and messages to send to the model.
     system_prompt_text = "You are an AWS technical account manager.  \n\
-        By reviewing all the AWS support cases of your customer, you will understand the aggrevate view of the customer.\n\
+        By reviewing all the AWS support events of your customer, you will understand the aggrevate view of the customer.\n\
         You are responsible to derive an overall sentiment and plan to improve the customer's resilience on AWS.\n"
-    system_prompt_text += "You will review the following support case summaries:\n"
-    system_prompt_text += cases + "\n"
+    system_prompt_text += "You will review the following support event summaries:\n"
+    system_prompt_text += events + "\n"
     system_prompt_text += "Return overall summary of the customer's experience on AWS as Summary.\n"
     system_prompt_text += "Discuss the aggregate Resilience themes in the Summary.\n"
     system_prompt_text += "DO NOT DISCUSS INDIVIDUAL CASES IN THE SUMMARY.\n"

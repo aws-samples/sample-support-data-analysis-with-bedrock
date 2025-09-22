@@ -40,7 +40,7 @@ def generate_conversation(bedrock_client,
 
     return response
 
-# this prompt generates the synthetic case
+# this prompt generates the synthetic event
 def gen_synth_prompt(model_id_text, examples, desc, category, temperature):
     logging.basicConfig(level=logging.INFO,
                         format="%(levelname)s: %(message)s")
@@ -49,14 +49,14 @@ def gen_synth_prompt(model_id_text, examples, desc, category, temperature):
     model_id = model_id_text
 
     system_prompt_text = "You are creating synthetic AWS Support Cases.  \
-        Use the examples provided to create a new synthetic case. \
-        The synthetic case must be different from the examples. \
-        The synthetic case must follow the same format as the examples." 
-    system_prompt_text += "The synthetic case content must tell a story of:\n" 
+        Use the examples provided to create a new synthetic event. \
+        The synthetic event must be different from the examples. \
+        The synthetic event must follow the same format as the examples." 
+    system_prompt_text += "The synthetic event content must tell a story of:\n" 
     system_prompt_text += category + "\n"
     system_prompt_text += desc + "\n"
     system_prompt_text += "DisplayId MUST BE: :" + DisplayId + ".\n"
-    system_prompt_text += "Output a new synthetic case and nothing else."
+    system_prompt_text += "Output a new synthetic event and nothing else."
     system_prompt_text += "OUTPUT MUST BE IN JSONL FORMAT."
 
     system_prompt_text = system_prompt_text.replace("\n", " ")
@@ -64,7 +64,7 @@ def gen_synth_prompt(model_id_text, examples, desc, category, temperature):
     #system_prompts = [{"text": system_prompt_text}, {"cachePoint":{"type":"default"}}]
     system_prompts = [{"text": system_prompt_text}]
 
-    user_msg1 = "Create a new synthetic support case using these examples:"
+    user_msg1 = "Create a new synthetic support event using these examples:"
     user_msg1 += examples
     user_msg1 += "OUTPUT MUST BE IN THE SAME FORMAT AS THE EXAMPLES. OUTPUT MUST BE IN JSONL FORMAT."
 
@@ -105,9 +105,9 @@ def gen_synth_prompt(model_id_text, examples, desc, category, temperature):
 
 
 # this creates the batch inf records
-def gen_batch_record(input_case,temperature,maxTokens,topP,categoryBucketName,categories,categoryOutputFormat):
-    if (isinstance(input_case, str) == False):
-        return("invalid input case:", input_case)
+def gen_batch_record(input_event,temperature,maxTokens,topP,categoryBucketName,categories,categoryOutputFormat):
+    if (isinstance(input_event, str) == False):
+        return("invalid input event:", input_event)
     
     categories = ast.literal_eval(categories)
 
@@ -117,7 +117,7 @@ def gen_batch_record(input_case,temperature,maxTokens,topP,categoryBucketName,ca
     # Setup the system prompts and messages to send to the model.
     system_prompt_text = "You are an AWS technical account manager.  \n\
         You are responsible for managing AWS accounts for customers. \n\
-        You are responsible for categorizing different support cases into the following Categories:\n" 
+        You are responsible for categorizing different support events into the following Categories:\n" 
 
     n = 1
     for category in categories:
@@ -136,7 +136,7 @@ def gen_batch_record(input_case,temperature,maxTokens,topP,categoryBucketName,ca
     system_prompt_text += "Return the Category in the output field category.\n"
     system_prompt_text += "Explain why the Category was picked in output field category_explanation.\n"
     system_prompt_text += "If a support case does not match any of the above categories, return Other Support.\n"
-    system_prompt_text += "Summarize the support case in the output field case_summary.\n"
+    system_prompt_text += "Summarize the support case in the output field event_summary.\n"
     system_prompt_text += "Return Sentiment of the customer in the output field sentiment.\n"
     system_prompt_text += "Sentiment must be one of the following: Positive, Negative, Neutral.\n"
     system_prompt_text += "Return Suggested Action to the customer in the output field suggestion_action.\n"
@@ -151,7 +151,7 @@ def gen_batch_record(input_case,temperature,maxTokens,topP,categoryBucketName,ca
     system_prompts = [{"text": system_prompt_text}]
 
 
-    user_msg1 = "Categorize this <support_case>" + input_case + "</support_case>"
+    user_msg1 = "Categorize this <support_case>" + input_event + "</support_case>"
     message_1 = {
         "role": "user",
         "content": [{"text": user_msg1}]
