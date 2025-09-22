@@ -2,6 +2,7 @@
 import aws_cdk as cdk
 import aws_cdk.aws_opensearchserverless as opensearch
 import aws_cdk.aws_iam as iam
+import aws_cdk.custom_resources as cr
 import config
 import sys
 sys.path.append('utils')
@@ -75,6 +76,29 @@ def buildOpenSearchCollection(self, execution_role):
     collection.add_dependency(encryption_policy)
     collection.add_dependency(network_policy)
     collection.add_dependency(access_policy)
+    
+    # Create IAM policy for dashboard access
+    dashboard_iam_policy = iam.Policy(
+        self, utils.returnName("maki-aoss-dashboard"),
+        policy_name="maki-aoss-dashboard",
+        document=iam.PolicyDocument(
+            statements=[
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=["aoss:APIAccessAll"],
+                    resources=[f"arn:aws:aoss:{config.REGION}:{config.account_id}:collection/{collection_name}"]
+                ),
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=["aoss:DashboardsAccessAll"],
+                    resources=[f"arn:aws:aoss:{config.REGION}:{config.account_id}:dashboards/default"]
+                )
+            ]
+        )
+    )
+    
+    # Attach policy to execution role
+    execution_role.attach_inline_policy(dashboard_iam_policy)
     
     # Output the endpoint for reference
     endpoint = f"https://{collection.attr_collection_endpoint}"
