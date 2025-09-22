@@ -105,7 +105,8 @@ def buildMakiRole(self):
             "glue:StartCrawler",
             "glue:StopCrawler",
             "glue:GetCrawler",
-            "glue:GetCrawlers"
+            "glue:GetCrawlers",
+            "aoss:APIAccessAll"
         ],
         resources=[
             "arn:aws:bedrock:*:" + config.account_id + ":inference-profile/*",
@@ -126,6 +127,7 @@ def buildMakiRole(self):
             "arn:aws:glue:" + config.REGION + ":" + config.account_id +  ":database/*",
             "arn:aws:glue:" + config.REGION + ":" + config.account_id +  ":table/*",
             "arn:aws:glue:" + config.REGION + ":" + config.account_id +  ":crawler/*",
+            "arn:aws:aoss:" + config.REGION + ":" + config.account_id + ":collection/*"
         ]
         )       
     )
