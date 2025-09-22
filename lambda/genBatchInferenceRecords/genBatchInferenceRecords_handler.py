@@ -1,7 +1,7 @@
 import os
 import sys
 sys.path.append('/opt')
-from s3 import find_files_in_s3, get_case, store_data
+from s3 import find_files_in_s3, get_s3_obj_body, store_data
 from prompt_gen_cases_input import gen_batch_record
 from validate_jsonl import jsonl_to_dict, json_to_dict, dict_to_jsonl
 
@@ -28,21 +28,21 @@ def handler(event, context):
     case_comms = {}
 
     try: 
-        for case in files:
-            case_data = get_case(bucket_name=s3_cid, object_key=case['Key'])
-            case_data = jsonl_to_dict(case_data)
-            case_comms[case_data['CaseId']] = case_data['Body']
+        for event in files:
+            event_data = get_s3_obj_body(bucket_name=s3_cid, object_key=event['Key'], decode=True)
+            event_data = jsonl_to_dict(event_data)
+            case_comms[event_data['CaseId']] = event_data['Body']
 
     # collect support meta
         prefix = 'support-cases/support-cases-data'
         file_ext = '.json' # really is json data, and not jsonl
 
         files = find_files_in_s3(bucket_name=s3_cid, prefix=prefix, file_ext=file_ext, recursive=recursive)
-        for case in files:
-            case_data = get_case(bucket_name=s3_cid, object_key=case['Key'])
-            case_data = json_to_dict(case_data)
+        for event in files:
+            event_data = get_s3_obj_body(bucket_name=s3_cid, object_key=event['Key'], decode=True)
+            event_data = json_to_dict(event_data)
             case = {
-                'id': case_data['CaseId'],
+                'id': event_data['CaseId'],
                 'meta': case_data,
                 'communication': case_comms[case_data['CaseId']]
             }

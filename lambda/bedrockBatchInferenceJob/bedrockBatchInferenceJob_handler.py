@@ -58,8 +58,8 @@ def create_batch_job(bedrock, model_id, input_s3_uri, batches_s3_uri, output_s3_
 
 # see records, and create batch jobs
 def handler(event, context):
-    cases_total = event.get('casesTotal')
-    cases = event.get('cases')
+    events_total = event.get('eventsTotal')
+    events = event.get('events')
 
     input_s3_uri = os.environ['S3_INPUT']
     batches_s3_uri = os.environ['S3_BATCHES']
@@ -76,9 +76,9 @@ def handler(event, context):
     
     remaining_files = 0
     
-    # Break cases into chunks of batch_file_count_size
-    for i in range(0, len(cases), batch_file_count_size):
-        batch_chunk = cases[i:i + batch_file_count_size]
+    # Break events into chunks of batch_file_count_size
+    for i in range(0, len(events), batch_file_count_size):
+        batch_chunk = events[i:i + batch_file_count_size]
         
         # Skip if chunk is smaller than batch_file_count_size
         if len(batch_chunk) < batch_file_count_size:

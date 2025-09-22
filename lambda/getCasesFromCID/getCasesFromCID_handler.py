@@ -1,14 +1,39 @@
 import os
 import sys
+import boto3
 sys.path.append('/opt')
 from prompt_gen_cases_input import gen_batch_record
 from s3 import find_files_in_s3, get_s3_obj_body, store_data
 from validate_jsonl import jsonl_to_dict, json_to_dict, dict_to_jsonl
 from datetime import datetime
 
+def get_mode_from_ssm():
+    """Get MODE value from SSM Parameter Store"""
+    ssm = boto3.client('ssm')
+    try:
+        account_id = boto3.client('sts').get_caller_identity()['Account']
+        region = boto3.Session().region_name
+        response = ssm.get_parameter(Name=f"maki-{account_id}-{region}-mode")
+        return response['Parameter']['Value']
+    except Exception as e:
+        print(f"Error getting mode from SSM: {e}")
+        return 'cases'  # default fallback
+
+def get_events_since_from_ssm():
+    """Get EVENTS_SINCE value from SSM Parameter Store"""
+    ssm = boto3.client('ssm')
+    try:
+        account_id = boto3.client('sts').get_caller_identity()['Account']
+        region = boto3.Session().region_name
+        response = ssm.get_parameter(Name=f"maki-{account_id}-{region}-events-since")
+        return response['Parameter']['Value']
+    except Exception as e:
+        print(f"Error getting events-since from SSM: {e}")
+        return '2023-01-01T00:00:00Z'  # default fallback
+
 def handler(event, context):
-    # need to use start_t 
-   # start_t = os.environ['START_T'] 
+    # Get start time from SSM Parameter Store
+    start_t = get_events_since_from_ssm() 
 
     # if this is true, it will not get any files from CID
     cid_skip = os.environ['CID_SKIP']
@@ -104,7 +129,8 @@ def handler(event, context):
     # this is used to create the bucket prefix for ondemand runs.  Not used for batch
          
     return {
-        'casesTotal': len(files),
-        'cases': files,
-        'ondemand_run_datetime': ondemand_run_datetime
+        'eventsTotal': len(files),
+        'events': files,
+        'ondemand_run_datetime': ondemand_run_datetime,
+        'mode': get_mode_from_ssm()
     }

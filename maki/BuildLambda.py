@@ -98,7 +98,7 @@ def buildGetCasesFromCID(self, execution_role, log_group, prompt_gen_cases_input
 
     environment={
         "CID_SKIP": config.CID_SKIP,
-        "START_T": config.CASES_AFTER_TIME,
+        "START_T": "FROM_SSM",  # Will be retrieved from SSM Parameter Store
         "S3_CID": config.BUCKET_NAME_CID,
         "S3_AGG": config.KEY + '-' + config.BUCKET_NAME_CASES_AGG_BASE,
         "BEDROCK_CATEGORIZE_TEMPERATURE": str(config.BEDROCK_CATEGORIZE_TEMPERATURE),
@@ -528,7 +528,7 @@ def buildGetHealthFromOpenSearch(self, execution_role, log_group, prompt_gen_cas
         "OPENSEARCH_SKIP": config.OPENSEARCH_SKIP,
         "OPENSEARCH_ENDPOINT": opensearch_endpoint,
         "OPENSEARCH_INDEX": config.OPENSEARCH_INDEX,
-        "HEALTH_EVENTS_SINCE": config.HEALTH_EVENTS_SINCE,
+        "HEALTH_EVENTS_SINCE": "FROM_SSM",  # Will be retrieved from SSM Parameter Store
         "S3_HEALTH_AGG": healthAggBucketName,
         "BEDROCK_CATEGORIZE_TEMPERATURE": str(config.BEDROCK_CATEGORIZE_TEMPERATURE),
         "BEDROCK_MAX_TOKENS": str(config.BEDROCK_MAX_TOKENS),

@@ -32,27 +32,27 @@ def handler(event, context):
 
         # extract llm output from the batch returns
         # also aggregate them
-        casesN = 0
-        for case in batch_output: 
-            if case.endswith('manifest.json.out'): # used for batch inf
-                move_s3_object(bucket_name_batch_output, case, bucket_name_archive, case)
+        eventsN = 0
+        for event in batch_output: 
+            if event.endswith('manifest.json.out'): # used for batch inf
+                move_s3_object(bucket_name_batch_output, event, bucket_name_archive, event)
                 continue
 
-            obj = get_s3_obj_body(bucket_name_batch_output, case, True)
+            obj = get_s3_obj_body(bucket_name_batch_output, event, True)
             data = json.loads(obj)
-            casesN += 1
+            eventsN += 1
 
             try:
                 val = data['modelOutput']['output']['message']['content'][0]['text']
                 if is_valid_json(val):
                     json_val = json.loads(val)
-                    key = timestamp + '/cases/' + case.split('/')[2].split('.')[0] + '-output.json'
-                    aggregate += 'case: '  + str(json_val['caseId']) + ':\n'
+                    key = timestamp + '/events/' + event.split('/')[2].split('.')[0] + '-output.json'
+                    aggregate += 'event: '  + str(json_val['caseId']) + ':\n'
                     aggregate += 'sentiment: ' + str(json_val['sentiment']) + '\n'
-                    aggregate += json_val['case_summary'] + '\n\n'
+                    aggregate += json_val['event_summary'] + '\n\n'
                     print("Store " + key + ' in ' + bucket_name_report) 
                     store_data(val, bucket_name_report, key)
-                    move_s3_object(bucket_name_batch_output, case, bucket_name_archive, case)
+                    move_s3_object(bucket_name_batch_output, event, bucket_name_archive, event)
                 else:
                     print("Invalid JSON: " + val) # write code to handle these
             except KeyError:
@@ -60,14 +60,14 @@ def handler(event, context):
 
         out = aggregate_prompt(
             model_id_input=model_id,
-            cases=aggregate,
+            events=aggregate,
             temperature=bedrock_temperature,
             summary_output_format=summary_output_format,
             max_tokens=max_tokens
         )
 
-        if (casesN > 0):
-            print("processed " + str(casesN) + " cases")
+        if (eventsN > 0):
+            print("processed " + str(eventsN) + " events")
             store_data(out, bucket_name_report, f'{timestamp}/summary.json')
         else:
             print("No new batch outputs found...")

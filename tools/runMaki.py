@@ -2,6 +2,7 @@
 import boto3
 import json
 from time import sleep
+from datetime import datetime, timedelta
 
 # Create a Step Functions client
 sfn_client = boto3.client('stepfunctions')
@@ -11,14 +12,25 @@ sts_client = boto3.client("sts")
 account_id = sts_client.get_caller_identity()["Account"]
 region = boto3.session.Session().region_name
 state_machine_arn = 'arn:aws:states:' + region + ':' + account_id + ':stateMachine:maki-' + account_id + '-' + region + '-state-machine' 
-print("Executing: \n ", state_machine_arn)
+
+print("🚀 MAKI State Machine Execution")
+print("=" * 50)
+print(f"📍 State Machine: {state_machine_arn}")
+print("=" * 50)
 
 # Define the input data for the state machine execution
 input_data = {
     "key1": "value1",
     "key2": "value2"
 }
-PROCESSING_STRING = '.'
+
+def format_duration(start_time, current_time):
+    """Format duration as MM:SS"""
+    duration = current_time - start_time
+    total_seconds = int(duration.total_seconds())
+    minutes = total_seconds // 60
+    seconds = total_seconds % 60
+    return f"{minutes:02d}:{seconds:02d}"
 
 def get_running_function(state_machine_arn): 
     # Get running executions
@@ -51,7 +63,7 @@ def get_running_function(state_machine_arn):
 
     if state_details == {}:
         #Iterator invokes the task
-        state_details = definition['States']['case-iterator']['Iterator']['States'].get(running_step_name, {})
+        state_details = definition['States']['event-iterator']['Iterator']['States'].get(running_step_name, {})
     
     function_arn = state_details.get('Resource', 'No function associated')
 
@@ -60,6 +72,10 @@ def get_running_function(state_machine_arn):
 
 try:
     # Start the state machine execution
+    start_time = datetime.now()
+    print(f"⏰ Started at: {start_time.strftime('%H:%M:%S')}")
+    print()
+    
     response = sfn_client.start_execution(
         stateMachineArn=state_machine_arn,
      #   input=str(input_data)
@@ -67,33 +83,84 @@ try:
 
     # Get the execution ARN
     execution_arn = response['executionArn']
-    print(f"State machine execution started: {execution_arn}")
+    print(f"🎯 Execution ARN: {execution_arn}")
+    print()
 
     # Wait for the execution to complete
     execution_count = 0
+    last_step = None
+    step_start_time = datetime.now()
+    
     while True:
-        execution_info = sfn_client.describe_execution(executionArn=execution_arn) # getting throttled here at times.
+        current_time = datetime.now()
+        execution_info = sfn_client.describe_execution(executionArn=execution_arn)
         status = execution_info['status']
         
         if status == 'RUNNING':
             current_process_info = get_running_function(execution_info['stateMachineArn'])
-            print(json.dumps(current_process_info, indent=4))
-            # print processing string by incrementing with count to enable user to see the processing
-            if (execution_count > 0):
-                print(PROCESSING_STRING*execution_count)
-            execution_count += 2 # increment by 2 to make it visible
-            sleep(20/1000) # sleep for 20 milliseconds before checking the status again
+            current_step = current_process_info.get("Step Name", "Unknown")
+            
+            # Check if we moved to a new step
+            if current_step != last_step:
+                if last_step:
+                    step_duration = format_duration(step_start_time, current_time)
+                    print(f"✅ Completed: {last_step} ({step_duration})")
+                
+                print(f"🔄 Running: {current_step}")
+                print(f"   Function: {current_process_info.get('Function ARN', 'N/A')}")
+                last_step = current_step
+                step_start_time = current_time
+                execution_count = 0
+            
+            # Show progress indicator
+            total_duration = format_duration(start_time, current_time)
+            step_duration = format_duration(step_start_time, current_time)
+            progress_dots = "." * (execution_count % 4)
+            print(f"\r   ⏱️  Total: {total_duration} | Step: {step_duration} {progress_dots:<3}", end="", flush=True)
+            
+            execution_count += 1
+            sleep(2)  # Check every 2 seconds
+            
         elif status == 'SUCCEEDED':
-            print("Execution succeeded!")
+            if last_step:
+                step_duration = format_duration(step_start_time, current_time)
+                print(f"\r✅ Completed: {last_step} ({step_duration})")
+            
+            total_duration = format_duration(start_time, current_time)
+            print()
+            print("🎉 EXECUTION SUCCEEDED!")
+            print(f"⏰ Total Duration: {total_duration}")
+            print("=" * 50)
+            
             output = execution_info['output']
-            print(f"Output: {output}")
+            print("📋 Output:")
+            try:
+                parsed_output = json.loads(output)
+                print(json.dumps(parsed_output, indent=2))
+            except:
+                print(output)
             break
+            
         elif status == 'FAILED':
-            print("Execution failed!")
+            if last_step:
+                step_duration = format_duration(step_start_time, current_time)
+                print(f"\r❌ Failed at: {last_step} ({step_duration})")
+            
+            total_duration = format_duration(start_time, current_time)
+            print()
+            print("💥 EXECUTION FAILED!")
+            print(f"⏰ Total Duration: {total_duration}")
+            print("=" * 50)
+            
+            if 'error' in execution_info:
+                print(f"❌ Error: {execution_info['error']}")
+            if 'cause' in execution_info:
+                print(f"🔍 Cause: {execution_info['cause']}")
             break
+            
         else:
-            print(f"Unexpected status: {status}")
+            print(f"\r⚠️  Unexpected status: {status}")
             break
 
 except Exception as e:
-    print(f"Error: {e}")
+    print(f"💥 Error: {e}")

@@ -485,23 +485,46 @@ def get_health_events(opensearch_endpoint, index_name, region=config.REGION, ver
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+def get_opensearch_endpoint_from_collection():
+    """Get OpenSearch endpoint from the collection specified in config.py"""
+    try:
+        client = boto3.client('opensearchserverless', region_name=config.REGION)
+        response = client.batch_get_collection(names=[config.OPENSEARCH_COLLECTION_NAME])
+        
+        if response['collectionDetails']:
+            collection = response['collectionDetails'][0]
+            endpoint = collection['collectionEndpoint']
+            print(f"Found OpenSearch collection '{config.OPENSEARCH_COLLECTION_NAME}' with endpoint: {endpoint}")
+            return endpoint
+        else:
+            print(f"OpenSearch collection '{config.OPENSEARCH_COLLECTION_NAME}' not found")
+            return None
+    except Exception as e:
+        print(f"Error getting OpenSearch collection endpoint: {e}")
+        return None
+
 def main():
     parser = argparse.ArgumentParser(description='Query AWS Health API and load events directly into OpenSearch')
-    parser.add_argument('--opensearch-endpoint', help=f'OpenSearch endpoint URL (default: from config.py)')
-    parser.add_argument('--index-name', help=f'OpenSearch index name (default: {config.OPENSEARCH_INDEX})')
+    parser.add_argument('--opensearch-endpoint', help=f'OpenSearch endpoint URL (default: auto-detect from collection {config.OPENSEARCH_COLLECTION_NAME})')
+    parser.add_argument('--index-name', default=config.OPENSEARCH_INDEX, help=f'OpenSearch index name (default: {config.OPENSEARCH_INDEX})')
     parser.add_argument('--region', default=config.REGION, help=f'AWS region (default: {config.REGION})')
     parser.add_argument('--verbose', action='store_true', help='Show detailed output for each record retrieved and loaded')
     parser.add_argument('--output-dir', help='Write JSON files to directory instead of loading to OpenSearch')
     
     args = parser.parse_args()
     
-    # Use config.py values if not specified
-    opensearch_endpoint = args.opensearch_endpoint or config.OPENSEARCH_ENDPOINT
-    index_name = args.index_name or config.OPENSEARCH_INDEX
+    # Get OpenSearch endpoint - either from argument or auto-detect from collection
+    opensearch_endpoint = args.opensearch_endpoint
+    if not opensearch_endpoint and not args.output_dir:
+        opensearch_endpoint = get_opensearch_endpoint_from_collection()
+        if not opensearch_endpoint:
+            parser.error(f'Could not auto-detect OpenSearch endpoint from collection {config.OPENSEARCH_COLLECTION_NAME}. Please specify --opensearch-endpoint manually.')
+    
+    index_name = args.index_name
     
     # Validate required arguments based on mode
     if not args.output_dir and (not opensearch_endpoint or not index_name):
-        parser.error('--opensearch-endpoint and --index-name are required unless --output-dir is specified or values are set in config.py')
+        parser.error('--opensearch-endpoint and --index-name are required unless --output-dir is specified')
     
     get_health_events(opensearch_endpoint, index_name, args.region, args.verbose, args.output_dir)
 

@@ -28,15 +28,15 @@ def handler(event, context):
 
         # extract llm output from the batch returns
         # also aggregate them
-        for case in ondemand_output: 
-            if case.endswith('manifest.json.out'): # write a better way to skip this
+        for event in ondemand_output: 
+            if event.endswith('manifest.json.out'): # write a better way to skip this
                 continue
 
-            aggregate += get_s3_obj_body(bucket_name_report, case, True)
+            aggregate += get_s3_obj_body(bucket_name_report, event, True)
 
         out = aggregate_prompt(
             model_id_input=model_id,
-            cases=aggregate,
+            events=aggregate,
             temperature=bedrock_temperature,
             summary_output_format=summary_output_format,
             max_tokens=max_tokens

@@ -30,7 +30,7 @@ def handler(event, context):
 
 
     print(f"boto3 version: {boto3.__version__}")
-    case = event.get('case', 0) 
+    event_data = event.get('case', 0) 
     ondemand_run_datetime = event['ondemand_run_datetime']
 
     input_s3 = os.environ['S3_INPUT']  # agg folder 
@@ -40,15 +40,15 @@ def handler(event, context):
     bedrock_runtime = boto3.client('bedrock-runtime')
 
     # construct bedrock prompt for individual records
-    print(f"Processing case: {case}")
-    case_file = case
-    case_data = get_s3_obj_body(input_s3, case_file, False)
-    case_dict = string_to_dict(case_data)
+    print(f"Processing event: {event_data}")
+    event_file = event_data
+    event_file_data = get_s3_obj_body(input_s3, event_file, False)
+    event_dict = string_to_dict(event_file_data)
 
-    system_prompt = case_dict['modelInput']['system']
+    system_prompt = event_dict['modelInput']['system']
 
-    messages = case_dict['modelInput']['messages']
-    temperature = case_dict['modelInput']['inferenceConfig']['temperature']
+    messages = event_dict['modelInput']['messages']
+    temperature = event_dict['modelInput']['inferenceConfig']['temperature']
 
     generate_conversation_with_params = lambda: generate_conversation(
         bedrock_runtime,
@@ -65,7 +65,7 @@ def handler(event, context):
             initial_delay=1
         )
     except ClientError as e:
-        print(f"Failed after retry attempts : {case}: {str(e)}")
+        print(f"Failed after retry attempts : {event_data}: {str(e)}")
         raise
         
     output_message = response['output']['message']
@@ -79,13 +79,13 @@ def handler(event, context):
             out = message['content'][0]['text']
     
     # store output 
-    old_case_file = case_file
-    new_case_file = case_file.replace('.jsonl', '.json')
-    new_case_file = f"ondemand/{ondemand_run_datetime}/{new_case_file}"
-    store_data(out, output_s3, new_case_file)
-    delete_s3_object(input_s3, old_case_file)
-    print(f"processed {old_case_file} into {new_case_file}")
+    old_event_file = event_file
+    new_event_file = event_file.replace('.jsonl', '.json')
+    new_event_file = f"ondemand/{ondemand_run_datetime}/{new_event_file}"
+    store_data(out, output_s3, new_event_file)
+    delete_s3_object(input_s3, old_event_file)
+    print(f"processed {old_event_file} into {new_event_file}")
 
     return {
-        'case_file': case_file
+        'event_file': event_file
     }

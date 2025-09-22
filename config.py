@@ -2,8 +2,19 @@
 import boto3
 
 ####
-# Cases
-CASES_AFTER_TIME='2023-01-01T00:00:00Z'  # Adjust the date as needed
+# Helper function to get SSM parameters
+def get_ssm_parameter(parameter_name):
+    """Get parameter value from SSM Parameter Store"""
+    import boto3
+    ssm = boto3.client('ssm')
+    try:
+        account_id = boto3.client('sts').get_caller_identity()['Account']
+        region = boto3.Session().region_name
+        response = ssm.get_parameter(Name=f"maki-{account_id}-{region}-{parameter_name}")
+        return response['Parameter']['Value']
+    except Exception as e:
+        print(f"Error getting {parameter_name} from SSM: {e}")
+        return '2023-01-01T00:00:00Z'  # default fallback
 
 ###
 # Support Case Categories
@@ -72,7 +83,7 @@ BEDROCK_MAX_TOKENS_AGG = 131072
 ###
 # Synthetic case generation
 SYNTH_CASES_MAX_TOKENS = 10240
-SYNTH_CASES_NUMBER_SEED = 50
+SYNTH_CASES_NUMBER_SEED = 2 
 SYNTH_CASES_TEMPERATURE = 0.3
 SYNTH_CASES_CATEGORIZE_TOP_P = 0.1
 
@@ -111,8 +122,8 @@ CRON_MAIN_MONTH = '*'
 CRON_MAIN_YEAR = '*'
 BEDROCK_BATCH_INF_WAIT_BASE = 'batch-inference-wait'
 BEDROCK_BATCH_RULE_BASE = 'bedrock-batch-completion-rule'
-CASE_ITERATOR = 'case-iterator'
-CASE_ITERATOR_MAX_PARALLEL = 1
+EVENT_ITERATOR = 'event-iterator'
+EVENT_ITERATOR_MAX_PARALLEL = 1
 BATCH_ITERATOR = 'batch-iterator'
 BATCH_ITERATOR_MAX_PARALLEL = 1
 POST_BATCH_CHECK_INTERVAL_MIN = 1
@@ -154,7 +165,6 @@ BUCKET_NAME_HEALTH_AGG_BASE = 'health-agg'
 OPENSEARCH_COLLECTION_NAME = 'maki-health'
 OPENSEARCH_INDEX = 'aws-health-events'
 OPENSEARCH_SKIP = 'false'  # Set to 'true' to skip OpenSearch queries
-HEALTH_EVENTS_SINCE = '2023-01-01T00:00:00Z'  # Adjust the date as needed
 OPENSEARCH_ENDPOINT = ''
 
 ####
