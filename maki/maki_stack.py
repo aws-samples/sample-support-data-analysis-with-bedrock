@@ -43,11 +43,6 @@ class MakiFoundations(Stack):
         sg = BuildEC2.buildSecurityGroup(self, vpc) # needed for SageMaker notebook
         log_group = BuildCloudWatch.buildCWLogGroup(self,vpc)
 
-        # build S3
-        # not used since data is from CID
-        #rawDataBucketName = utils.returnName(config.BUCKET_NAME_BASE) 
-        #s3raw = BuildS3.buildS3Bucket(self,makiRole,rawDataBucketName)
-
         categoryBucketName = utils.returnName(config.BUCKET_NAME_CATEGORY_BASE)
         BuildS3.buildS3Bucket(self, makiRole, categoryBucketName)
 
@@ -65,10 +60,6 @@ class MakiFoundations(Stack):
 
         archiveBucketName = utils.returnName(config.BUCKET_NAME_ARCHIVE)
         BuildS3.buildS3Bucket(self,makiRole,archiveBucketName)
-
-        # build Lambda Layers
-       # requestsLayer = BuildLambda.buildRequestsLayer(self, makiRole)
-       # langchainLayer = BuildLambda.buildLangChainLayer(self, makiRole)
 
         s3_utils_layer = BuildLambda.buildLambdaLayer(
             self, 
@@ -267,6 +258,13 @@ class MakiEmbeddings(Stack):
             config.PROMPT_GEN_CASES_INPUT_LAYER_DESC, 
             config.PROMPT_GEN_CASES_INPUT_LAYER_NAME_BASE + "-embeddings") 
 
+        opensearch_utils_layer = BuildLambda.buildLambdaLayer(
+            self, 
+            makiRole, 
+            config.OPENSEARCH_UTILS_LAYER_PATH, 
+            config.OPENSEARCH_UTILS_LAYER_DESC, 
+            config.OPENSEARCH_UTILS_LAYER_NAME_BASE + "-embeddings") 
+
         # Build the getHealthFromOpenSearch Lambda function (depends on OpenSearch)
         health_lambda = BuildLambda.buildGetHealthFromOpenSearch(
             self, 
@@ -274,7 +272,9 @@ class MakiEmbeddings(Stack):
             log_group, 
             prompt_gen_cases_input_layer, 
             s3_utils_layer, 
-            json_utils_layer
+            json_utils_layer,
+            opensearch_utils_layer,
+            opensearch_endpoint
         )
 
         # Add dependency to ensure OpenSearch Serverless collection is created before Lambda
