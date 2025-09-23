@@ -75,8 +75,10 @@ def get_running_function(state_machine_arn):
     state_details = definition['States'].get(running_step_name, {})
 
     if state_details == {}:
-        #Iterator invokes the task
-        state_details = definition['States']['event-iterator']['Iterator']['States'].get(running_step_name, {})
+        # Check in ItemProcessor for new Map syntax
+        event_iterator = definition['States'].get('event-iterator', {})
+        if 'ItemProcessor' in event_iterator:
+            state_details = event_iterator['ItemProcessor']['States'].get(running_step_name, {})
     
     function_arn = state_details.get('Resource', 'No function associated')
 
