@@ -26,7 +26,7 @@ def buildSSMParameters(self):
     # Create OPENSEARCH_ENDPOINT parameter
     opensearch_endpoint_parameter = ssm.StringParameter(
         self, "MakiOpenSearchEndpointParameter",
-        parameter_name=utils.returnName("maki-opensearch-endpoint"),
+        parameter_name=utils.returnName("opensearch-endpoint"),
         string_value="placeholder-endpoint",
         description="OpenSearch endpoint URL for health events storage (updated by MakiEmbeddings)"
     )
