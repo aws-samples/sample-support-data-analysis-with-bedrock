@@ -8,7 +8,15 @@ import argparse
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir) # for config.py 
+
+# Add paths for config.py - handle both tools/ and root directory execution
+if os.path.basename(current_dir) == 'tools':
+    # Running from tools directory
+    sys.path.append(parent_dir)
+else:
+    # Running from root directory
+    sys.path.append(current_dir)
+
 sys.path.append(os.path.join(parent_dir, 'lambda', 'layers', 's3_utils'))
 sys.path.append(os.path.join(parent_dir, 'lambda', 'layers', 'prompt_gen_cases_input'))
 
@@ -28,6 +36,8 @@ def parse_arguments():
                       help='minimum number of cases generated (default: 1)')
     parser.add_argument('--max-cases', type=int, default=config.SYNTH_CASES_NUMBER_SEED,
                       help="max number of cases generated (default: config.SYNTH_CASES_NUMBER_SEED)")
+    parser.add_argument('-q', '--quick-test', action='store_true',
+                      help='generate cases for only 2 categories: limit-reached and service-event')
     
     return parser.parse_args()
 
@@ -37,8 +47,11 @@ def main():
 
     args = parse_arguments()
 
+    # Select categories based on quick-test flag
+    categories = ['limit-reached'] if args.quick_test else config.CATEGORIES
+
     # for each category configured, create some synth records
-    for category in config.CATEGORIES:
+    for category in categories:
         examples_category = get_category_examples(categoryBucketName,category)
         desc_category = get_category_desc(categoryBucketName,category)
 

@@ -4,7 +4,17 @@ import boto3
 import json
 import argparse
 import sys
-sys.path.append('..')
+import os
+
+# Add paths for config.py - handle both tools/ and root directory execution
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if os.path.basename(current_dir) == 'tools':
+    # Running from tools directory
+    sys.path.append(os.path.dirname(current_dir))
+else:
+    # Running from root directory
+    sys.path.append(current_dir)
+
 import config
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth

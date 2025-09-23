@@ -5,14 +5,21 @@ import json
 import argparse
 import os
 import sys
-sys.path.append('..')
+
+# Add paths for config.py - handle both tools/ and root directory execution
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if os.path.basename(current_dir) == 'tools':
+    # Running from tools directory
+    sys.path.append(os.path.dirname(current_dir))
+else:
+    # Running from root directory
+    sys.path.append(current_dir)
+
 import config
 from datetime import datetime, timedelta
 from botocore.exceptions import ClientError
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
-
-import config
 
 def generate_embedding(text, bedrock_client, region='us-east-1'):
     """Generate embedding using Bedrock model from config"""

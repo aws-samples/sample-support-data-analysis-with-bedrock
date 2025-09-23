@@ -358,7 +358,8 @@ def buildStateMachine(self, functions, log_group):
             level=sfn.LogLevel.ALL
         ),
         # Enable X-Ray tracing for AwsSolutions-SF2 compliance
-        tracing_enabled=True
+        tracing_enabled=True,
+        comment="MAKI State Machine - Updated Map syntax"
     )
     start_state.node.add_dependency(log_group) # add dependency
     state_machine.node.add_dependency(lambdaGetCasesFromCID) # add dependency
