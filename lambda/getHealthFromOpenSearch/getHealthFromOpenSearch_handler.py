@@ -63,17 +63,16 @@ def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, sta
             connection_class=RequestsHttpConnection
         )
 
-        # Query for health events after the specified time based on when event was received
+        # Query for health events after the specified time based on lastUpdatedTime
         query = {
             "query": {
                 "range": {
-                    "@timestamp": {
+                    "lastUpdatedTime": {
                         "gte": start_time
                     }
                 }
             },
-            "size": 10000,
-            "sort": [{"@timestamp": {"order": "desc"}}]
+            "sort": [{"lastUpdatedTime": {"order": "desc"}}]
         }
 
         response = client.search(index=opensearch_index, body=query)
@@ -142,6 +141,10 @@ def handler(event, context):
             
             # Generate batch record using the same prompt generation logic
             event_obj_key = f"health-{event_data.get('eventArn', event_hit['_id']).replace(':', '-').replace('/', '-')}.jsonl"
+            
+            # For health events, unlike cases, no need to add templated golden examples
+            batch_record = health_event_jsonl
+            '''
             batch_record = gen_batch_record(
                 health_event_jsonl,
                 bedrock_categorize_temperature,
@@ -151,7 +154,7 @@ def handler(event, context):
                 categories,
                 categoryOutputFormat
             )
-            
+            '''
             # Store in S3
             store_data(batch_record, s3_health_agg, event_obj_key)
             processed_files.append(event_obj_key)
