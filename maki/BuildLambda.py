@@ -11,7 +11,6 @@ import utils
 def buildCheckEnabledModels(self, execution_role, log_group):
 
     state_machine_arn = 'arn:aws:states:' + config.REGION + ':' + config.account_id + ':stateMachine:' + utils.returnName(config.STATE_MACHINE_NAME_BASE)
-    print("check for: " + state_machine_arn)
 
     lambdaCheckEnabledModels = _lambda.Function(
         self, utils.returnName(config.CHECK_ENABLED_MODELS_NAME_BASE),
@@ -65,7 +64,6 @@ def buildCheckBatchInferenceJobs(self, execution_role, log_group):
 def buildCheckRunningJobs(self, execution_role, log_group):
 
     state_machine_arn = 'arn:aws:states:' + config.REGION + ':' + config.account_id + ':stateMachine:' + utils.returnName(config.STATE_MACHINE_NAME_BASE)
-    print("check for: " + state_machine_arn)
 
     lambdaCheckRunningJobs = _lambda.Function(
         self, utils.returnName(config.CHECK_RUNNING_JOBS_NAME_BASE),

@@ -267,14 +267,12 @@ def buildStateMachine(self, functions, log_group):
                                                     max_concurrency=config.EVENT_ITERATOR_MAX_PARALLEL,
                                                     items_path="$.events",
                                                     result_path="$.mapResults",
-                                                    parameters={
+                                                    item_selector={
                                                         "case.$": "$$.Map.Item.Value",
                                                         "eventsTotal.$": "$.eventsTotal",
                                                         "ondemand_run_datetime.$": "$.ondemand_run_datetime"
                                                     }
-                                                ).iterator(
-                                                    stepBedrockOnDemandInferenceCase
-                                                )
+                                                ).item_processor(stepBedrockOnDemandInferenceCase)
                                                 .next(stepProcessOnDemandOutputCase)
                                                 .next(end_state)
                                             )
@@ -312,14 +310,12 @@ def buildStateMachine(self, functions, log_group):
                                                     max_concurrency=config.EVENT_ITERATOR_MAX_PARALLEL,
                                                     items_path="$.events",
                                                     result_path="$.mapResults",
-                                                    parameters={
+                                                    item_selector={
                                                         "case.$": "$$.Map.Item.Value",
                                                         "eventsTotal.$": "$.eventsTotal",
                                                         "ondemand_run_datetime.$": "$.ondemand_run_datetime"
                                                     }
-                                                ).iterator(
-                                                    stepBedrockOnDemandInferenceHealth
-                                                )
+                                                ).item_processor(stepBedrockOnDemandInferenceHealth)
                                                 .next(stepProcessOnDemandOutputHealth)
                                                 .next(end_state)
                                             )
@@ -353,7 +349,7 @@ def buildStateMachine(self, functions, log_group):
         self, 
         #utils.returnName(config.STATE_MACHINE_NAME_BASE), # this creates a duplicate?  check 
         config.STATE_MACHINE_NAME_BASE, 
-        definition=definition,
+        definition_body=sfn.DefinitionBody.from_chainable(definition),
         role=exec_role,
         state_machine_name=utils.returnName(config.STATE_MACHINE_NAME_BASE),
         timeout=cdk.Duration.seconds(config.STATE_MACHINE_TIMEOUT),
