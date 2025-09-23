@@ -270,6 +270,17 @@ class MakiEmbeddings(Stack):
                 },
                 physical_resource_id=cr.PhysicalResourceId.of("opensearch-endpoint-update")
             ),
+            on_update=cr.AwsSdkCall(
+                service="SSM",
+                action="putParameter",
+                parameters={
+                    "Name": utils.returnName("maki-opensearch-endpoint"),
+                    "Value": opensearch_endpoint,
+                    "Type": "String",
+                    "Overwrite": True
+                },
+                physical_resource_id=cr.PhysicalResourceId.of("opensearch-endpoint-update")
+            ),
             policy=cr.AwsCustomResourcePolicy.from_statements([
                 iam.PolicyStatement(
                     actions=["ssm:PutParameter"],
@@ -312,58 +323,7 @@ class MakiEmbeddings(Stack):
             config.OPENSEARCH_UTILS_LAYER_NAME_BASE + "-embeddings") 
 
         # Build the getHealthFromOpenSearch Lambda function (depends on OpenSearch)
-        # Update the existing health lambda's environment variable with the actual endpoint
-        
-        # Create a specific role for updating Lambda configuration
-        lambda_update_role = iam.Role(
-            self, "MakiLambdaUpdateRole",
-            role_name=utils.returnName("maki-lambda-update-role"),
-            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
-            inline_policies={
-                "MakiLambdaUpdatePolicy": iam.PolicyDocument(
-                    statements=[
-                        iam.PolicyStatement(
-                            actions=["lambda:UpdateFunctionConfiguration"],
-                            resources=[f"arn:aws:lambda:{config.REGION}:{config.account_id}:function:{utils.returnName(config.GET_HEALTH_FROM_OPENSEARCH_NAME_BASE)}"]
-                        ),
-                        iam.PolicyStatement(
-                            actions=["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
-                            resources=[f"arn:aws:logs:{config.REGION}:{config.account_id}:log-group:/aws/lambda/*"]
-                        )
-                    ]
-                )
-            }
-        )
 
-        # Use a custom resource to update the Lambda function's environment variables
-        lambda_update = cr.AwsCustomResource(
-            self, "UpdateHealthLambdaEnvironment",
-            on_update=cr.AwsSdkCall(
-                service="Lambda",
-                action="updateFunctionConfiguration",
-                parameters={
-                    "FunctionName": utils.returnName(config.GET_HEALTH_FROM_OPENSEARCH_NAME_BASE),
-                    "Environment": {
-                        "Variables": {
-                            "OPENSEARCH_ENDPOINT": opensearch_endpoint,
-                            "OPENSEARCH_SKIP": config.OPENSEARCH_SKIP,
-                            "OPENSEARCH_INDEX": config.OPENSEARCH_INDEX,
-                            "HEALTH_EVENTS_SINCE": "FROM_SSM",  # Will be retrieved from SSM Parameter Store
-                            "S3_HEALTH_AGG": utils.returnName(config.BUCKET_NAME_HEALTH_AGG_BASE),
-                            "BEDROCK_CATEGORIZE_TEMPERATURE": str(config.BEDROCK_CATEGORIZE_TEMPERATURE),
-                            "BEDROCK_MAX_TOKENS": str(config.BEDROCK_MAX_TOKENS),
-                            "BEDROCK_CATEGORIZE_TOP_P": str(config.BEDROCK_CATEGORIZE_TOP_P),
-                            "CATEGORY_BUCKET_NAME": utils.returnName(config.BUCKET_NAME_CATEGORY_BASE),
-                            "CATEGORIES": str(config.CATEGORIES),
-                            "CATEGORY_OUTPUT_FORMAT": str(config.CATEGORY_OUTPUT_FORMAT),
-                            "BEDROCK_EMBEDDING_MODEL": config.BEDROCK_EMBEDDING_MODEL
-                        }
-                    }
-                },
-                physical_resource_id=cr.PhysicalResourceId.of("health-lambda-env-update")
-            ),
-            role=lambda_update_role
-        )
+        # Create health aggregation S3 bucket
+        healthAggBucketName = utils.returnName(config.BUCKET_NAME_HEALTH_AGG_BASE)
 
-        # Add dependency to ensure OpenSearch Serverless collection is created before Lambda update
-        lambda_update.node.add_dependency(opensearch_collection)

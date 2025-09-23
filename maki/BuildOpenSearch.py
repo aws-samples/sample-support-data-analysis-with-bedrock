@@ -101,7 +101,7 @@ def buildOpenSearchCollection(self, execution_role):
     execution_role.attach_inline_policy(dashboard_iam_policy)
     
     # Output the endpoint for reference
-    endpoint = f"https://{collection.attr_collection_endpoint}"
+    endpoint = collection.attr_collection_endpoint
     
     cdk.CfnOutput(
         self, "OpenSearchEndpoint",
