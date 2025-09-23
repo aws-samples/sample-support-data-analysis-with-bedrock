@@ -255,6 +255,29 @@ class MakiEmbeddings(Stack):
             self, makiRole
         )
 
+        # Update SSM parameter with actual OpenSearch endpoint
+        from aws_cdk import custom_resources as cr
+        ssm_update = cr.AwsCustomResource(
+            self, "UpdateOpenSearchEndpointSSM",
+            on_create=cr.AwsSdkCall(
+                service="SSM",
+                action="putParameter",
+                parameters={
+                    "Name": utils.returnName("maki-opensearch-endpoint"),
+                    "Value": opensearch_endpoint,
+                    "Type": "String",
+                    "Overwrite": True
+                },
+                physical_resource_id=cr.PhysicalResourceId.of("opensearch-endpoint-update")
+            ),
+            policy=cr.AwsCustomResourcePolicy.from_statements([
+                iam.PolicyStatement(
+                    actions=["ssm:PutParameter"],
+                    resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{utils.returnName('maki-opensearch-endpoint')}"]
+                )
+            ])
+        )
+
         # Create health aggregation S3 bucket
         healthAggBucketName = utils.returnName(config.BUCKET_NAME_HEALTH_AGG_BASE)
         BuildS3.buildS3Bucket(self, makiRole, healthAggBucketName)
@@ -290,7 +313,6 @@ class MakiEmbeddings(Stack):
 
         # Build the getHealthFromOpenSearch Lambda function (depends on OpenSearch)
         # Update the existing health lambda's environment variable with the actual endpoint
-        from aws_cdk import custom_resources as cr
         
         # Create a specific role for updating Lambda configuration
         lambda_update_role = iam.Role(

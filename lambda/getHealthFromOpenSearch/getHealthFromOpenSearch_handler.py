@@ -34,6 +34,18 @@ def get_events_since_from_ssm():
         print(f"Error getting events-since from SSM: {e}")
         return '2023-01-01T00:00:00Z'  # default fallback
 
+def get_opensearch_endpoint_from_ssm():
+    """Get OpenSearch endpoint from SSM Parameter Store"""
+    ssm = boto3.client('ssm')
+    try:
+        account_id = boto3.client('sts').get_caller_identity()['Account']
+        region = boto3.Session().region_name
+        response = ssm.get_parameter(Name=f"maki-{account_id}-{region}-opensearch-endpoint")
+        return response['Parameter']['Value']
+    except Exception as e:
+        print(f"Error getting opensearch-endpoint from SSM: {e}")
+        return os.environ.get('OPENSEARCH_ENDPOINT', 'placeholder-endpoint')  # fallback to env var
+
 def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, start_time, region):
     """Query health events from OpenSearch Serverless since start_time based on when event was received"""
     try:
@@ -74,7 +86,7 @@ def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, sta
 def handler(event, context):
     # Environment variables
     opensearch_skip = os.environ['OPENSEARCH_SKIP']
-    opensearch_endpoint = os.environ['OPENSEARCH_ENDPOINT']
+    opensearch_endpoint = get_opensearch_endpoint_from_ssm()  # Get from SSM instead of env var
     opensearch_index = os.environ['OPENSEARCH_INDEX']
     start_time = get_events_since_from_ssm()
     
