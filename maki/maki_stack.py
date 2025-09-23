@@ -263,7 +263,7 @@ class MakiEmbeddings(Stack):
                 service="SSM",
                 action="putParameter",
                 parameters={
-                    "Name": utils.returnName("maki-opensearch-endpoint"),
+                    "Name": utils.returnName("opensearch-endpoint"),
                     "Value": opensearch_endpoint,
                     "Type": "String",
                     "Overwrite": True
@@ -274,7 +274,7 @@ class MakiEmbeddings(Stack):
                 service="SSM",
                 action="putParameter",
                 parameters={
-                    "Name": utils.returnName("maki-opensearch-endpoint"),
+                    "Name": utils.returnName("opensearch-endpoint"),
                     "Value": opensearch_endpoint,
                     "Type": "String",
                     "Overwrite": True
@@ -284,7 +284,7 @@ class MakiEmbeddings(Stack):
             policy=cr.AwsCustomResourcePolicy.from_statements([
                 iam.PolicyStatement(
                     actions=["ssm:PutParameter"],
-                    resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{utils.returnName('maki-opensearch-endpoint')}"]
+                    resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/{utils.returnName('opensearch-endpoint')}"]
                 )
             ])
         )
