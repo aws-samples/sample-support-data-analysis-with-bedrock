@@ -23,7 +23,16 @@ def buildSSMParameters(self):
         description="Start time for retrieving events (both support cases and health events)"
     )
     
+    # Create OPENSEARCH_ENDPOINT parameter
+    opensearch_endpoint_parameter = ssm.StringParameter(
+        self, "MakiOpenSearchEndpointParameter",
+        parameter_name=utils.returnName("maki-opensearch-endpoint"),
+        string_value="placeholder-endpoint",
+        description="OpenSearch endpoint URL for health events storage (updated by MakiEmbeddings)"
+    )
+    
     return {
         'mode_parameter': mode_parameter,
-        'events_since_parameter': events_since_parameter
+        'events_since_parameter': events_since_parameter,
+        'opensearch_endpoint_parameter': opensearch_endpoint_parameter
     }

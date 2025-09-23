@@ -36,5 +36,6 @@ NagSuppressions.add_stack_suppressions(data_stack, [
 NagSuppressions.add_stack_suppressions(embeddings_stack, [
     {"id": "AwsSolutions-IAM5", "reason": "Wildcard permissions are acceptable for sample code."},
     {"id": "AwsSolutions-L1", "reason": "Lambda runtime version is acceptable for sample code."},
+    {"id": "AwsSolutions-IAM4", "reason": "Custom resource requires AWS managed policy for Lambda execution"},
 ])
 app.synth()
