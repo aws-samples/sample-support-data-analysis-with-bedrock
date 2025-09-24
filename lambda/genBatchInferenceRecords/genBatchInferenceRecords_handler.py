@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append('/opt')
 from s3 import find_files_in_s3, get_s3_obj_body, store_data
-from prompt_gen_cases_input import gen_batch_record
+from prompt_gen_input import gen_batch_record_cases
 from validate_jsonl import jsonl_to_dict, json_to_dict, dict_to_jsonl
 
 def handler(event, context):
@@ -41,6 +41,7 @@ def handler(event, context):
         for event in files:
             event_data = get_s3_obj_body(bucket_name=s3_cid, object_key=event['Key'], decode=True)
             event_data = json_to_dict(event_data)
+            case_data = event_data  # Fix: assign event_data to case_data
             case = {
                 'id': event_data['CaseId'],
                 'meta': case_data,
@@ -50,7 +51,7 @@ def handler(event, context):
 
         # final output must be in jsonl, for Bedrock Batch Inference
             case_obj_key = case_data['CaseId'] + '.jsonl'
-            batch_record = gen_batch_record(case, bedrock_categorize_temperature, bedrock_max_tokens, bedrock_categorize_top_p, categoryBucketName, categoryOutputFormat, categories)
+            batch_record = gen_batch_record_cases(case, bedrock_categorize_temperature, bedrock_max_tokens, bedrock_categorize_top_p, categoryBucketName, categoryOutputFormat, categories)
             store_data(batch_record, s3_agg, case_obj_key)
 
     except Exception as e:

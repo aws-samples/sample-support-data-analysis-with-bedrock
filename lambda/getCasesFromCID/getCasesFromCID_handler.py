@@ -2,7 +2,7 @@ import os
 import sys
 import boto3
 sys.path.append('/opt')
-from prompt_gen_cases_input import gen_batch_record
+from prompt_gen_input import gen_batch_record_cases
 from s3 import find_files_in_s3, get_s3_obj_body, store_data
 from validate_jsonl import jsonl_to_dict, json_to_dict, dict_to_jsonl
 from datetime import datetime
@@ -95,7 +95,7 @@ def handler(event, context):
         # final output must be in jsonl, for Bedrock Batch Inference
         # for ondemand, we will adapt to use the same files
             case_obj_key = case_data['CaseId'] + '.jsonl'
-            batch_record = gen_batch_record(case, 
+            batch_record = gen_batch_record_cases(case, 
                                             bedrock_categorize_temperature, 
                                             bedrock_max_tokens, 
                                             bedrock_categorize_top_p, 

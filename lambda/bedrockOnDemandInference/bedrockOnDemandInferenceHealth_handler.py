@@ -7,7 +7,7 @@ import os
 import time
 
 from s3 import store_data
-from prompt_gen_cases_input import generate_conversation
+from prompt_gen_input import generate_conversation
 
 def exponential_backoff_retry(func, max_retries=5, initial_delay=1):
     """
