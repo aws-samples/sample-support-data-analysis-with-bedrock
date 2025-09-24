@@ -50,6 +50,8 @@ class MakiFoundations(Stack):
         casesAggBucketName = utils.returnName(config.BUCKET_NAME_CASES_AGG_BASE)
         BuildS3.buildS3Bucket(self,makiRole,casesAggBucketName)
 
+        healthAggBucketName = utils.returnName(config.BUCKET_NAME_HEALTH_AGG_BASE)
+
         batchesBucketName = utils.returnName(config.BUCKET_NAME_BATCHES)
         BuildS3.buildS3Bucket(self, makiRole, batchesBucketName)
 
@@ -79,7 +81,7 @@ class MakiFoundations(Stack):
             config.JSON_UTILS_LAYER_DESC, 
             config.JSON_UTILS_LAYER_NAME_BASE)      
 
-        prompt_gen_cases_input_layer = BuildLambda.buildLambdaLayer(
+        prompt_gen_input_layer = BuildLambda.buildLambdaLayer(
             self, 
             makiRole, 
             config.PROMPT_GEN_CASES_INPUT_LAYER_PATH, 
@@ -130,7 +132,7 @@ class MakiFoundations(Stack):
             self, 
             makiRole, 
             log_group, 
-            prompt_gen_cases_input_layer, 
+            prompt_gen_input_layer, 
             s3_utils_layer, 
             json_utils_layer
         ) 
@@ -142,7 +144,7 @@ class MakiFoundations(Stack):
             log_group,
             s3_utils_layer,
             json_utils_layer,
-            prompt_gen_cases_input_layer, 
+            prompt_gen_input_layer, 
             casesAggBucketName,
             reportBucketName
         )
@@ -153,8 +155,8 @@ class MakiFoundations(Stack):
             log_group,
             s3_utils_layer,
             json_utils_layer,
-            prompt_gen_cases_input_layer, 
-            casesAggBucketName,
+            prompt_gen_input_layer, 
+            healthAggBucketName,
             reportBucketName
         )
      
@@ -217,7 +219,7 @@ class MakiFoundations(Stack):
             self, 
             makiRole, 
             log_group, 
-            prompt_gen_cases_input_layer, 
+            prompt_gen_input_layer, 
             s3_utils_layer, 
             json_utils_layer,
             opensearch_utils_layer,
@@ -329,7 +331,7 @@ class MakiEmbeddings(Stack):
             config.JSON_UTILS_LAYER_DESC, 
             config.JSON_UTILS_LAYER_NAME_BASE + "-embeddings")      
 
-        prompt_gen_cases_input_layer = BuildLambda.buildLambdaLayer(
+        prompt_gen_input_layer = BuildLambda.buildLambdaLayer(
             self, 
             makiRole, 
             config.PROMPT_GEN_CASES_INPUT_LAYER_PATH, 
