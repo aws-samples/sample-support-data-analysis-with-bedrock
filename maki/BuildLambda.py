@@ -356,6 +356,41 @@ def buildOnDemandInference(self, execution_role, log_group, s3_utils_layer, json
 
     return lambdaBedrockOnDemandInference    
 
+def buildHealthOnDemandInference(self, execution_role, log_group, s3_utils_layer, json_utils_layer, prompt_agg_layer, s3_in, s3_out):
+    func_name = utils.returnName(config.BEDROCK_HEALTH_ONDEMAND_INF_NAME_BASE)
+    categoryBucketName = config.KEY + '-' + config.BUCKET_NAME_CATEGORY_BASE
+    
+
+    lambdaBedrockHealthOnDemandInference = _lambda.Function(
+        self, func_name,
+        runtime=_lambda.Runtime.PYTHON_3_12,
+        code=_lambda.Code.from_asset(config.BEDROCK_HEALTH_ONDEMAND_INF_PATH),
+        function_name=func_name,
+        role=execution_role,
+        timeout=cdk.Duration.seconds(config.BEDROCK_HEALTH_ONDEMAND_INF_TIMEOUT),
+        architecture=_lambda.Architecture.X86_64,
+        memory_size=config.BEDROCK_HEALTH_ONDEMAND_INF_MEMORY,
+        description=config.BEDROCK_HEALTH_ONDEMAND_INF_DESC,
+        handler=config.BEDROCK_HEALTH_ONDEMAND_INF_HANDLER_FILE + '.' + config.BEDROCK_HEALTH_ONDEMAND_INF_HANDLER_FUNC,
+        retry_attempts=config.BEDROCK_HEALTH_ONDEMAND_INF_RETRIES,
+        log_group=log_group,
+        layers=[s3_utils_layer, json_utils_layer, prompt_agg_layer],
+        environment={
+            "S3_INPUT" : s3_in,
+            "S3_OUTPUT" : s3_out,
+            "BEDROCK_TEXT_MODEL": config.BEDROCK_TEXT_MODEL,
+            "BEDROCK_SUMMARY_TEMPERATURE": str(config.BEDROCK_SUMMARY_TEMPERATURE),
+            "BEDROCK_CATEGORIZE_TEMPERATURE": str(config.BEDROCK_CATEGORIZE_TEMPERATURE),
+            "CATEGORY_BUCKET_NAME": categoryBucketName,
+            "CATEGORIES": str(config.CATEGORIES),
+            "CATEGORY_OUTPUT_FORMAT": str(config.CATEGORY_OUTPUT_FORMAT),
+            "THROTTLE": str(config.BEDROCK_THROTTLE_DELAY_SECONDS),
+            
+        }
+    )
+
+    return lambdaBedrockHealthOnDemandInference    
+
 # create a bedrock batch inference job
 def buildBedrockBatchInferenceJob(self, execution_role, log_group, s3_utils_layer, s3_input, s3_batches, s3_output):
     func_name = utils.returnName(config.BEDROCK_BATCH_INF_JOB_NAME_BASE)

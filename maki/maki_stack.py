@@ -146,6 +146,17 @@ class MakiFoundations(Stack):
             casesAggBucketName,
             reportBucketName
         )
+
+        functions[config.BEDROCK_HEALTH_ONDEMAND_INF_NAME_BASE] = BuildLambda.buildHealthOnDemandInference(
+            self,
+            makiRole,
+            log_group,
+            s3_utils_layer,
+            json_utils_layer,
+            prompt_gen_cases_input_layer, 
+            casesAggBucketName,
+            reportBucketName
+        )
      
         # create the Bedrock batch inference job
         functions[config.BEDROCK_BATCH_INF_JOB_NAME_BASE] = BuildLambda.buildBedrockBatchInferenceJob(
