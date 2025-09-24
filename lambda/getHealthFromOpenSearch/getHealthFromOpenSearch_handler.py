@@ -90,6 +90,7 @@ def handler(event, context):
     start_time = get_events_since_from_ssm()
     
     s3_health_agg = os.environ['S3_HEALTH_AGG']
+    health_output_format = os.environ['HEALTH_OUTPUT_FORMAT']
     bedrock_categorize_temperature = float(os.environ['BEDROCK_CATEGORIZE_TEMPERATURE'])
     bedrock_max_tokens = int(os.environ['BEDROCK_MAX_TOKENS'])
     bedrock_categorize_top_p = float(os.environ['BEDROCK_CATEGORIZE_TOP_P'])
@@ -142,6 +143,7 @@ def handler(event, context):
             # no need for categorization templates for health - already in the data
             batch_record = gen_batch_record_health(
                 health_event_jsonl,
+                health_output_format,
                 bedrock_categorize_temperature,
                 bedrock_max_tokens,
                 bedrock_categorize_top_p

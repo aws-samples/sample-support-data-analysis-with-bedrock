@@ -89,7 +89,7 @@ SYNTH_CASES_CATEGORIZE_TOP_P = 0.1
 
 # Proper LLM output format in JSON
 # this is in in str format as it needs to feed into the Bedrock prompt as a str
-CATEGORY_OUTPUT_FORMAT = "{ \
+CASES_CATEGORY_OUTPUT_FORMAT = "{ \
  \"caseId\": caseId, \
  \"displayId\": DisplayId, \
  \"status\": status, \
@@ -103,6 +103,22 @@ CATEGORY_OUTPUT_FORMAT = "{ \
  \"sentiment\": Sentiment, \
  \"suggested_action\": Suggested_Action \
  \"suggestion_link\": Suggestion_Link\
+}"
+
+HEALTH_OUTPUT_FORMAT = "{ \
+\"arn\": \"arn\", \
+\"service\": \"service\", \
+\"eventTypeCode\": \"eventTypeCode\", \
+\"eventTypeCategory\": \"eventTypeCategory\", \
+\"region\": \"region\", \
+\"startTime\": \"startTime\", \
+\"lastUpdatedTime\": \"lastUpdatedTime\", \
+\"statusCode\": \"statusCode\", \
+\"eventScopeCode\": \"eventScopeCode\", \
+\"latestDescription\": \"latestDescription\", \
+\"event_summary\": \"event_summary\", \
+\"suggestion_action\": \"suggestion_action\", \
+\"suggestion_link\": \"suggestion_link\" \
 }"
 
 SUMMARY_OUTPUT_FORMAT = "{ \

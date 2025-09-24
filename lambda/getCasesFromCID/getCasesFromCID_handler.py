@@ -45,7 +45,7 @@ def handler(event, context):
     bedrock_categorize_top_p = float(os.environ['BEDROCK_CATEGORIZE_TOP_P'])
     categoryBucketName = os.environ['CATEGORY_BUCKET_NAME']
     categories = os.environ['CATEGORIES']
-    categoryOutputFormat = os.environ['CATEGORY_OUTPUT_FORMAT']
+    categoryOutputFormat = os.environ['CASES_CATEGORY_OUTPUT_FORMAT']
 
     prefix = 'support-cases/support-cases-communications'
     file_ext = '.json' # not really json data, but jsonl
