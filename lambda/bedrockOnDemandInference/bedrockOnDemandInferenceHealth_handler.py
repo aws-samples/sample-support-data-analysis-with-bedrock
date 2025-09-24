@@ -6,8 +6,9 @@ from botocore.exceptions import ClientError
 import os
 import time
 
-from s3 import store_data
+from s3 import get_s3_obj_body, store_data
 from prompt_gen_input import generate_conversation
+from validate_jsonl import string_to_dict
 
 def exponential_backoff_retry(func, max_retries=5, initial_delay=1):
     """
@@ -32,6 +33,7 @@ def handler(event, context):
     event_data = event.get('case', 0) 
     ondemand_run_datetime = event['ondemand_run_datetime']
 
+    input_s3 = os.environ['S3_INPUT']  # agg folder 
     output_s3 = os.environ['S3_OUTPUT'] # llm output folder
     model_id = os.environ['BEDROCK_TEXT_MODEL']
 
@@ -39,7 +41,12 @@ def handler(event, context):
 
     # construct bedrock prompt for individual records
     print(f"Processing health event: {event_data}")
-    event_dict = event_data  # Direct dict for health events
+    event_file = event_data
+    event_file_data = get_s3_obj_body(input_s3, event_file, False)
+    event_dict = string_to_dict(event_file_data)
+    
+    if event_dict is None:
+        raise ValueError(f"Failed to parse event data from S3 object: {event_file}")
 
     system_prompt = event_dict['modelInput']['system']
 
@@ -75,7 +82,7 @@ def handler(event, context):
             out = message['content'][0]['text']
     
     # store output 
-    event_file = event_data.get('id', 'health-event')  # Use health event ID
+    event_file = event_data  # Use the S3 key as filename base
     new_event_file = f"{event_file}.json"
     new_event_file = f"ondemand/{ondemand_run_datetime}/{new_event_file}"
     store_data(out, output_s3, new_event_file)
