@@ -104,7 +104,7 @@ def buildGetCasesFromCID(self, execution_role, log_group, prompt_gen_cases_input
         "BEDROCK_CATEGORIZE_TOP_P": str(config.BEDROCK_CATEGORIZE_TOP_P),
         "CATEGORY_BUCKET_NAME": categoryBucketName,
         "CATEGORIES": str(config.CATEGORIES),
-        "CATEGORY_OUTPUT_FORMAT": str(config.CATEGORY_OUTPUT_FORMAT)
+        "CASES_CATEGORY_OUTPUT_FORMAT": str(config.CASES_CATEGORY_OUTPUT_FORMAT)
     }
 
     func_name = utils.returnName(config.GET_CID_CASES_NAME_BASE) 
@@ -348,7 +348,7 @@ def buildOnDemandInference(self, execution_role, log_group, s3_utils_layer, json
             "BEDROCK_CATEGORIZE_TEMPERATURE": str(config.BEDROCK_CATEGORIZE_TEMPERATURE),
             "CATEGORY_BUCKET_NAME": categoryBucketName,
             "CATEGORIES": str(config.CATEGORIES),
-            "CATEGORY_OUTPUT_FORMAT": str(config.CATEGORY_OUTPUT_FORMAT),
+            "CASES_CATEGORY_OUTPUT_FORMAT": str(config.CASES_CATEGORY_OUTPUT_FORMAT),
             "THROTTLE": str(config.BEDROCK_THROTTLE_DELAY_SECONDS),
             
         }
@@ -383,7 +383,7 @@ def buildHealthOnDemandInference(self, execution_role, log_group, s3_utils_layer
             "BEDROCK_CATEGORIZE_TEMPERATURE": str(config.BEDROCK_CATEGORIZE_TEMPERATURE),
             "CATEGORY_BUCKET_NAME": categoryBucketName,
             "CATEGORIES": str(config.CATEGORIES),
-            "CATEGORY_OUTPUT_FORMAT": str(config.CATEGORY_OUTPUT_FORMAT),
+            "CASES_CATEGORY_OUTPUT_FORMAT": str(config.CASES_CATEGORY_OUTPUT_FORMAT),
             "THROTTLE": str(config.BEDROCK_THROTTLE_DELAY_SECONDS),
             
         }
@@ -608,7 +608,8 @@ def buildGetHealthFromOpenSearch(self, execution_role, log_group, prompt_gen_cas
         "BEDROCK_CATEGORIZE_TOP_P": str(config.BEDROCK_CATEGORIZE_TOP_P),
         "CATEGORY_BUCKET_NAME": categoryBucketName,
         "CATEGORIES": str(config.CATEGORIES),
-        "CATEGORY_OUTPUT_FORMAT": str(config.CATEGORY_OUTPUT_FORMAT),
+        "CASES_CATEGORY_OUTPUT_FORMAT": str(config.CASES_CATEGORY_OUTPUT_FORMAT),
+        "HEALTH_OUTPUT_FORMAT": str(config.HEALTH_OUTPUT_FORMAT),
         "BEDROCK_EMBEDDING_MODEL": config.BEDROCK_EMBEDDING_MODEL
     }
 
