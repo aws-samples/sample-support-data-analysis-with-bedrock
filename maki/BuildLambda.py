@@ -456,20 +456,20 @@ def buildBedrockProcessOnDemandOputput(
         prompt_agg_layer,
         s3_report):
 
-    func_name = utils.returnName(config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_NAME_BASE)
+    func_name = utils.returnName(config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_NAME_BASE)
 
     lambdaProcessOnDemandOutput = _lambda.Function(
         self, func_name,
         runtime=_lambda.Runtime.PYTHON_3_12,
-        code=_lambda.Code.from_asset(config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_PATH),
+        code=_lambda.Code.from_asset(config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_PATH),
         function_name=func_name,
         role=execution_role,
-        timeout=cdk.Duration.seconds(config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_TIMEOUT),
+        timeout=cdk.Duration.seconds(config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_TIMEOUT),
         architecture=_lambda.Architecture.X86_64,
-        memory_size=config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_MEMORY,
-        description=config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_DESC,
-        handler=config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_HANDLER_FILE + '.' + config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_HANDLER_FUNC,
-        retry_attempts=config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_RETRIES,
+        memory_size=config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_MEMORY,
+        description=config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_DESC,
+        handler=config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_HANDLER_FILE + '.' + config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_HANDLER_FUNC,
+        retry_attempts=config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_RETRIES,
         log_group=log_group,
         layers=[s3_utils_layer, json_utils_layer, prompt_agg_layer],
         environment={
@@ -486,6 +486,46 @@ def buildBedrockProcessOnDemandOputput(
     lambdaProcessOnDemandOutput.node.add_dependency(execution_role) # add dependency
 
     return lambdaProcessOnDemandOutput
+
+def buildBedrockProcessHealthOnDemandOutput(
+        self,
+        execution_role,
+        log_group,
+        s3_utils_layer,
+        json_utils_layer,
+        prompt_agg_layer,
+        s3_report):
+
+    func_name = utils.returnName(config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_NAME_BASE)
+
+    lambdaProcessHealthOnDemandOutput = _lambda.Function(
+        self, func_name,
+        runtime=_lambda.Runtime.PYTHON_3_12,
+        code=_lambda.Code.from_asset(config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_PATH),
+        function_name=func_name,
+        role=execution_role,
+        timeout=cdk.Duration.seconds(config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_TIMEOUT),
+        architecture=_lambda.Architecture.X86_64,
+        memory_size=config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_MEMORY,
+        description=config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_DESC,
+        handler=config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_HANDLER_FILE + '.' + config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_HANDLER_FUNC,
+        retry_attempts=config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_RETRIES,
+        log_group=log_group,
+        layers=[s3_utils_layer, json_utils_layer, prompt_agg_layer],
+        environment={
+            "S3_AGG_OUTPUT": s3_report,
+            "MODEL_ID" : str(config.BEDROCK_TEXT_MODEL_AGG),
+            "BEDROCK_SUMMARY_TEMPERATURE" : str(config.BEDROCK_SUMMARY_TEMPERATURE),
+            "BEDROCK_MAX_TOKENS" : str(config.BEDROCK_MAX_TOKENS_AGG),
+            "KEY" : config.KEY,
+            "SUMMARY_OUTPUT_FORMAT": str(config.SUMMARY_OUTPUT_FORMAT),
+        }
+    )
+
+    lambdaProcessHealthOnDemandOutput.node.add_dependency(log_group) # add dependency
+    lambdaProcessHealthOnDemandOutput.node.add_dependency(execution_role) # add dependency
+
+    return lambdaProcessHealthOnDemandOutput
 
 def buildCleanOutputFiles(
         self,
