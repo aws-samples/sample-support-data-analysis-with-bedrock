@@ -7,7 +7,7 @@ import os
 import time
 
 from s3 import get_s3_obj_body, store_data, delete_s3_object
-from prompt_gen_cases_input import generate_conversation
+from prompt_gen_input import generate_conversation
 from validate_jsonl import string_to_dict
 
 def exponential_backoff_retry(func, max_retries=5, initial_delay=1):

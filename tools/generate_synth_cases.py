@@ -18,11 +18,11 @@ else:
     sys.path.append(current_dir)
 
 sys.path.append(os.path.join(parent_dir, 'lambda', 'layers', 's3_utils'))
-sys.path.append(os.path.join(parent_dir, 'lambda', 'layers', 'prompt_gen_cases_input'))
+sys.path.append(os.path.join(parent_dir, 'lambda', 'layers', 'prompt_gen_input'))
 
 import config
 from s3 import get_category_examples, get_category_desc, store_data
-from prompt_gen_cases_input import gen_synth_prompt, gen_batch_record 
+from prompt_gen_input import gen_synth_prompt, gen_batch_record_cases 
 
 boto3_bedrock = boto3.client('bedrock')
 model_id_text = config.BEDROCK_TEXT_MODEL
@@ -86,7 +86,7 @@ def main():
 
             # then create a batch input record for each synth case
             # this now includes all categories for examples
-            batch_record = gen_batch_record(synth_case, 
+            batch_record = gen_batch_record_cases(synth_case, 
                 config.SYNTH_CASES_TEMPERATURE, 
                 config.SYNTH_CASES_MAX_TOKENS, 
                 config.SYNTH_CASES_CATEGORIZE_TOP_P,

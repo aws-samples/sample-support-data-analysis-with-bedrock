@@ -6,7 +6,7 @@ from datetime import datetime
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 
 sys.path.append('/opt')
-from prompt_gen_cases_input import gen_batch_record
+from prompt_gen_input import gen_batch_record_health
 from s3 import store_data
 from validate_jsonl import dict_to_jsonl
 
@@ -93,9 +93,6 @@ def handler(event, context):
     bedrock_categorize_temperature = float(os.environ['BEDROCK_CATEGORIZE_TEMPERATURE'])
     bedrock_max_tokens = int(os.environ['BEDROCK_MAX_TOKENS'])
     bedrock_categorize_top_p = float(os.environ['BEDROCK_CATEGORIZE_TOP_P'])
-    categoryBucketName = os.environ['CATEGORY_BUCKET_NAME']
-    categories = os.environ['CATEGORIES']
-    categoryOutputFormat = os.environ['CATEGORY_OUTPUT_FORMAT']
 
     if opensearch_skip == 'true':
         print("Skipping getting health events from OpenSearch")
@@ -142,19 +139,14 @@ def handler(event, context):
             # Generate batch record using the same prompt generation logic
             event_obj_key = f"health-{event_data.get('eventArn', event_hit['_id']).replace(':', '-').replace('/', '-')}.jsonl"
             
-            # For health events, unlike cases, no need to add templated golden examples
-            batch_record = health_event_jsonl
-            '''
-            batch_record = gen_batch_record(
+            # no need for categorization templates for health - already in the data
+            batch_record = gen_batch_record_health(
                 health_event_jsonl,
                 bedrock_categorize_temperature,
                 bedrock_max_tokens,
-                bedrock_categorize_top_p,
-                categoryBucketName,
-                categories,
-                categoryOutputFormat
+                bedrock_categorize_top_p
             )
-            '''
+
             # Store in S3
             store_data(batch_record, s3_health_agg, event_obj_key)
             processed_files.append(event_obj_key)
