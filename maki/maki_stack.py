@@ -173,7 +173,17 @@ class MakiFoundations(Stack):
         )
 
         #processes output from Bedrock ondemand inference
-        functions[config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_NAME_BASE] = BuildLambda.buildBedrockProcessOnDemandOputput(
+        functions[config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_NAME_BASE] = BuildLambda.buildBedrockProcessOnDemandOputput(
+            self,
+            makiRole,
+            log_group,
+            s3_utils_layer,
+            json_utils_layer,
+            prompt_agg_cases_layer,
+            reportBucketName
+        )
+
+        functions[config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_NAME_BASE] = BuildLambda.buildBedrockProcessHealthOnDemandOutput(
             self,
             makiRole,
             log_group,

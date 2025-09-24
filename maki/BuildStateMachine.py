@@ -91,7 +91,7 @@ def buildStateMachine(self, functions, log_group):
     )
 
     stepBedrockOnDemandInferenceHealth = tasks.LambdaInvoke(
-        self, "health-" + config.BEDROCK_ONDEMAND_INF_NAME_BASE,
+        self, config.BEDROCK_HEALTH_ONDEMAND_INF_NAME_BASE,
         lambda_function=lambdaBedrockOnDemandInference,
         payload_response_only=True,
         input_path="$",
@@ -158,8 +158,8 @@ def buildStateMachine(self, functions, log_group):
     )
     
     stepProcessOnDemandOutputCase = tasks.LambdaInvoke(
-        self, config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_NAME_BASE,
-        lambda_function=functions[config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_NAME_BASE],
+        self, config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_NAME_BASE,
+        lambda_function=functions[config.BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_NAME_BASE],
         payload_response_only=True,
         input_path="$",
         output_path = "$",
@@ -169,8 +169,8 @@ def buildStateMachine(self, functions, log_group):
     )
 
     stepProcessOnDemandOutputHealth = tasks.LambdaInvoke(
-        self, "health-" + config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_NAME_BASE,
-        lambda_function=functions[config.BEDROCK_PROCESS_ONDEMAND_OUTPUT_NAME_BASE],
+        self, config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_NAME_BASE,
+        lambda_function=functions[config.BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_NAME_BASE],
         payload_response_only=True,
         input_path="$",
         output_path = "$",
@@ -208,9 +208,9 @@ def buildStateMachine(self, functions, log_group):
         result_path="$.status"
     ).next(end_state)
 
-    no_cases_to_process = sfn.Pass(
+    no_events_to_process = sfn.Pass(
         self,
-        "NoCasesToProcess",
+        "NoEventsToProcess",
         result=sfn.Result.from_object({
             "status": "Execution stopped: no events were found to process"
         }),
@@ -257,13 +257,13 @@ def buildStateMachine(self, functions, log_group):
                                             sfn.Choice(self, router)
                                             .when(
                                                 sfn.Condition.number_equals("$.eventsTotal", 0),
-                                                no_cases_to_process
+                                                no_events_to_process
                                             )
                                             .when(
                                                 sfn.Condition.number_less_than("$.eventsTotal", config.BEDROCK_ONDEMAND_BATCH_INFLECTION),
                                                 sfn.Map(
                                                     self,
-                                                    config.EVENT_ITERATOR,
+                                                    "case-event-iterator",
                                                     max_concurrency=config.EVENT_ITERATOR_MAX_PARALLEL,
                                                     items_path="$.events",
                                                     result_path="$.mapResults",
@@ -300,7 +300,7 @@ def buildStateMachine(self, functions, log_group):
                                             sfn.Choice(self, "health-router")
                                             .when(
                                                 sfn.Condition.number_equals("$.eventsTotal", 0),
-                                                no_cases_to_process
+                                                no_events_to_process
                                             )
                                             .when(
                                                 sfn.Condition.number_less_than("$.eventsTotal", config.BEDROCK_ONDEMAND_BATCH_INFLECTION),
