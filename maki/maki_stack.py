@@ -96,6 +96,14 @@ class MakiFoundations(Stack):
             config.PROMPT_AGG_CASES_LAYER_NAME_BASE
         )
 
+        prompt_agg_health_layer = BuildLambda.buildLambdaLayer(
+            self,
+            makiRole,
+            config.PROMPT_AGG_HEALTH_LAYER_PATH,
+            config.PROMPT_AGG_HEALTH_LAYER_DESC,
+            config.PROMPT_AGG_HEALTH_LAYER_NAME_BASE
+        )
+
         opensearch_utils_layer = BuildLambda.buildLambdaLayer(
             self, 
             makiRole, 
@@ -179,6 +187,7 @@ class MakiFoundations(Stack):
             s3_utils_layer,
             json_utils_layer,
             prompt_agg_cases_layer,
+            prompt_agg_health_layer,
             llmOutputBucketName,
             reportBucketName,
             archiveBucketName,

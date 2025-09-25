@@ -438,7 +438,8 @@ def buildBedrockProcessBatchOutput(
         log_group, 
         s3_utils_layer, 
         json_utils_layer, 
-        prompt_agg_layer, 
+        prompt_agg_cases_layer,
+        prompt_agg_health_layer, 
         s3_batch_output,
         s3_report,
         s3_archive,
@@ -473,7 +474,7 @@ def buildBedrockProcessBatchOutput(
         handler=config.BEDROCK_PROCESS_BATCH_OUTPUT_HANDLER_FILE + '.' + config.BEDROCK_PROCESS_BATCH_OUTPUT_HANDLER_FUNC,
         retry_attempts=config.BEDROCK_PROCESS_BATCH_OUTPUT_RETRIES,
         log_group=log_group,
-        layers=[s3_utils_layer, json_utils_layer, prompt_agg_layer],
+        layers=[s3_utils_layer, json_utils_layer, prompt_agg_cases_layer, prompt_agg_health_layer],
         environment=environment
     )       
 
