@@ -32,21 +32,21 @@ def buildStateMachine(self, functions, log_group):
         self, config.CHECK_ENABLED_MODELS_NAME_BASE,
         lambda_function=lambdaCheckEnabledModels,
         payload_response_only=True,
-        output_path = "$"
+        result_path="$.enabledModelsCheck"
     )
 
     stepCheckRunningJobs = tasks.LambdaInvoke(
         self, config.CHECK_RUNNING_JOBS_NAME_BASE,
         lambda_function=lambdaCheckRunningJobs,
         payload_response_only=True,
-        output_path = "$"
+        result_path="$.runningJobsCheck"
     )
 
     stepCheckBatchInferenceJobs = tasks.LambdaInvoke(
         self, f"pre-{config.CHECK_BATCH_INFERENCE_JOBS_NAME_BASE}",
         lambda_function=lambdaCheckBatchInferenceJobs,
         payload_response_only=True,
-        output_path = "$"
+        result_path="$.batchJobsCheck"
     )
 
     # Create both data source steps
@@ -64,23 +64,15 @@ def buildStateMachine(self, functions, log_group):
         output_path = "$"
     )
 
-    # Create a Pass state to get MODE from SSM Parameter Store
+    # Create a Pass state that preserves the existing mode
     stepInjectMode = sfn.Pass(
         self, "inject-mode",
+        result_path="$.modeConfig",
         parameters={
-            "parameterName": utils.returnName("maki-mode")
+            "Parameter": {
+                "Value.$": "$.mode"
+            }
         }
-    ).next(
-        tasks.CallAwsService(
-            self, "get-mode-parameter",
-            service="ssm",
-            action="getParameter",
-            parameters={
-                "Name": sfn.JsonPath.string_at("$.parameterName")
-            },
-            result_path="$.modeConfig",
-            iam_resources=["*"]
-        )
     )
 
     stepBedrockOnDemandInferenceCase = tasks.LambdaInvoke(
@@ -228,7 +220,7 @@ def buildStateMachine(self, functions, log_group):
     definition = start_state.next(stepCheckEnabledModels).next(
         sfn.Choice(self, routerEnabledModels)
         .when(
-            sfn.Condition.boolean_equals("$.enabledModels", False),
+            sfn.Condition.boolean_equals("$.enabledModelsCheck.enabledModels", False),
             not_enabled
         )
         .otherwise(
@@ -236,7 +228,7 @@ def buildStateMachine(self, functions, log_group):
             .next(
                 sfn.Choice(self, routerCheckJobs)
                     .when(
-                        sfn.Condition.number_greater_than("$.runningExecutions", 1),
+                        sfn.Condition.number_greater_than("$.runningJobsCheck.runningExecutions", 1),
                         already_running
                     )
                     .otherwise(
@@ -244,7 +236,7 @@ def buildStateMachine(self, functions, log_group):
                         .next(
                             sfn.Choice(self, routerCheckBatchJobs)
                             .when(
-                                sfn.Condition.number_greater_than("$.incompleteJobsCount", 0),
+                                sfn.Condition.number_greater_than("$.batchJobsCheck.incompleteJobsCount", 0),
                                 batch_jobs_running
                             )
                             .otherwise(
@@ -283,7 +275,7 @@ def buildStateMachine(self, functions, log_group):
                                                 .next(
                                                     sfn.Choice(self, "CheckBatchJobsCompletion")
                                                     .when(
-                                                        sfn.Condition.number_greater_than("$.incompleteJobsCount", 0),
+                                                        sfn.Condition.number_greater_than("$.batchJobsCheck.incompleteJobsCount", 0),
                                                         waitForBatchCompletionCase
                                                         .next(stepPostCheckBatchInferenceJobsCase)
                                                     )
@@ -326,7 +318,7 @@ def buildStateMachine(self, functions, log_group):
                                                 .next(
                                                     sfn.Choice(self, "CheckHealthBatchJobsCompletion")
                                                     .when(
-                                                        sfn.Condition.number_greater_than("$.incompleteJobsCount", 0),
+                                                        sfn.Condition.number_greater_than("$.batchJobsCheck.incompleteJobsCount", 0),
                                                         waitForBatchCompletionHealth
                                                         .next(stepPostCheckBatchInferenceJobsHealth)
                                                     )

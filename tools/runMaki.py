@@ -33,8 +33,7 @@ print("=" * 50)
 
 # Define the input data for the state machine execution
 input_data = {
-    "key1": "value1",
-    "key2": "value2"
+    "mode": current_mode
 }
 
 def format_duration(start_time, current_time):
@@ -93,7 +92,7 @@ try:
     
     response = sfn_client.start_execution(
         stateMachineArn=state_machine_arn,
-     #   input=str(input_data)
+        input=json.dumps(input_data)
     )
 
     # Get the execution ARN
