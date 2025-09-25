@@ -111,14 +111,14 @@ def buildStateMachine(self, functions, log_group):
         self, f"post-{config.CHECK_BATCH_INFERENCE_JOBS_NAME_BASE}",
         lambda_function=lambdaCheckBatchInferenceJobs,
         payload_response_only=True,
-        output_path = "$"
+        result_path="$.batchJobsCheck"
     )
 
     stepPostCheckBatchInferenceJobsHealth = tasks.LambdaInvoke(
         self, f"health-post-{config.CHECK_BATCH_INFERENCE_JOBS_NAME_BASE}",
         lambda_function=lambdaCheckBatchInferenceJobs,
         payload_response_only=True,
-        output_path = "$"
+        result_path="$.batchJobsCheck"
     )
 
     stepProcessBatchOutputCase = tasks.LambdaInvoke(
