@@ -328,6 +328,10 @@ PROMPT_AGG_CASES_LAYER_PATH = 'lambda/layers/prompt_agg_cases'
 PROMPT_AGG_CASES_LAYER_NAME_BASE = 'MakiPromptAggCases'
 PROMPT_AGG_CASES_LAYER_DESC = 'MAKI Prompt Aggregate Cases Layer'
 
+PROMPT_AGG_HEALTH_LAYER_PATH = 'lambda/layers/prompt_agg_health'
+PROMPT_AGG_HEALTH_LAYER_NAME_BASE = 'MakiPromptAggHealth'
+PROMPT_AGG_HEALTH_LAYER_DESC = 'MAKI Prompt Aggregate Health Layer'
+
 # this Lambda layer is used for various S3 functions
 S3_UTILS_LAYER_PATH = 'lambda/layers/s3_utils'
 S3_UTILS_LAYER_NAME_BASE = 'MakiS3Utils'
