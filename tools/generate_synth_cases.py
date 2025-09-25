@@ -92,7 +92,7 @@ def main():
                 config.SYNTH_CASES_CATEGORIZE_TOP_P,
                 categoryBucketName,
                 str(config.CATEGORIES),
-                str(config.CATEGORY_OUTPUT_FORMAT)
+                str(config.CASES_CATEGORY_OUTPUT_FORMAT)
             )
 
             store_data(batch_record, genCasesBucketName, key)
