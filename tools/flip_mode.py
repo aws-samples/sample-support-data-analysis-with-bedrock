@@ -26,6 +26,7 @@ def set_mode(new_mode):
         ssm.put_parameter(
             Name=f"maki-{account_id}-{region}-maki-mode",
             Value=new_mode,
+            Type='String',
             Overwrite=True
         )
         print(f"Mode set to: {new_mode}")

@@ -39,7 +39,17 @@ def handler(event, context):
                 continue
 
             obj = get_s3_obj_body(bucket_name_batch_output, event, True)
-            data = json.loads(obj)
+            if not obj or obj.strip() == '':
+                print(f"Empty or invalid object for event: {event}")
+                continue
+            
+            try:
+                data = json.loads(obj)
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error for event {event}: {e}")
+                print(f"Object content: {repr(obj[:200])}")
+                continue
+            
             eventsN += 1
 
             try:
