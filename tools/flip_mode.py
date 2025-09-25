@@ -35,12 +35,16 @@ def set_mode(new_mode):
 def main():
     parser = argparse.ArgumentParser(description='Flip MODE between health and cases')
     parser.add_argument('--mode', choices=['health', 'cases'], help='Set specific mode')
+    parser.add_argument('--show', action='store_true', help='Show current mode without changing it')
     
     args = parser.parse_args()
     
     current_mode = get_current_mode()
     if current_mode:
         print(f"Current mode: {current_mode}")
+    
+    if args.show:
+        return
     
     if args.mode:
         new_mode = args.mode
