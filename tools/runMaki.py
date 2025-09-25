@@ -79,7 +79,23 @@ def get_running_function(state_machine_arn):
         if 'ItemProcessor' in event_iterator:
             state_details = event_iterator['ItemProcessor']['States'].get(running_step_name, {})
     
-    function_arn = state_details.get('Resource', 'No function associated')
+    function_arn = state_details.get('Resource', '')
+    
+    # Determine what type of step this is if no function
+    if not function_arn:
+        step_type = state_details.get('Type', '')
+        if step_type == 'Map':
+            function_arn = 'Map State (parallel processing)'
+        elif step_type == 'Choice':
+            function_arn = 'Choice State (conditional routing)'
+        elif step_type == 'Pass':
+            function_arn = 'Pass State (data transformation)'
+        elif step_type == 'Wait':
+            function_arn = 'Wait State (delay)'
+        elif step_type == 'Parallel':
+            function_arn = 'Parallel State (concurrent execution)'
+        else:
+            function_arn = f'{step_type} State' if step_type else 'State machine step'
 
     function_data = {"Step Name": running_step_name, "Function ARN": function_arn}
     return function_data
