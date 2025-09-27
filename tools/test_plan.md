@@ -60,7 +60,6 @@ python tools/runMaki.py
 }
 ### END OUTPUT
 -->
-<!--
 ## Test Cases / OnDemand
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
@@ -88,14 +87,13 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
--->
 
+<!--
 ## Test Cases / Batch
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
 <!-- rather than generating many cases every time, store 100+ cases in s3://maki-temp to save time and run the below copy script
 python tools/generate_synth_cases.py --min-cases 5 --max-cases 10
--->
 python tools/copy_s3_data.py from-temp 
 python tools/runMaki.py
 ### OUTPUT
@@ -120,3 +118,4 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
+-->
