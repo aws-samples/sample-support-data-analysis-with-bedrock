@@ -121,7 +121,7 @@ def main():
     args = parser.parse_args()
     
     # If no arguments provided, show current settings
-    if not any([args.size, args.endpoint, args.count]):
+    if not any([args.size is not None, args.endpoint, args.count]):
         current_size = get_opensearch_query_size()
         current_endpoint = get_opensearch_endpoint()
         print(f"Current OPENSEARCH_QUERY_SIZE: {current_size}")
@@ -129,9 +129,9 @@ def main():
         return
     
     # Handle size parameter
-    if args.size:
-        if args.size <= 0:
-            print("❌ Size must be a positive integer")
+    if args.size is not None:
+        if args.size < 0:
+            print("❌ Size must be a non-negative integer")
             sys.exit(1)
         set_opensearch_query_size(args.size)
     
