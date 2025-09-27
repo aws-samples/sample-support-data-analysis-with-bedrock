@@ -72,7 +72,8 @@ def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, sta
                     }
                 }
             },
-            "sort": [{"lastUpdatedTime": {"order": "desc"}}]
+            "sort": [{"lastUpdatedTime": {"order": "desc"}}],
+            "size": int(os.environ.get('OPENSEARCH_QUERY_SIZE', '10000'))
         }
 
         response = client.search(index=opensearch_index, body=query)
