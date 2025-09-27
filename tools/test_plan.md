@@ -69,12 +69,7 @@ python tools/runMaki.py
 ### OUTPUT
 {
   "Summary": {
-    "eventsTotal": *,
-    "events": [],
-    "ondemand_run_datetime": "*",
-    "status": {
-      "status": "Execution stopped: no events were found to process"
-    }
+    "summary": "*"
   },
   "Event_Example": {
     "caseId": "*",
