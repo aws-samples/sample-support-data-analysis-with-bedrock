@@ -10,8 +10,8 @@ import boto3
 import json
 
 def check_s3_files(section, expected_output):
-    """Check S3 files for batch processing"""
-    if "Test Cases / Batch" not in section:
+    """Check S3 files for batch and ondemand processing"""
+    if "Test Cases / Batch" not in section and "Test Cases / OnDemand" not in section:
         return True
         
     # Get AWS account and region
@@ -23,54 +23,128 @@ def check_s3_files(section, expected_output):
     bucket_name = f'maki-{account_id}-{region}-report'
     
     try:
-        # List batch directories
-        response = s3_client.list_objects_v2(
-            Bucket=bucket_name,
-            Prefix='batch/',
-            Delimiter='/'
-        )
-        
-        if 'CommonPrefixes' not in response:
-            print("❌ No batch directories found")
-            return False
+        if "Test Cases / Batch" in section:
+            # Handle batch processing
+            response = s3_client.list_objects_v2(
+                Bucket=bucket_name,
+                Prefix='batch/',
+                Delimiter='/'
+            )
             
-        # Get the latest batch directory
-        batch_dirs = [prefix['Prefix'] for prefix in response['CommonPrefixes']]
-        latest_batch = sorted(batch_dirs)[-1]
-        
-        # Check for summary.json
-        summary_key = f"{latest_batch}summary.json"
-        try:
-            summary_obj = s3_client.get_object(Bucket=bucket_name, Key=summary_key)
-            summary_content = summary_obj['Body'].read().decode('utf-8')
-            print(f"✅ Found summary: s3://{bucket_name}/{summary_key}")
-        except:
-            print(f"❌ Summary not found: s3://{bucket_name}/{summary_key}")
-            return False
+            if 'CommonPrefixes' not in response:
+                print("❌ No batch directories found")
+                return False
+                
+            # Get the latest batch directory
+            batch_dirs = [prefix['Prefix'] for prefix in response['CommonPrefixes']]
+            latest_batch = sorted(batch_dirs)[-1]
             
-        # Check for event files
-        events_prefix = f"{latest_batch}events/"
-        events_response = s3_client.list_objects_v2(
-            Bucket=bucket_name,
-            Prefix=events_prefix,
-            MaxKeys=10
-        )
-        
-        if 'Contents' not in events_response:
-            print(f"❌ No event files found in: s3://{bucket_name}/{events_prefix}")
-            return False
+            # Check for summary.json
+            summary_key = f"{latest_batch}summary.json"
+            try:
+                summary_obj = s3_client.get_object(Bucket=bucket_name, Key=summary_key)
+                summary_content = summary_obj['Body'].read().decode('utf-8')
+                print(f"✅ Found summary: s3://{bucket_name}/{summary_key}")
+            except:
+                print(f"❌ Summary not found: s3://{bucket_name}/{summary_key}")
+                return False
+                
+            # Check for event files
+            events_prefix = f"{latest_batch}events/"
+            events_response = s3_client.list_objects_v2(
+                Bucket=bucket_name,
+                Prefix=events_prefix,
+                MaxKeys=10
+            )
             
-        # Get first event file
-        event_key = events_response['Contents'][0]['Key']
-        event_obj = s3_client.get_object(Bucket=bucket_name, Key=event_key)
-        event_content = event_obj['Body'].read().decode('utf-8')
-        print(f"✅ Found event file: s3://{bucket_name}/{event_key}")
-        
-        # Create combined output like runMaki.py does
-        combined_output = {
-            "Summary": json.loads(summary_content),
-            "Event_Example": json.loads(event_content)
-        }
+            if 'Contents' not in events_response:
+                print(f"❌ No event files found in: s3://{bucket_name}/{events_prefix}")
+                return False
+                
+            # Get first event file
+            event_key = events_response['Contents'][0]['Key']
+            event_obj = s3_client.get_object(Bucket=bucket_name, Key=event_key)
+            event_content = event_obj['Body'].read().decode('utf-8')
+            print(f"✅ Found event file: s3://{bucket_name}/{event_key}")
+            
+            # Create combined output like runMaki.py does
+            combined_output = {
+                "Summary": json.loads(summary_content),
+                "Event_Example": json.loads(event_content)
+            }
+            
+        else:  # OnDemand processing
+            # Handle ondemand processing
+            response = s3_client.list_objects_v2(
+                Bucket=bucket_name,
+                Prefix='ondemand/',
+                Delimiter='/'
+            )
+            
+            if 'CommonPrefixes' not in response:
+                print("❌ No ondemand directories found")
+                return False
+                
+            # Get the latest ondemand directory
+            ondemand_dirs = [prefix['Prefix'] for prefix in response['CommonPrefixes']]
+            latest_ondemand = sorted(ondemand_dirs)[-1]
+            
+            # Check for summary.json
+            summary_key = f"{latest_ondemand}summary.json"
+            try:
+                summary_obj = s3_client.get_object(Bucket=bucket_name, Key=summary_key)
+                summary_content = summary_obj['Body'].read().decode('utf-8')
+                print(f"✅ Found summary: s3://{bucket_name}/{summary_key}")
+                
+                # Validate summary JSON
+                try:
+                    summary_json = json.loads(summary_content)
+                except json.JSONDecodeError as e:
+                    print(f"❌ Invalid JSON in summary file: {e}")
+                    return False
+                    
+            except:
+                print(f"❌ Summary not found: s3://{bucket_name}/{summary_key}")
+                return False
+                
+            # Check for event files in the same directory
+            events_response = s3_client.list_objects_v2(
+                Bucket=bucket_name,
+                Prefix=latest_ondemand,
+                MaxKeys=100
+            )
+            
+            event_content = None
+            event_json = None
+            if 'Contents' in events_response:
+                for obj in events_response['Contents']:
+                    key = obj['Key']
+                    if (key.endswith('.json') and 
+                        ('case-gen-' in key) and 
+                        'summary.json' not in key):
+                        event_obj = s3_client.get_object(Bucket=bucket_name, Key=key)
+                        event_content = event_obj['Body'].read().decode('utf-8')
+                        print(f"✅ Found event file: s3://{bucket_name}/{key}")
+                        
+                        # Validate event JSON
+                        try:
+                            event_json = json.loads(event_content)
+                        except json.JSONDecodeError as e:
+                            print(f"❌ Invalid JSON in event file: {e}")
+                            return False
+                        break
+            
+            # Create combined output like runMaki.py does
+            if event_json:
+                combined_output = {
+                    "Summary": summary_json,
+                    "Event_Example": event_json
+                }
+            else:
+                combined_output = {
+                    "Summary": summary_json,
+                    "Event_Example": "No individual event files found"
+                }
         
         # Validate against expected output
         combined_json = json.dumps(combined_output, indent=2)
@@ -225,7 +299,7 @@ def parse_test_plan():
 
 def main():
     parser = argparse.ArgumentParser(description="Execute MAKI Test Plan")
-    parser.add_argument("-check-files-only", action="store_true",
+    parser.add_argument("-check-files-only", "-c", action="store_true",
                        help="Only check S3 files against expected output, skip command execution")
     args = parser.parse_args()
     
