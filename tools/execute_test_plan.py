@@ -79,6 +79,9 @@ def parse_test_plan():
     import re
     content = re.sub(r'<!--.*?-->', '', content, flags=re.DOTALL)
     
+    # Remove Usage section
+    content = re.sub(r'## Usage.*?## End Usage', '', content, flags=re.DOTALL)
+    
     lines = content.strip().split('\n')
     current_section = ""
     i = 0

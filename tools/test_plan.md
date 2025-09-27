@@ -1,10 +1,45 @@
+# MAKI Test Plan
+
+## Usage
+Run the test plan with: `python tools/execute_test_plan.py`
+
+### File Format
+- Commands are organized under `## Section Name` headers
+- Each command should be on its own line
+- Comment out commands using HTML comments: `<!--command-->`
+- Add expected output validation using:
+  ```
+  ### OUTPUT
+  expected output pattern (use * for wildcards)
+  ### END OUTPUT
+  ```
+- Output validation applies only to the immediately preceding command
+
+### Examples
+```
 ## Deploy
+cdk synth MakiFoundations
+<!--cdk deploy MakiFoundations --require-approvals never-->
+
+## Test
+python tools/runMaki.py
+### OUTPUT
+{
+  "status": "*"
+}
+### END OUTPUT
+```
+## End Usage
+
+## Deploy
+<!--
 cdk synth MakiFoundations
 cdk deploy MakiFoundations --require-approvals never
 cdk synth MakiData
-<!--cdk deploy MakiData --require-approvals never -->
+cdk deploy MakiData --require-approvals never 
 cdk synth MakiEmbeddings
 cdk deploy MakiEmbeddings --require-approvals never
+-->
 
 ## Purge s3 buckets
 python tools/purge_s3_data.py
@@ -20,6 +55,16 @@ python tools/runMaki.py
   "status": {
     "status": "Execution stopped: no events were found to process"
   }
+}
+### END OUTPUT
+
+## Test Cases / OnDemand
+python tools/flip_mode.py --mode cases
+python tools/generate_synth_cases.py -q
+python tools/runMaki.py
+### OUTPUT
+{
+  "summary": "{\n  \"summary\": \"*\n}"
 }
 ### END OUTPUT
 
