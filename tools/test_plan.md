@@ -29,6 +29,21 @@ python tools/runMaki.py
 }
 ### END OUTPUT
 ```
+
+### Batch Testing Optimization
+For Test Cases / Batch, to save time generating many cases repeatedly:
+
+rather than using the below to generate the cases
+```
+python tools/generate_synth_cases.py --min-cases 5 --max-cases 10
+```
+
+you can use the below th store cases in s3://maki-temp, and copy them over
+
+```
+python tools/copy_s3_data.py from-temp 
+```
+
 ## End Usage
 
 ## Deploy
@@ -41,8 +56,8 @@ cdk synth MakiEmbeddings
 cdk deploy MakiEmbeddings --require-approvals never
 -->
 
-## Test Cases / Empty
 <!--
+## Test Cases / Empty
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
 python tools/runMaki.py
@@ -60,6 +75,8 @@ python tools/runMaki.py
 }
 ### END OUTPUT
 -->
+
+<!--
 ## Test Cases / OnDemand
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
@@ -87,13 +104,11 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
+-->
 
-<!--
 ## Test Cases / Batch
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
-<!-- rather than generating many cases every time, store 100+ cases in s3://maki-temp to save time and run the below copy script
-python tools/generate_synth_cases.py --min-cases 5 --max-cases 10
 python tools/copy_s3_data.py from-temp 
 python tools/runMaki.py
 ### OUTPUT
@@ -118,4 +133,3 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
--->
