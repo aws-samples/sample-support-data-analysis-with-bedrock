@@ -27,6 +27,7 @@ def buildStateMachine(self, functions, log_group):
     lambdaBedrockOnDemandInference = functions[config.BEDROCK_ONDEMAND_INF_NAME_BASE]
     lambdaBedrockHealthOnDemandInference = functions[config.BEDROCK_HEALTH_ONDEMAND_INF_NAME_BASE]
     lambdaBedrockBatchInference = functions[config.BEDROCK_BATCH_INF_JOB_NAME_BASE]
+    lambdaBedrockBatchInferenceHealth = functions["health-" + config.BEDROCK_BATCH_INF_JOB_NAME_BASE]
 
     stepCheckEnabledModels = tasks.LambdaInvoke(
         self, config.CHECK_ENABLED_MODELS_NAME_BASE,
@@ -101,7 +102,7 @@ def buildStateMachine(self, functions, log_group):
 
     stepBedrockBatchInferenceHealth = tasks.LambdaInvoke(
         self, "health-" + config.BEDROCK_BATCH_INF_JOB_NAME_BASE,
-        lambda_function=lambdaBedrockBatchInference,
+        lambda_function=lambdaBedrockBatchInferenceHealth,
         payload_response_only=True,
         input_path="$",
         output_path = "$"
@@ -360,6 +361,7 @@ def buildStateMachine(self, functions, log_group):
     state_machine.node.add_dependency(lambdaBedrockOnDemandInference) # add dependency
     state_machine.node.add_dependency(lambdaBedrockHealthOnDemandInference) # add dependency
     state_machine.node.add_dependency(lambdaBedrockBatchInference) # add dependency
+    state_machine.node.add_dependency(lambdaBedrockBatchInferenceHealth) # add dependency
     state_machine.node.add_dependency(lambdaCheckBatchInferenceJobs)
     state_machine.node.add_dependency(lambdaCheckEnabledModels) # add dependency for the new step
 
