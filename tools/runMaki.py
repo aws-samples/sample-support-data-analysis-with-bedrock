@@ -21,12 +21,12 @@ def get_example_event_file():
             if 'Contents' not in response:
                 continue
                 
-            # Find a case JSON file (not summary.json)
+            # Find a case or health event JSON file (not summary.json)
             for obj in response['Contents']:
                 key = obj['Key']
                 if (key.endswith('.json') and 
-                    ('case-' in key or 'case-gen-' in key) and 
-                    'summary.json' not in key):
+                    ('case-' in key or 'case-gen-' in key or 'health-' in key or '/events/' in key) and 
+                    'summary.json' not in key and 'health_summary.json' not in key):
                     # Get the file content
                     file_response = s3_client.get_object(Bucket=bucket_name, Key=key)
                     content = file_response['Body'].read().decode('utf-8')

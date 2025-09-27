@@ -24,7 +24,7 @@ def handler(event, context):
 
     try:
 
-        batch_output = list_bucket_object_keys(bucket_name_batch_output, prefix="maki-")
+        batch_output = list_bucket_object_keys(bucket_name_batch_output, prefix="")
 
         aggregate = ''
 
