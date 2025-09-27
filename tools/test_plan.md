@@ -132,31 +132,85 @@ python tools/runMaki.py
 ### END OUTPUT
 -->
 
+<!--
 ## Test Health / Empty
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
 python tools/opensearch_client.py --size 0
 python tools/runMaki.py
 ### OUTPUT
+{
+  "Summary": {
+    "eventsTotal": 0,
+    "events": [],
+    "ondemand_run_datetime": "*",
+    "mode": "health",
+    "status": {
+      "status": "Execution stopped: no events were found to process"
+    }
+  },
+  "Event_Example": "No individual event files found"
+}
 ### END OUTPUT
+-->
 
 <!--
 ## Test Health / OnDemand
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
+python tools/opensearch_client.py --endpoint
 python tools/opensearch_client.py --size 1 
 python tools/runMaki.py
 ### OUTPUT
+{
+  "Summary": {
+    "summary": "*"
+  },
+  "Event_Example": {
+    "arn": "*",
+    "service": "*",
+    "eventTypeCode": "*",
+    "eventTypeCategory": "*",
+    "region": "*",
+    "startTime": "*",
+    "lastUpdatedTime": "*",
+    "statusCode": "*",
+    "eventScopeCode": "*",
+    "latestDescription": "*",
+    "event_summary": "*",
+    "suggestion_action": "*",
+    "suggestion_link": "*"
+  }
+}
 ### END OUTPUT
 -->
 
-<!--
 ## Test Health / Batch
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
+python tools/opensearch_client.py --endpoint
 python tools/opensearch_client.py --size 101 
 python tools/runMaki.py
 ### OUTPUT
+{
+  "Summary": {
+    "summary": "*"
+  },
+  "Event_Example": {
+    "arn": "*",
+    "service": "*",
+    "eventTypeCode": "*",
+    "eventTypeCategory": "*",
+    "region": "*",
+    "startTime": "*",
+    "lastUpdatedTime": "*",
+    "statusCode": "*",
+    "eventScopeCode": "*",
+    "latestDescription": "*",
+    "event_summary": "*",
+    "suggestion_action": "*",
+    "suggestion_link": "*"
+  }
+}
 ### END OUTPUT
--->
 
