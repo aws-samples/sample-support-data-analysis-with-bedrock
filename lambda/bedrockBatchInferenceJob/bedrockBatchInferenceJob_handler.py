@@ -12,9 +12,13 @@ from s3 import empty_s3_bucket, extract_bucket_name, move_s3_object
 # create the singular batch job
 def create_batch_job(bedrock, model_id, input_s3_uri, batches_s3_uri, output_s3_uri, role, name, batch_num, batch_files):
 
-    # create unique batch job name
-    batch_job_name = f"{name}-batch{batch_num}-{str(uuid.uuid4())[:8]}"
-    print(f"create new batch inf job: {batch_job_name}")
+    # create unique batch job name (max 63 chars)
+    # Extract account and region for shorter name
+    account_id = boto3.client('sts').get_caller_identity()['Account']
+    region = boto3.Session().region_name
+    base_name = f"maki-{account_id[-6:]}-{region[-4:]}"  # Use last 6 digits of account and last 4 chars of region
+    batch_job_name = f"{base_name}-b{batch_num}-{str(uuid.uuid4())[:8]}"
+    print(f"create new batch inf job: {batch_job_name} (length: {len(batch_job_name)})")
 
     input_s3_bucket = extract_bucket_name(input_s3_uri)
     batches_s3_bucket = extract_bucket_name(batches_s3_uri)
@@ -60,6 +64,16 @@ def create_batch_job(bedrock, model_id, input_s3_uri, batches_s3_uri, output_s3_
 def handler(event, context):
     events_total = event.get('eventsTotal')
     events = event.get('events')
+
+    # Handle case when there are no events to process
+    if not events or events_total == 0:
+        print("No events to process for batch inference")
+        return {
+            'eventsTotal': 0,
+            'events': [],
+            'batch_jobs': [],
+            'remaining_files': 0
+        }
 
     input_s3_uri = os.environ['S3_INPUT']
     batches_s3_uri = os.environ['S3_BATCHES']

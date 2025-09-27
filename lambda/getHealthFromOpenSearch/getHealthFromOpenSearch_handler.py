@@ -43,6 +43,8 @@ def get_opensearch_endpoint_from_ssm():
         response = ssm.get_parameter(Name=f"maki-{account_id}-{region}-opensearch-endpoint")
         return response['Parameter']['Value']
     except Exception as e:
+        print(f"Error getting opensearch-endpoint from SSM: {e}")
+        return "placeholder-please-update-with-your-endpoint"  # default fallback
 
 def get_opensearch_query_size_from_ssm():
     """Get OPENSEARCH_QUERY_SIZE value from SSM Parameter Store"""

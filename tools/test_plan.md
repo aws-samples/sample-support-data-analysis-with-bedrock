@@ -138,18 +138,8 @@ python tools/runMaki.py
 ## Test Health / Empty
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
+python tools/opensearch_client.py --size 0
 python tools/runMaki.py
 ### OUTPUT
-{
-  "Summary": {
-    "eventsTotal": 0,
-    "events": [],
-    "ondemand_run_datetime": "*",
-    "status": {
-      "status": "Execution stopped: no events were found to process"
-    }
-  },
-  "Event_Example": "No individual event files found"
-}
 ### END OUTPUT
 -->

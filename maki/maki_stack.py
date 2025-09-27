@@ -179,6 +179,17 @@ class MakiFoundations(Stack):
             llmOutputBucketName
         )
         
+        # create the Bedrock batch inference job for health
+        functions["health-" + config.BEDROCK_BATCH_INF_JOB_NAME_BASE] = BuildLambda.buildBedrockBatchInferenceJobHealth(
+            self, 
+            makiRole, 
+            log_group, 
+            s3_utils_layer,
+            healthAggBucketName,
+            batchesBucketName,
+            llmOutputBucketName
+        )
+        
         # processes outputs from the Bedrock batch inference
         functions[config.BEDROCK_PROCESS_BATCH_OUTPUT_NAME_BASE] = BuildLambda.buildBedrockProcessBatchOutput(
             self,
