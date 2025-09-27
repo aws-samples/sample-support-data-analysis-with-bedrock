@@ -54,7 +54,6 @@ cdk deploy MakiData --require-approvals never
 cdk synth MakiEmbeddings
 cdk deploy MakiEmbeddings --require-approvals never
 
-<!--
 ## Test Cases / Empty
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
@@ -72,9 +71,7 @@ python tools/runMaki.py
   "Event_Example": "No individual event files found"
 }
 ### END OUTPUT
--->
 
-<!--
 ## Test Cases / OnDemand
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
@@ -102,9 +99,7 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
--->
 
-<!--
 ## Test Cases / Batch
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
@@ -132,7 +127,6 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
--->
 
 <!--
 ## Test Health / Empty
@@ -143,3 +137,24 @@ python tools/runMaki.py
 ### OUTPUT
 ### END OUTPUT
 -->
+
+<!--
+## Test Health / OnDemand
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode health
+python tools/opensearch_client.py --size 1 
+python tools/runMaki.py
+### OUTPUT
+### END OUTPUT
+-->
+
+<!--
+## Test Health / Batch
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode health
+python tools/opensearch_client.py --size 101 
+python tools/runMaki.py
+### OUTPUT
+### END OUTPUT
+-->
+

@@ -24,7 +24,7 @@ def handler(event, context):
 
     try:
 
-        batch_output = list_bucket_object_keys(bucket_name_batch_output, prefix="maki-")
+        batch_output = list_bucket_object_keys(bucket_name_batch_output, prefix="")
 
         aggregate = ''
 
@@ -55,11 +55,20 @@ def handler(event, context):
                 if is_valid_json(val):
                     json_val = json.loads(val)
                     key = timestamp + '/events/' + event.split('/')[2].split('.')[0] + '-output.json'
-                    aggregate += 'health_event: '  + str(json_val.get('eventId', 'unknown')) + ':\n'
-                    aggregate += 'status: ' + str(json_val.get('status', 'unknown')) + '\n'
-                    aggregate += json_val.get('health_summary', json_val.get('event_summary', '')) + '\n\n'
+                    aggregate += 'health_event: '  + str(json_val.get('arn', json_val.get('eventId', 'unknown'))) + ':\n'
+                    aggregate += 'status: ' + str(json_val.get('statusCode', json_val.get('status', 'unknown'))) + '\n'
+                    aggregate += json_val.get('event_summary', json_val.get('health_summary', '')) + '\n\n'
                     print("Store " + key + ' in ' + bucket_name_report) 
-                    store_data(val, bucket_name_report, key)
+                    
+                    # Store JSON directly without reformatting
+                    s3_client = boto3.client('s3')
+                    s3_client.put_object(
+                        Bucket=bucket_name_report,
+                        Key=key,
+                        Body=val,
+                        ContentType='application/json'
+                    )
+                    
                     move_s3_object(bucket_name_batch_output, event, bucket_name_archive, event)
                 else:
                     print("Invalid JSON: " + val) # write code to handle these
