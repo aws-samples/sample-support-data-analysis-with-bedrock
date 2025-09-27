@@ -180,6 +180,7 @@ OPENSEARCH_COLLECTION_NAME = 'maki-health'
 OPENSEARCH_INDEX = 'aws-health-events'
 OPENSEARCH_SKIP = 'false'  # Set to 'true' to skip OpenSearch queries
 OPENSEARCH_ENDPOINT = ''
+OPENSEARCH_QUERY_SIZE = 10000  # Maximum number of events to retrieve per query
 
 ####
 # IAM

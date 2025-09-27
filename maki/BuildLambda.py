@@ -602,6 +602,7 @@ def buildGetHealthFromOpenSearch(self, execution_role, log_group, prompt_gen_cas
         "OPENSEARCH_SKIP": config.OPENSEARCH_SKIP,
         "OPENSEARCH_ENDPOINT": opensearch_endpoint,
         "OPENSEARCH_INDEX": config.OPENSEARCH_INDEX,
+        "OPENSEARCH_QUERY_SIZE": str(config.OPENSEARCH_QUERY_SIZE),
         "HEALTH_EVENTS_SINCE": "FROM_SSM",  # Will be retrieved from SSM Parameter Store
         "S3_HEALTH_AGG": healthAggBucketName,
         "BEDROCK_CATEGORIZE_TEMPERATURE": str(config.BEDROCK_CATEGORIZE_TEMPERATURE),
