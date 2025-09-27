@@ -27,12 +27,21 @@ def buildSSMParameters(self):
     opensearch_endpoint_parameter = ssm.StringParameter(
         self, "MakiOpenSearchEndpointParameter",
         parameter_name=utils.returnName("opensearch-endpoint"),
-        string_value="placeholder-endpoint",
+        string_value="placeholder-please-update-with-your-endpoint",
         description="OpenSearch endpoint URL for health events storage (updated by MakiEmbeddings)"
+    )
+    
+    # Create OPENSEARCH_QUERY_SIZE parameter
+    opensearch_query_size_parameter = ssm.StringParameter(
+        self, "MakiOpenSearchQuerySizeParameter",
+        parameter_name=utils.returnName("opensearch-query-size"),
+        string_value="10000",
+        description="Maximum number of events to retrieve per OpenSearch query"
     )
     
     return {
         'mode_parameter': mode_parameter,
         'events_since_parameter': events_since_parameter,
-        'opensearch_endpoint_parameter': opensearch_endpoint_parameter
+        'opensearch_endpoint_parameter': opensearch_endpoint_parameter,
+        'opensearch_query_size_parameter': opensearch_query_size_parameter
     }
