@@ -165,7 +165,6 @@ SYNTH_CASES_NUMBER_SEED = 2  # Number of synthetic cases per category
 # OpenSearch configuration for health events
 OPENSEARCH_COLLECTION_NAME = 'maki-health'
 OPENSEARCH_INDEX = 'aws-health-events'
-OPENSEARCH_SKIP = 'false'  # Set to 'true' to skip OpenSearch queries
 ```
 
 ### Mode Management

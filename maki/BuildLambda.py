@@ -599,10 +599,9 @@ def buildGetHealthFromOpenSearch(self, execution_role, log_group, prompt_gen_cas
     healthAggBucketName = config.KEY + '-' + config.BUCKET_NAME_HEALTH_AGG_BASE
 
     environment={
-        "OPENSEARCH_SKIP": config.OPENSEARCH_SKIP,
-        "OPENSEARCH_ENDPOINT": opensearch_endpoint,
+        "OPENSEARCH_ENDPOINT": "FROM_SSM",  # Will be retrieved from SSM Parameter Store
         "OPENSEARCH_INDEX": config.OPENSEARCH_INDEX,
-        "OPENSEARCH_QUERY_SIZE": str(config.OPENSEARCH_QUERY_SIZE),
+        "OPENSEARCH_QUERY_SIZE": "FROM_SSM",  # Will be retrieved from SSM Parameter Store
         "HEALTH_EVENTS_SINCE": "FROM_SSM",  # Will be retrieved from SSM Parameter Store
         "S3_HEALTH_AGG": healthAggBucketName,
         "BEDROCK_CATEGORIZE_TEMPERATURE": str(config.BEDROCK_CATEGORIZE_TEMPERATURE),

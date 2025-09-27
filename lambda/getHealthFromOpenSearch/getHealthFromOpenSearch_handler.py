@@ -43,6 +43,18 @@ def get_opensearch_endpoint_from_ssm():
         response = ssm.get_parameter(Name=f"maki-{account_id}-{region}-opensearch-endpoint")
         return response['Parameter']['Value']
     except Exception as e:
+
+def get_opensearch_query_size_from_ssm():
+    """Get OPENSEARCH_QUERY_SIZE value from SSM Parameter Store"""
+    ssm = boto3.client('ssm')
+    try:
+        account_id = boto3.client('sts').get_caller_identity()['Account']
+        region = boto3.Session().region_name
+        response = ssm.get_parameter(Name=f"maki-{account_id}-{region}-opensearch-query-size")
+        return int(response['Parameter']['Value'])
+    except Exception as e:
+        print(f"Error getting opensearch-query-size from SSM: {e}")
+        return 10000  # default fallback
         print(f"Error getting opensearch-endpoint from SSM: {e}")
         return os.environ.get('OPENSEARCH_ENDPOINT', 'placeholder-endpoint')  # fallback to env var
 
@@ -73,7 +85,7 @@ def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, sta
                 }
             },
             "sort": [{"lastUpdatedTime": {"order": "desc"}}],
-            "size": int(os.environ.get('OPENSEARCH_QUERY_SIZE', '10000'))
+            "size": get_opensearch_query_size_from_ssm()
         }
 
         response = client.search(index=opensearch_index, body=query)
@@ -85,7 +97,6 @@ def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, sta
 
 def handler(event, context):
     # Environment variables
-    opensearch_skip = os.environ['OPENSEARCH_SKIP']
     opensearch_endpoint = get_opensearch_endpoint_from_ssm()  # Get from SSM instead of env var
     opensearch_index = os.environ['OPENSEARCH_INDEX']
     start_time = get_events_since_from_ssm()
@@ -95,17 +106,6 @@ def handler(event, context):
     bedrock_categorize_temperature = float(os.environ['BEDROCK_CATEGORIZE_TEMPERATURE'])
     bedrock_max_tokens = int(os.environ['BEDROCK_MAX_TOKENS'])
     bedrock_categorize_top_p = float(os.environ['BEDROCK_CATEGORIZE_TOP_P'])
-
-    if opensearch_skip == 'true':
-        print("Skipping getting health events from OpenSearch")
-        start_time = get_events_since_from_ssm()
-        end_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-        return {
-            'eventsTotal': 0,
-            'events': [],
-            'ondemand_run_datetime': f"{start_time}-{end_time}",
-            'mode': get_mode_from_ssm()
-        }
 
     try:
         region = boto3.Session().region_name
