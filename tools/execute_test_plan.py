@@ -6,6 +6,32 @@ import os
 import time
 import threading
 
+def show_diff(expected, actual):
+    """Show differences between expected and actual output with red highlighting"""
+    import difflib
+    
+    # ANSI color codes
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    RESET = '\033[0m'
+    
+    expected_lines = expected.splitlines()
+    actual_lines = actual.splitlines()
+    
+    diff = list(difflib.unified_diff(expected_lines, actual_lines, 
+                                   fromfile='Expected', tofile='Actual', lineterm=''))
+    
+    print(f"\nDifferences (- expected, + actual):")
+    for line in diff:
+        if line.startswith('---') or line.startswith('+++') or line.startswith('@@'):
+            print(line)
+        elif line.startswith('-'):
+            print(f"{RED}{line}{RESET}")
+        elif line.startswith('+'):
+            print(f"{GREEN}{line}{RESET}")
+        else:
+            print(line)
+
 def match_output(actual, expected):
     """Check if actual output matches expected pattern with * wildcards"""
     import re
@@ -53,7 +79,7 @@ def run_command(cmd, description, expected_output=None):
                 print("✅ Output matches expected pattern")
             else:
                 print("❌ Output does not match expected pattern")
-                print(f"Expected pattern: {expected_output}")
+                show_diff(expected_output, result.stdout)
                 return False
         
         return True

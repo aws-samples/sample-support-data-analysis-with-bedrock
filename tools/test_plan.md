@@ -49,23 +49,49 @@ python tools/flip_mode.py --mode cases
 python tools/runMaki.py
 ### OUTPUT
 {
-  "eventsTotal": 0,
-  "events": [],
-  "ondemand_run_datetime": "*",
-  "status": {
-    "status": "Execution stopped: no events were found to process"
-  }
+  "Summary": {
+    "eventsTotal": 0,
+    "events": [],
+    "ondemand_run_datetime": "*",
+    "status": {
+      "status": "Execution stopped: no events were found to process"
+    }
+  },
+  "Event_Example": "No individual event files found"
 }
 ### END OUTPUT
-
+<!--
 ## Test Cases / OnDemand
 python tools/flip_mode.py --mode cases
 python tools/generate_synth_cases.py -q
 python tools/runMaki.py
 ### OUTPUT
 {
-  "summary": "{\n  \"summary\": \"*\n}"
+  "Summary": {
+    "eventsTotal": *,
+    "events": [],
+    "ondemand_run_datetime": "*",
+    "status": {
+      "status": "Execution stopped: no events were found to process"
+    }
+  },
+  "Event_Example": {
+    "caseId": "*",
+    "displayId": "*",
+    "status": "*",
+    "serviceCode": "*",
+    "timeCreated": "*",
+    "timeResolved": *,
+    "submittedBy": "*",
+    "category": "*",
+    "category_explanation": "*",
+    "case_summary": "*",
+    "sentiment": "*",
+    "suggested_action": "*",
+    "suggestion_link": "*"
+  }
 }
 ### END OUTPUT
+-->
 
 

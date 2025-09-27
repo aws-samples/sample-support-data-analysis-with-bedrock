@@ -4,6 +4,36 @@ import json
 from time import sleep
 from datetime import datetime, timedelta
 
+def get_example_event_file():
+    """Get an example individual event JSON file from S3"""
+    s3_client = boto3.client('s3')
+    bucket_name = f'maki-{account_id}-{region}-report'
+    
+    try:
+        # List objects in the report bucket
+        response = s3_client.list_objects_v2(
+            Bucket=bucket_name,
+            Prefix='ondemand/',
+            MaxKeys=100
+        )
+        
+        if 'Contents' not in response:
+            return None
+            
+        # Find a case JSON file (not summary.json)
+        for obj in response['Contents']:
+            key = obj['Key']
+            if key.endswith('.json') and 'case-' in key and 'summary.json' not in key:
+                # Get the file content
+                file_response = s3_client.get_object(Bucket=bucket_name, Key=key)
+                content = file_response['Body'].read().decode('utf-8')
+                return f"s3://{bucket_name}/{key}", content
+                
+        return None
+    except Exception as e:
+        print(f"⚠️  Could not retrieve example event file: {e}")
+        return None
+
 # Create clients
 sfn_client = boto3.client('stepfunctions')
 ssm_client = boto3.client('ssm')
@@ -163,12 +193,32 @@ try:
             print("=" * 50)
             
             output = execution_info['output']
-            print("📋 Output:")
+            
+            # Create combined JSON output
+            combined_output = {}
+            
+            # Add summary
             try:
                 parsed_output = json.loads(output)
-                print(json.dumps(parsed_output, indent=2))
+                combined_output["Summary"] = parsed_output
             except:
-                print(output)
+                combined_output["Summary"] = output
+            
+            # Add example event file
+            example_result = get_example_event_file()
+            if example_result:
+                file_path, file_content = example_result
+                try:
+                    parsed_content = json.loads(file_content)
+                    combined_output["Event_Example"] = parsed_content
+                except:
+                    combined_output["Event_Example"] = file_content
+            else:
+                combined_output["Event_Example"] = "No individual event files found"
+            
+            # Output as JSON
+            print(json.dumps(combined_output, indent=2))
+            
             break
             
         elif status == 'FAILED':
