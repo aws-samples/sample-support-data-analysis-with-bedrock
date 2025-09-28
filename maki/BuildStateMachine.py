@@ -65,13 +65,13 @@ def buildStateMachine(self, functions, log_group):
         output_path = "$"
     )
 
-    # Create a Pass state that preserves the existing mode
+    # Create a Pass state that sets default mode if not present
     stepInjectMode = sfn.Pass(
         self, "inject-mode",
         result_path="$.modeConfig",
         parameters={
             "Parameter": {
-                "Value.$": "$.mode"
+                "Value": config.DEFAULT_MODE
             }
         }
     )

@@ -133,5 +133,6 @@ def handler(event, context):
     return {
         'eventsTotal': len(files),
         'events': files,
-        'ondemand_run_datetime': ondemand_run_datetime
+        'ondemand_run_datetime': ondemand_run_datetime,
+        'mode': get_mode_from_ssm()
     }

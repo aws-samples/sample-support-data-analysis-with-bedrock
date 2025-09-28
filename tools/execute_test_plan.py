@@ -289,6 +289,9 @@ def run_maki_with_progress(cmd, description, expected_output):
             if '"Step Name":' in line:
                 step_name = line.split('"Step Name": "')[1].split('"')[0]
                 print(f"🔄 Running step: {step_name}")
+            elif "⏱️  Total:" in line:
+                # Skip printing Total: lines from runMaki.py
+                continue
             elif line.strip():
                 print(line)
         
