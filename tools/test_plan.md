@@ -88,6 +88,7 @@ python tools/runMaki.py
 ### END OUTPUT
 -->
 
+<!--
 ## Test Cases / OnDemand
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
@@ -115,8 +116,7 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
-
-
+-->
 <!--
 ## Test Cases / Batch
 python tools/purge_s3_data.py
@@ -145,6 +145,7 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
+-->
 
 <!--
 ## Test Health / Empty
@@ -168,7 +169,6 @@ python tools/runMaki.py
 ### END OUTPUT
 -->
 
-<!--
 ## Test Health / OnDemand
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
@@ -197,7 +197,6 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
--->
 
 <!--
 ## Test Health / Batch

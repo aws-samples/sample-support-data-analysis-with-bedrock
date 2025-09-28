@@ -187,11 +187,45 @@ def show_diff(expected, actual):
             print(line)
 
 def match_output(actual, expected):
-    """Check if actual output matches expected pattern with * wildcards"""
+    """Check if actual output matches expected pattern with * wildcards and JSON structure comparison"""
     import re
-    # Escape special regex chars except *
-    pattern = re.escape(expected).replace(r'\*', '.*')
-    return re.search(pattern, actual, re.DOTALL) is not None
+    
+    # Try JSON structure comparison first
+    try:
+        actual_json = json.loads(actual)
+        expected_json = json.loads(expected)
+        return match_json_structure(actual_json, expected_json)
+    except (json.JSONDecodeError, ValueError):
+        # Fall back to regex pattern matching for non-JSON content
+        pattern = re.escape(expected).replace(r'\*', '.*')
+        return re.search(pattern, actual, re.DOTALL) is not None
+
+def match_json_structure(actual, expected):
+    """Recursively compare JSON structures, treating * as wildcards"""
+    if expected == "*":
+        return True
+    
+    if type(actual) != type(expected):
+        return False
+    
+    if isinstance(expected, dict):
+        for key, expected_value in expected.items():
+            if key not in actual:
+                return False
+            if not match_json_structure(actual[key], expected_value):
+                return False
+        return True
+    
+    elif isinstance(expected, list):
+        if len(actual) != len(expected):
+            return False
+        for actual_item, expected_item in zip(actual, expected):
+            if not match_json_structure(actual_item, expected_item):
+                return False
+        return True
+    
+    else:
+        return expected == "*" or actual == expected
 
 def run_command(cmd, description, expected_output=None, check_files_only=False):
     """Run a command and handle errors with timer"""
