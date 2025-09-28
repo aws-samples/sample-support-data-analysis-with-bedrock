@@ -24,7 +24,27 @@ def handler(event, context):
 
     try:
 
-        batch_output = list_bucket_object_keys(bucket_name_batch_output, prefix="")
+        # Get all batch job directories
+        all_objects = list_bucket_object_keys(bucket_name_batch_output, prefix="")
+        
+        # Find batch job directories (they contain subdirectories with actual output files)
+        batch_dirs = set()
+        for obj_key in all_objects:
+            if '/' in obj_key:
+                # Extract the batch job directory (first part of the path)
+                batch_dir = obj_key.split('/')[0]
+                if batch_dir.startswith('maki-'):
+                    batch_dirs.add(batch_dir)
+        
+        print(f"Found batch directories: {list(batch_dirs)}")
+        
+        # Get all individual output files from all batch directories
+        batch_output = []
+        for batch_dir in batch_dirs:
+            batch_files = list_bucket_object_keys(bucket_name_batch_output, prefix=f"{batch_dir}/")
+            batch_output.extend(batch_files)
+        
+        print(f"Found {len(batch_output)} total batch output files")
 
         aggregate = ''
 
