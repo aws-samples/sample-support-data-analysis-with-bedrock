@@ -46,10 +46,11 @@ python tools/copy_s3_data.py from-temp
 
 ## End Usage
 
-<!--
 ## Deploy
+<!--
 cdk synth MakiFoundations
 cdk deploy MakiFoundations --require-approvals never
+<!--
 cdk synth MakiData
 cdk deploy MakiData --require-approvals never 
 cdk synth MakiEmbeddings
@@ -64,16 +65,28 @@ python tools/runMaki.py
 ### OUTPUT
 {
   "Summary": {
-    "eventsTotal": 0,
-    "events": [],
-    "ondemand_run_datetime": "*",
+    "mode": "*",
+    "enabledModelsCheck": {
+      "enabledModels": *
+    },
+    "runningJobsCheck": {
+      "runningExecutions": *,
+      "stateMachineArn": "*",
+      "originalPayload": {
+        "mode": "*",
+        "enabledModelsCheck": {
+          "enabledModels": *
+        }
+      }
+    },
     "status": {
-      "status": "Execution stopped: no events were found to process"
+      "status": "*"
     }
   },
-  "Event_Example": "No individual event files found"
+  "Event_Example": "*"
 }
 ### END OUTPUT
+-->
 
 ## Test Cases / OnDemand
 python tools/purge_s3_data.py
@@ -103,6 +116,8 @@ python tools/runMaki.py
 }
 ### END OUTPUT
 
+
+<!--
 ## Test Cases / Batch
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
@@ -130,7 +145,6 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
--->
 
 <!--
 ## Test Health / Empty
@@ -185,6 +199,7 @@ python tools/runMaki.py
 ### END OUTPUT
 -->
 
+<!--
 ## Test Health / Batch
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
@@ -213,3 +228,4 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
+-->

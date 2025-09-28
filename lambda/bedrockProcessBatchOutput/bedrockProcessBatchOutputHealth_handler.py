@@ -25,14 +25,36 @@ def handler(event, context):
 
     try:
 
-        batch_output = list_bucket_object_keys(bucket_name_batch_output, prefix="")
+        # Get all batch job directories
+        all_objects = list_bucket_object_keys(bucket_name_batch_output, prefix="")
+        
+        # Find batch job directories (they contain subdirectories with actual output files)
+        batch_dirs = set()
+        for obj_key in all_objects:
+            if '/' in obj_key:
+                # Extract the batch job directory (first part of the path)
+                batch_dir = obj_key.split('/')[0]
+                if batch_dir.startswith('maki-'):
+                    batch_dirs.add(batch_dir)
+        
+        print(f"Found batch directories: {list(batch_dirs)}")
+        
+        # Get all individual output files from all batch directories
+        batch_output = []
+        for batch_dir in batch_dirs:
+            batch_files = list_bucket_object_keys(bucket_name_batch_output, prefix=f"{batch_dir}/")
+            batch_output.extend(batch_files)
+        
+        print(f"Found {len(batch_output)} total batch output files")
 
         aggregate = ''
 
         # extract llm output from the batch returns
         # also aggregate them
         eventsN = 0
+        print(f"Processing {len(batch_output)} files from batch output")
         for event in batch_output: 
+            print(f"Processing file: {event}")
             if event.endswith('manifest.json.out'): # used for batch inf
                 move_s3_object(bucket_name_batch_output, event, bucket_name_archive, event)
                 continue
@@ -53,24 +75,30 @@ def handler(event, context):
 
             try:
                 val = data['modelOutput']['output']['message']['content'][0]['text']
+                print(f"Processing event {eventsN}: {event}")
                 if is_valid_json(val):
                     json_val = json.loads(val)
                     # Handle health event file naming - extract filename from path
                     filename = event.split('/')[-1].split('.')[0] if '/' in event else event.split('.')[0]
                     key = timestamp + '/events/' + filename + '-output.json'
+                    print(f"Storing individual event file: {key}")
                     aggregate += 'health_event: '  + str(json_val.get('arn', json_val.get('eventId', 'unknown'))) + ':\n'
                     aggregate += 'status: ' + str(json_val.get('statusCode', json_val.get('status', 'unknown'))) + '\n'
                     aggregate += json_val.get('event_summary', json_val.get('health_summary', '')) + '\n\n'
                     print("Store " + key + ' in ' + bucket_name_report) 
                     
                     # Store JSON directly without reformatting
-                    s3_client = boto3.client('s3')
-                    s3_client.put_object(
-                        Bucket=bucket_name_report,
-                        Key=key,
-                        Body=val,
-                        ContentType='application/json'
-                    )
+                    try:
+                        s3_client = boto3.client('s3')
+                        s3_client.put_object(
+                            Bucket=bucket_name_report,
+                            Key=key,
+                            Body=val,
+                            ContentType='application/json'
+                        )
+                        print(f"Successfully stored individual event file: {key}")
+                    except Exception as e:
+                        print(f"Error storing individual event file {key}: {str(e)}")
                     
                     move_s3_object(bucket_name_batch_output, event, bucket_name_archive, event)
                 else:

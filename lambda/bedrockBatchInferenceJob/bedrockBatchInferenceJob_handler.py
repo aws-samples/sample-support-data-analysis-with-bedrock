@@ -16,7 +16,7 @@ def create_batch_job(bedrock, model_id, input_s3_uri, batches_s3_uri, output_s3_
     # Extract account and region for shorter name
     account_id = boto3.client('sts').get_caller_identity()['Account']
     region = boto3.Session().region_name
-    base_name = f"maki-{account_id[-6:]}-{region[-4:]}"  # Use last 6 digits of account and last 4 chars of region
+    base_name = f"maki-{account_id}-{region}"  # Use full account ID to match bucket naming
     batch_job_name = f"{base_name}-b{batch_num}-{str(uuid.uuid4())[:8]}"
     print(f"create new batch inf job: {batch_job_name} (length: {len(batch_job_name)})")
 
@@ -54,7 +54,7 @@ def create_batch_job(bedrock, model_id, input_s3_uri, batches_s3_uri, output_s3_
         
         job_arn = response.get('jobArn')
         print(f"Created batch inference job: {job_arn}")
-        return job_arn
+        return job_arn, batch_job_name
         
     except Exception as e:
         print(f"Error creating batch inference job: {str(e)}")
@@ -104,7 +104,7 @@ def handler(event, context):
         
         print(f"Processing batch {batch_num} with {len(batch_chunk)} files")
         
-        job_arn = create_batch_job(
+        job_arn, batch_job_name = create_batch_job(
             bedrock=bedrock,
             model_id=model_id,
             input_s3_uri=input_s3_uri,
@@ -122,8 +122,8 @@ def handler(event, context):
         batch_jobs.append({
             'batch_num': batch_num,
             'model_id': model_id,
-            'input_s3_uri': input_s3_uri,
-            'output_s3_uri': output_s3_uri,
+            'input_s3_uri': f"{batches_s3_uri}{batch_job_name}/",
+            'output_s3_uri': f"{output_s3_uri}{batch_job_name}/",
             'name': name,
             'job_arn': job_arn,
             'batch_files': len(batch_chunk) 
