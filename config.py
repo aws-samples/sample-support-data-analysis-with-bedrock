@@ -41,6 +41,10 @@ CATEGORIES = [
 CATEGORY_DIR =  'categories'
 
 ###
+# Default mode when not specified in input
+DEFAULT_MODE = 'health'
+
+###
 # General
 def get_region():
     try:
