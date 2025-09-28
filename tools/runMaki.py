@@ -179,7 +179,7 @@ try:
             total_duration = format_duration(start_time, current_time)
             step_duration = format_duration(step_start_time, current_time)
             progress_dots = "." * (execution_count % 4)
-            print(f"\r   ⏱️  Total: {total_duration} | Step: {step_duration} {progress_dots:<3}", end="", flush=True)
+            print(f"\r   ⏱️  Total: {total_duration} {progress_dots:<3}", end="", flush=True)
             
             execution_count += 1
             sleep(2)  # Check every 2 seconds
