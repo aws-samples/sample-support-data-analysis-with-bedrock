@@ -209,6 +209,10 @@ def run_command(cmd, description, expected_output=None, check_files_only=False):
     # Suppress output for CDK synth commands
     suppress_output = "cdk synth" in cmd
     
+    # Special handling for runMaki.py to show step function progress
+    if "runMaki.py" in cmd:
+        return run_maki_with_progress(cmd, description, expected_output)
+    
     # Timer setup
     start_time = time.time()
     timer_running = True
@@ -216,8 +220,8 @@ def run_command(cmd, description, expected_output=None, check_files_only=False):
     def show_timer():
         while timer_running:
             elapsed = time.time() - start_time
-            print(f"Elapsed: {elapsed:.1f}s")
-            time.sleep(5)  # Update every 5 seconds
+            print(f"\rElapsed: {elapsed:.1f}s", end='', flush=True)
+            time.sleep(10)  # Update every 10 seconds
     
     timer_thread = threading.Thread(target=show_timer)
     timer_thread.daemon = True
@@ -229,9 +233,9 @@ def run_command(cmd, description, expected_output=None, check_files_only=False):
         elapsed = time.time() - start_time
         
         if suppress_output:
-            print(f"Completed in {elapsed:.1f}s (output suppressed)")
+            print(f"\rCompleted in {elapsed:.1f}s (output suppressed)")
         else:
-            print(f"Completed in {elapsed:.1f}s")
+            print(f"\rCompleted in {elapsed:.1f}s")
             if result.stdout:
                 print(result.stdout)
         
@@ -248,12 +252,72 @@ def run_command(cmd, description, expected_output=None, check_files_only=False):
     except subprocess.CalledProcessError as e:
         timer_running = False
         elapsed = time.time() - start_time
-        print(f"Failed after {elapsed:.1f}s")
+        print(f"\rFailed after {elapsed:.1f}s")
         print(f"ERROR: Command failed with exit code {e.returncode}")
         if e.stdout:
             print(f"STDOUT: {e.stdout}")
         if e.stderr:
             print(f"STDERR: {e.stderr}")
+        return False
+
+def run_maki_with_progress(cmd, description, expected_output):
+    """Run runMaki.py with step function progress monitoring"""
+    start_time = time.time()
+    timer_running = True
+    
+    def show_timer():
+        while timer_running:
+            elapsed = time.time() - start_time
+            print(f"\rElapsed: {elapsed:.1f}s", end='', flush=True)
+            time.sleep(10)  # Update every 10 seconds
+    
+    timer_thread = threading.Thread(target=show_timer)
+    timer_thread.daemon = True
+    timer_thread.start()
+    
+    try:
+        # Run the command and capture output line by line
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, 
+                                 stderr=subprocess.STDOUT, text=True, bufsize=1)
+        
+        output_lines = []
+        for line in iter(process.stdout.readline, ''):
+            line = line.rstrip()
+            output_lines.append(line)
+            
+            # Show step function progress
+            if '"Step Name":' in line:
+                step_name = line.split('"Step Name": "')[1].split('"')[0]
+                print(f"🔄 Running step: {step_name}")
+            elif line.strip():
+                print(line)
+        
+        process.wait()
+        timer_running = False
+        elapsed = time.time() - start_time
+        
+        if process.returncode == 0:
+            print(f"\rCompleted in {elapsed:.1f}s")
+            
+            # Check expected output if provided
+            full_output = '\n'.join(output_lines)
+            if expected_output:
+                if match_output(full_output, expected_output):
+                    print("✅ Output matches expected pattern")
+                else:
+                    print("❌ Output does not match expected pattern")
+                    show_diff(expected_output, full_output)
+                    return False
+            
+            return True
+        else:
+            print(f"\rFailed after {elapsed:.1f}s with exit code {process.returncode}")
+            return False
+            
+    except Exception as e:
+        timer_running = False
+        elapsed = time.time() - start_time
+        print(f"\rFailed after {elapsed:.1f}s with error: {e}")
         return False
 
 def parse_test_plan():
