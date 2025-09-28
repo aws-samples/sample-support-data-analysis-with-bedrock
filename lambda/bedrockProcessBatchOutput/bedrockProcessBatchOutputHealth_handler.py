@@ -55,7 +55,9 @@ def handler(event, context):
                 val = data['modelOutput']['output']['message']['content'][0]['text']
                 if is_valid_json(val):
                     json_val = json.loads(val)
-                    key = timestamp + '/events/' + event.split('/')[2].split('.')[0] + '-output.json'
+                    # Handle health event file naming - extract filename from path
+                    filename = event.split('/')[-1].split('.')[0] if '/' in event else event.split('.')[0]
+                    key = timestamp + '/events/' + filename + '-output.json'
                     aggregate += 'health_event: '  + str(json_val.get('arn', json_val.get('eventId', 'unknown'))) + ':\n'
                     aggregate += 'status: ' + str(json_val.get('statusCode', json_val.get('status', 'unknown'))) + '\n'
                     aggregate += json_val.get('event_summary', json_val.get('health_summary', '')) + '\n\n'
