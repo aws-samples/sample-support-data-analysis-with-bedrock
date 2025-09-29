@@ -8,11 +8,10 @@
 4. [Getting Started](#getting-started)
 5. [Configuration](#configuration)
 6. [Deployment](#deployment)
-7. [Usage](#usage)
-8. [Data Sources](#data-sources)
-9. [Output & Analysis](#output--analysis)
-10. [Troubleshooting](#troubleshooting)
-11. [Advanced Features](#advanced-features)
+7. [Data Sources](#data-sources)
+8. [Output & Analysis](#output--analysis)
+9. [Troubleshooting](#troubleshooting)
+10. [Advanced Features](#advanced-features)
 
 ---
 
@@ -482,68 +481,6 @@ aws s3 cp s3://maki-{account}-{region}-report/ondemand/summary.json -
 # or for batch:
 aws s3 cp s3://maki-{account}-{region}-report/batch/summary.json -
 ```
-
----
-
-## Usage
-
-### Setting the Data Source Mode
-
-Before running MAKI, set the appropriate mode for your data source:
-
-```bash
-# For Support Cases analysis
-python tools/flip_mode.py --mode cases
-
-# For Health Events analysis  
-python tools/flip_mode.py --mode health
-
-# Check current mode
-python tools/flip_mode.py
-```
-
-### Method 1: Manual Execution (Development/Testing)
-```bash
-# Run the Step Function manually with monitoring
-python tools/runMaki.py
-```
-
-This script:
-- Shows current mode configuration
-- Starts the Step Function execution
-- Monitors progress in real-time
-- Shows detailed step information
-- Reports final results
-
-### Method 2: Scheduled Execution (Sample Implementation)
-The Step Function can be scheduled using Amazon EventBridge:
-- Default schedule: Daily at 6:00 AM UTC
-- Configurable via `config.py` CRON settings
-
-### Method 3: Generate Synthetic Data (Support Cases Mode Only)
-```bash
-# Generate synthetic test cases
-python tools/generate_synth_cases.py
-
-# Generate with specific parameters
-python tools/generate_synth_cases.py --min-cases 1 --max-cases 5
-```
-
-### Method 4: Load Health Events (Health Mode Only)
-The included `tools/get_health_events.py` is an example tool that demonstrates how to retrieve AWS Health events and load them into OpenSearch. Your organization may implement other methods for health events ingestion based on your specific requirements.
-
-```bash
-# Load health events from AWS Health API to OpenSearch
-python tools/get_health_events.py --load-to-opensearch
-
-# Load events with custom date range
-python tools/get_health_events.py --start-time "2024-01-01T00:00:00Z" --end-time "2024-12-31T23:59:59Z"
-
-# Save events to files instead of OpenSearch
-python tools/get_health_events.py --output-dir ./health_events --verbose
-```
-
-For comprehensive guidance on building AWS Health ingestion pipelines, refer to the [AWS documentation on AWS Health](https://docs.aws.amazon.com/health/latest/ug/what-is-aws-health.html)
 
 ---
 
