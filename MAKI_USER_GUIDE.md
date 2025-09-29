@@ -107,15 +107,20 @@ After completing the CDK deployments, MAKI can be used in 4 primary ways based o
 
 **Health Events Mode**: Out of the box, MAKI expects health events to be populated in the OpenSearch Serverless collection created during deployment. Use `tools/get_health_events.py` as a reference for pulling health events from the AWS Health API. For comprehensive health event aggregation patterns, see [AWS blog](https://aws.amazon.com/blogs/mt/how-to-aggregate-and-visualize-aws-health-events-using-aws-organizations-and-amazon-elasticsearch-service/).
 
+**Mode Selection**: MAKI will automatically select OnDemand or Batch mode depending on number of events.  To control when it uses Batch mode, update the BEDROCK_ONDEMAND_BATCH_INFLECTION value in config.py.
+
 ### Use Case 1: Support Cases - On-Demand Processing
 **Best for**: Small volumes of support cases (< 100 cases), immediate analysis needs
 
 ```bash
 # Setup: Clean environment and set mode
-python tools/purge_s3_data.py
+python tools/purge_s3_data.py # optional, to clean out any previous runs
 python tools/flip_mode.py --mode cases
 
 # Generate sample cases for testing (when CID_SKIP='true')
+# If pulling data from CID, set CID_SKIP='false', and MAKI will pull data directly from CID
+# which makes the below test data generation not necessary
+# The -q paramter generates a minimal number of synthetic cases
 python tools/generate_synth_cases.py -q
 
 # Run analysis
@@ -132,6 +137,7 @@ python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
 
 # Generate sample cases for testing (when CID_SKIP='true')
+# this can take a while, to generate a large number of synthetic support cases
 python tools/generate_synth_cases.py --min-cases 10 --max-cases 15
 
 # Run batch analysis
@@ -148,6 +154,8 @@ python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
 
 # Configure for small dataset processing
+# this sets the SSM Parameter maki-<ACCOUNT_ID>-<REGION>-opensearch-query-size
+# for the maximum events returned from OpenSearch
 python tools/opensearch_client.py --size 5
 
 # Run analysis
@@ -226,6 +234,8 @@ BEDROCK_ONDEMAND_BATCH_INFLECTION = 100
 
 #### Support Case Event Categories
 The system categorizes both support cases into these predefined categories:
+These are deployed in s3://maki-<ACCOUNT_ID>-<REGION>-examples/, which can be further updated for your use case.
+Control which categories are used in config.py, in the CATEGORIES parameter.
 - `limit-reached`: Service limit issues
 - `customer-release`: Customer deployment problems
 - `development-issue`: Development and coding problems
@@ -251,6 +261,7 @@ The system categorizes both support cases into these predefined categories:
 CID_SKIP = 'false'  # Set to 'true' to skip CID and use synthetic data for testing
 
 # Synthetic case generation settings (used when CID_SKIP = 'true')
+# Default seed value when generating synthetic data
 SYNTH_CASES_NUMBER_SEED = 2  # Number of synthetic cases per category
 ```
 
@@ -263,7 +274,8 @@ OPENSEARCH_INDEX = 'aws-health-events'
 
 ### Mode Management
 
-MAKI operates in two distinct data modes controlled by AWS Systems Manager Parameter Store values. The mode determines which data source and processing pipeline is used.
+MAKI operates in two distinct data modes controlled by AWS Systems Manager Parameter Store values.
+The mode determines which data source and processing pipeline is used.  
 
 #### Data Modes
 
@@ -397,7 +409,7 @@ aws stepfunctions list-state-machines
 
 ---
 
-## Usage
+## Data Sources
 
 ### Use Case 1: Support Cases - On-Demand Processing
 **Best for**: Small volumes of support cases (< 100 cases), immediate analysis needs
