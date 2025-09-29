@@ -25,27 +25,35 @@ def handler(event, context):
 
     try:
 
-        # Get all batch job directories
-        all_objects = list_bucket_object_keys(bucket_name_batch_output, prefix="")
+        # Get the batch jobs from the batch inference result
+        batch_inference_result = event.get('batchInferenceResult', {})
+        batch_jobs = batch_inference_result.get('batch_jobs', [])
+        print(f"Found {len(batch_jobs)} batch jobs to process")
         
-        # Find batch job directories (they contain subdirectories with actual output files)
-        batch_dirs = set()
-        for obj_key in all_objects:
-            if '/' in obj_key:
-                # Extract the batch job directory (first part of the path)
-                batch_dir = obj_key.split('/')[0]
-                if batch_dir.startswith('maki-'):
-                    batch_dirs.add(batch_dir)
-        
-        print(f"Found batch directories: {list(batch_dirs)}")
-        
-        # Get all individual output files from all batch directories
+        # Get all individual output files from all batch job output directories
         batch_output = []
-        for batch_dir in batch_dirs:
-            batch_files = list_bucket_object_keys(bucket_name_batch_output, prefix=f"{batch_dir}/")
-            batch_output.extend(batch_files)
+        for job in batch_jobs:
+            output_s3_uri = job.get('output_s3_uri', '')
+            print(f"Processing batch job with output_s3_uri: {output_s3_uri}")
+            if output_s3_uri:
+                # Extract bucket and prefix from S3 URI
+                if output_s3_uri.startswith('s3://'):
+                    s3_parts = output_s3_uri[5:].split('/', 1)
+                    if len(s3_parts) == 2:
+                        output_bucket, output_prefix = s3_parts
+                        print(f"Searching in bucket: {output_bucket}, prefix: {output_prefix}")
+                        
+                        # List all files recursively in the batch job output directory
+                        batch_files = list_bucket_object_keys(output_bucket, prefix=output_prefix)
+                        print(f"Found {len(batch_files)} files in {output_s3_uri}")
+                        
+                        # Filter for actual output files (not directories or manifest files)
+                        for file_key in batch_files:
+                            if file_key.endswith('.jsonl.out') or (file_key.endswith('.out') and not file_key.endswith('manifest.json.out')):
+                                batch_output.append((output_bucket, file_key))
+                                print(f"Added output file: s3://{output_bucket}/{file_key}")
         
-        print(f"Found {len(batch_output)} total batch output files")
+        print(f"Found {len(batch_output)} total batch output files to process")
 
         aggregate = ''
 
@@ -53,21 +61,20 @@ def handler(event, context):
         # also aggregate them
         eventsN = 0
         print(f"Processing {len(batch_output)} files from batch output")
-        for event in batch_output: 
-            print(f"Processing file: {event}")
-            if event.endswith('manifest.json.out'): # used for batch inf
-                move_s3_object(bucket_name_batch_output, event, bucket_name_archive, event)
+        for bucket, event_key in batch_output: 
+            print(f"Processing file: s3://{bucket}/{event_key}")
+            if event_key.endswith('manifest.json.out'): # used for batch inf
                 continue
 
-            obj = get_s3_obj_body(bucket_name_batch_output, event, True)
+            obj = get_s3_obj_body(bucket, event_key, True)
             if not obj or obj.strip() == '':
-                print(f"Empty or invalid object for event: {event}")
+                print(f"Empty or invalid object for event: {event_key}")
                 continue
             
             try:
                 data = json.loads(obj)
             except json.JSONDecodeError as e:
-                print(f"JSON decode error for event {event}: {e}")
+                print(f"JSON decode error for event {event_key}: {e}")
                 print(f"Object content: {repr(obj[:200])}")
                 continue
             
@@ -75,11 +82,11 @@ def handler(event, context):
 
             try:
                 val = data['modelOutput']['output']['message']['content'][0]['text']
-                print(f"Processing event {eventsN}: {event}")
+                print(f"Processing event {eventsN}: {event_key}")
                 if is_valid_json(val):
                     json_val = json.loads(val)
                     # Handle health event file naming - extract filename from path
-                    filename = event.split('/')[-1].split('.')[0] if '/' in event else event.split('.')[0]
+                    filename = event_key.split('/')[-1].split('.')[0] if '/' in event_key else event_key.split('.')[0]
                     key = timestamp + '/events/' + filename + '-output.json'
                     print(f"Storing individual event file: {key}")
                     aggregate += 'health_event: '  + str(json_val.get('arn', json_val.get('eventId', 'unknown'))) + ':\n'
@@ -100,7 +107,6 @@ def handler(event, context):
                     except Exception as e:
                         print(f"Error storing individual event file {key}: {str(e)}")
                     
-                    move_s3_object(bucket_name_batch_output, event, bucket_name_archive, event)
                 else:
                     print("Invalid JSON: " + val) # write code to handle these
             except KeyError:

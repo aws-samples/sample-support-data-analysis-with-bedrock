@@ -50,7 +50,6 @@ python tools/copy_s3_data.py from-temp
 <!--
 cdk synth MakiFoundations
 cdk deploy MakiFoundations --require-approvals never
-<!--
 cdk synth MakiData
 cdk deploy MakiData --require-approvals never 
 cdk synth MakiEmbeddings
@@ -169,6 +168,7 @@ python tools/runMaki.py
 ### END OUTPUT
 -->
 
+<!--
 ## Test Health / OnDemand
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
@@ -197,8 +197,8 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
+-->
 
-<!--
 ## Test Health / Batch
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
@@ -227,4 +227,3 @@ python tools/runMaki.py
   }
 }
 ### END OUTPUT
--->

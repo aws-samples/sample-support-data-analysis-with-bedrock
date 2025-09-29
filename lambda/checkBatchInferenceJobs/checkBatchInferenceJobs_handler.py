@@ -34,6 +34,19 @@ def get_batch_jobs_status(bedrock, status_filter=None):
                     'submitTime': job.get('submitTime').isoformat() if job.get('submitTime') else None,
                     'endTime': job.get('endTime').isoformat() if job.get('endTime') else None
                 }
+                
+                # For completed jobs, get detailed info including output S3 URI
+                if job.get('status') == 'Completed':
+                    try:
+                        job_details = bedrock.get_model_invocation_job(
+                            jobIdentifier=job.get('jobIdentifier')
+                        )
+                        output_config = job_details.get('outputConfig', {})
+                        if 's3OutputDataConfig' in output_config:
+                            job_info['output_s3_uri'] = output_config['s3OutputDataConfig'].get('s3Uri', '')
+                    except Exception as e:
+                        logger.warning(f"Could not get details for job {job.get('jobIdentifier')}: {str(e)}")
+                
                 jobs.append(job_info)
                 
                 logger.info(f"Found job: {job_info['jobName']} with status: {job_info['status']}")
@@ -101,6 +114,7 @@ def handler(event, context):
             'incompleteJobsCount': len(incomplete_jobs),
             'incompleteJobs': incomplete_jobs,
             'allJobs': jobs,
+            'batchJobs': status_groups.get('Completed', [])  # Include completed jobs for processing
         }
         
         # Log summary

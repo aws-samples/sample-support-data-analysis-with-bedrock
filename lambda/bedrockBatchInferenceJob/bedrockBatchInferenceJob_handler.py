@@ -83,6 +83,19 @@ def handler(event, context):
     name = os.environ['NAME']
     batch_file_count_size = int(os.environ['BEDROCK_ONDEMAND_BATCH_INFLECTION'])
 
+    # Get mode and execution ARN from event context
+    mode = event.get('mode', 'unknown')
+    execution_name = event.get('executionName', str(uuid.uuid4())[:8])
+    # Extract just the execution ID from the full ARN if it's a full ARN
+    if ':execution:' in execution_name:
+        execution_id = execution_name.split(':')[-1]
+    else:
+        execution_id = execution_name
+    
+    # Create temporary directory name
+    temp_dir = f"maki-batch-{mode}-{execution_id}"
+    print(f"Using temporary directory: {temp_dir}")
+
     # Create Bedrock client
     bedrock = boto3.client('bedrock')
 
@@ -104,12 +117,13 @@ def handler(event, context):
         
         print(f"Processing batch {batch_num} with {len(batch_chunk)} files")
         
+        # Use temp directory as the output prefix
         job_arn, batch_job_name = create_batch_job(
             bedrock=bedrock,
             model_id=model_id,
             input_s3_uri=input_s3_uri,
             batches_s3_uri=batches_s3_uri,
-            output_s3_uri=output_s3_uri,
+            output_s3_uri=f"{output_s3_uri}{temp_dir}/",
             role=role, 
             name=name,
             batch_num=batch_num,
@@ -123,17 +137,19 @@ def handler(event, context):
             'batch_num': batch_num,
             'model_id': model_id,
             'input_s3_uri': f"{batches_s3_uri}{batch_job_name}/",
-            'output_s3_uri': f"{output_s3_uri}{batch_job_name}/",
+            'output_s3_uri': f"{output_s3_uri}{temp_dir}/{batch_job_name}/",
             'name': name,
             'job_arn': job_arn,
-            'batch_files': len(batch_chunk) 
+            'batch_files': len(batch_chunk),
+            'temp_dir': temp_dir
         })
 
 
     # for the remaining files that aren't batched, the on-demand jobs will pick them up
     return {
         'batch_jobs': batch_jobs,
-        'remaining_files': remaining_files
+        'remaining_files': remaining_files,
+        'temp_dir': temp_dir
     }
 
         
