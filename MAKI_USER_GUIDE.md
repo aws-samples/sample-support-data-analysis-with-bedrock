@@ -5,13 +5,14 @@
 1. [Overview](#overview)
 2. [Prerequisites](#prerequisites)
 3. [Installation & Setup](#installation--setup)
-4. [Configuration](#configuration)
-5. [Deployment](#deployment)
-6. [Usage](#usage)
-7. [Data Sources](#data-sources)
-8. [Output & Analysis](#output--analysis)
-9. [Troubleshooting](#troubleshooting)
-10. [Advanced Features](#advanced-features)
+4. [Getting Started](#getting-started)
+5. [Configuration](#configuration)
+6. [Deployment](#deployment)
+7. [Usage](#usage)
+8. [Data Sources](#data-sources)
+9. [Output & Analysis](#output--analysis)
+10. [Troubleshooting](#troubleshooting)
+11. [Advanced Features](#advanced-features)
 
 ---
 
@@ -102,6 +103,107 @@ cdk bootstrap
 
 ---
 
+## Getting Started
+
+After completing the CDK deployments, MAKI can be used in 4 primary ways based on data source mode and processing type. Each use case demonstrates different aspects of MAKI's capabilities:
+
+### Use Case 1: Support Cases - On-Demand Processing
+**Best for**: Small volumes of support cases (< 100 cases), immediate analysis needs
+
+**Data Source**: Out of the box, MAKI expects [AWS Cloud Intelligence Dashboards (CID)](https://docs.aws.amazon.com/guidance/latest/cloud-intelligence-dashboards/getting-started.html) to be installed and will pull support cases from CID. For testing without CID setup, set `CID_SKIP='true'` in config.py and use synthetic data generation.
+
+```bash
+# Setup: Clean environment and set mode
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode cases
+
+# Generate sample cases for testing (when CID_SKIP='true')
+python tools/generate_synth_cases.py -q
+
+# Run analysis
+python tools/runMaki.py
+```
+**What happens**: Individual cases are processed through Bedrock on-demand inference, providing immediate categorization, sentiment analysis, and actionable recommendations.
+
+### Use Case 2: Support Cases - Batch Processing  
+**Best for**: Large volumes of support cases (≥ 100 cases), cost-optimized analysis
+
+**Data Source**: Out of the box, MAKI expects AWS Cloud Intelligence Dashboards (CID) to be installed and will pull support cases from CID. For testing without CID setup, set `CID_SKIP='true'` in config.py and use synthetic data generation.
+
+```bash
+# Setup: Clean environment and set mode
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode cases
+
+# Generate sample cases for testing (when CID_SKIP='true')
+python tools/generate_synth_cases.py --min-cases 10 --max-cases 15
+
+# Run batch analysis
+python tools/runMaki.py
+```
+**What happens**: Cases are processed through Bedrock batch inference jobs for cost-effective analysis of large datasets, with the same analytical outputs as on-demand processing.
+
+### Use Case 3: Health Events - On-Demand Processing
+**Best for**: Small volumes of health events (< 100 events), real-time operational insights
+
+**Data Source**: Out of the box, MAKI expects health events to be populated in the OpenSearch Serverless collection created during deployment. Use `tools/get_health_events.py` as a reference for pulling health events from the AWS Health API. For comprehensive health event aggregation patterns, see: https://aws.amazon.com/blogs/mt/how-to-aggregate-and-visualize-aws-health-events-using-aws-organizations-and-amazon-elasticsearch-service/
+
+```bash
+# Setup: Clean environment and set mode
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode health
+
+# Configure for small dataset processing
+python tools/opensearch_client.py --size 1
+
+# Run analysis
+python tools/runMaki.py
+```
+**What happens**: Health events are retrieved from OpenSearch, processed individually through Bedrock with vector embedding context, providing operational insights and impact analysis.
+
+### Use Case 4: Health Events - Batch Processing
+**Best for**: Large volumes of health events (≥ 100 events), comprehensive operational analysis
+
+**Data Source**: Out of the box, MAKI expects health events to be populated in the OpenSearch Serverless collection created during deployment. Use `tools/get_health_events.py` as a reference for pulling health events from the AWS Health API. For comprehensive health event aggregation patterns, see: https://aws.amazon.com/blogs/mt/how-to-aggregate-and-visualize-aws-health-events-using-aws-organizations-and-amazon-elasticsearch-service/
+
+```bash
+# Setup: Clean environment and set mode  
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode health
+
+# Configure for large dataset processing
+python tools/opensearch_client.py --size 101
+
+# Run batch analysis
+python tools/runMaki.py
+```
+**What happens**: Large volumes of health events are processed through batch inference, leveraging vector embeddings for semantic analysis and providing comprehensive operational insights.
+
+### Key Differences Between Use Cases
+
+| Aspect | Cases On-Demand | Cases Batch | Health On-Demand | Health Batch |
+|--------|----------------|-------------|------------------|--------------|
+| **Data Source** | Support cases from CID/synthetic | Support cases from CID/synthetic | Health events from OpenSearch | Health events from OpenSearch |
+| **Processing** | Individual Bedrock calls | Batch inference jobs | Individual Bedrock calls | Batch inference jobs |
+| **Volume Threshold** | < 100 cases | ≥ 100 cases | < 100 events | ≥ 100 events |
+| **Cost Model** | Higher per-unit cost | Lower per-unit cost | Higher per-unit cost | Lower per-unit cost |
+| **Latency** | Immediate results | Delayed results | Immediate results | Delayed results |
+| **Vector Context** | N/A | N/A | Yes (embeddings) | Yes (embeddings) |
+
+### Quick Validation
+After running any use case, verify results by checking:
+```bash
+# Check S3 output bucket for results
+aws s3 ls s3://maki-{account}-{region}-report/ --recursive
+
+# View summary results
+aws s3 cp s3://maki-{account}-{region}-report/ondemand/summary.json - 
+# or for batch:
+aws s3 cp s3://maki-{account}-{region}-report/batch/summary.json -
+```
+
+---
+
 ## Configuration
 
 ### Core Configuration (`config.py`)
@@ -130,8 +232,8 @@ MAKI operates in two distinct modes controlled by an SSM parameter:
 BEDROCK_ONDEMAND_BATCH_INFLECTION = 100
 ```
 
-#### Event Categories
-The system categorizes both support cases and health events into these predefined categories:
+#### Support Case Event Categories
+The system categorizes both support cases into these predefined categories:
 - `limit-reached`: Service limit issues
 - `customer-release`: Customer deployment problems
 - `development-issue`: Development and coding problems
@@ -169,6 +271,20 @@ OPENSEARCH_INDEX = 'aws-health-events'
 
 ### Mode Management
 
+MAKI operates in two distinct data modes controlled by AWS Systems Manager Parameter Store values. The mode determines which data source and processing pipeline is used.
+
+#### Data Modes
+
+**Mode = cases**
+- Processes AWS Enterprise Support cases from CID or synthetic data
+- Uses S3 buckets for case storage and processing
+- Analyzes support case patterns and customer sentiment
+
+**Mode = health**  
+- Processes AWS Health events from OpenSearch Serverless
+- Uses vector embeddings for semantic search capabilities
+- Analyzes operational health patterns and service impacts
+
 #### Current Mode Check
 ```bash
 # Check current mode
@@ -190,11 +306,43 @@ python tools/flip_mode.py --show
 python tools/flip_mode.py
 ```
 
-#### Mode Configuration Details
-The mode is stored in AWS Systems Manager Parameter Store:
+#### AWS Systems Manager Parameter Store Configuration
+
+MAKI uses the following SSM parameters for configuration:
+
+##### Primary Mode Parameter
 - **Parameter Name**: `maki-{account}-{region}-maki-mode`
+- **Type**: String
 - **Valid Values**: `cases` or `health`
 - **Default**: `health`
+- **Purpose**: Controls which data source and processing pipeline MAKI uses
+- **Created By**: CDK deployment automatically creates this parameter
+- **Modified By**: `tools/flip_mode.py` script or manual SSM console updates
+
+##### Additional Configuration Parameters
+The system also uses helper functions to retrieve other configuration values from SSM:
+
+- **Health Events Date Range**: Retrieved via `get_ssm_parameter()` function
+  - **Purpose**: Controls date range for health events processing
+  - **Default Fallback**: `2023-01-01T00:00:00Z`
+  - **Usage**: Used by health events ingestion tools
+
+##### Parameter Naming Convention
+All MAKI SSM parameters follow the pattern:
+```
+maki-{account_id}-{region}-{parameter_name}
+```
+
+Where:
+- `{account_id}`: AWS account ID (12-digit number)
+- `{region}`: AWS region (e.g., us-east-1, us-west-2)
+- `{parameter_name}`: Specific parameter identifier
+
+##### Parameter Access Permissions
+The MAKI execution role requires the following SSM permissions:
+- `ssm:GetParameter` - Read parameter values
+- `ssm:PutParameter` - Update parameter values (for mode switching)
+- Resource scope: `arn:aws:ssm:*:*:parameter/maki-*`
 
 ---
 
@@ -259,6 +407,93 @@ aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE
 
 # Check Step Functions
 aws stepfunctions list-state-machines
+```
+
+---
+
+## Usage
+
+### Use Case 1: Support Cases - On-Demand Processing
+**Best for**: Small volumes of support cases (< 100 cases), immediate analysis needs
+```bash
+# Setup: Clean environment and set mode
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode cases
+
+# Generate sample cases for testing
+python tools/generate_synth_cases.py -q
+
+# Run analysis
+python tools/runMaki.py
+```
+**What happens**: Individual cases are processed through Bedrock on-demand inference, providing immediate categorization, sentiment analysis, and actionable recommendations.
+
+### Use Case 2: Support Cases - Batch Processing  
+**Best for**: Large volumes of support cases (≥ 100 cases), cost-optimized analysis
+```bash
+# Setup: Clean environment and set mode
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode cases
+
+# generate test cases
+python tools/generate_synth_cases.py --min-cases 5 --max-cases 10
+
+# Run batch analysis
+python tools/runMaki.py
+```
+**What happens**: Cases are processed through Bedrock batch inference jobs for cost-effective analysis of large datasets, with the same analytical outputs as on-demand processing.
+
+### Use Case 3: Health Events - On-Demand Processing
+**Best for**: Small volumes of health events (< 100 events), real-time operational insights
+```bash
+# Setup: Clean environment and set mode
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode health
+
+# Configure for small dataset processing
+python tools/opensearch_client.py --size 10
+
+# Run analysis
+python tools/runMaki.py
+```
+**What happens**: Health events are retrieved from OpenSearch, processed individually through Bedrock with vector embedding context, providing operational insights and impact analysis.
+
+### Use Case 4: Health Events - Batch Processing
+**Best for**: Large volumes of health events (≥ 100 events), comprehensive operational analysis
+```bash
+# Setup: Clean environment and set mode  
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode health
+
+# Configure for large dataset processing
+python tools/opensearch_client.py --size 200
+
+# Run batch analysis
+python tools/runMaki.py
+```
+**What happens**: Large volumes of health events are processed through batch inference, leveraging vector embeddings for semantic analysis and providing comprehensive operational insights.
+
+### Key Differences Between Use Cases
+
+| Aspect | Cases On-Demand | Cases Batch | Health On-Demand | Health Batch |
+|--------|----------------|-------------|------------------|--------------|
+| **Data Source** | Support cases from CID/synthetic | Support cases from CID/synthetic | Health events from OpenSearch | Health events from OpenSearch |
+| **Processing** | Individual Bedrock calls | Batch inference jobs | Individual Bedrock calls | Batch inference jobs |
+| **Volume Threshold** | < 100 cases | ≥ 100 cases | < 100 events | ≥ 100 events |
+| **Cost Model** | Higher per-unit cost | Lower per-unit cost | Higher per-unit cost | Lower per-unit cost |
+| **Latency** | Immediate results | Delayed results | Immediate results | Delayed results |
+| **Vector Context** | N/A | N/A | Yes (embeddings) | Yes (embeddings) |
+
+### Quick Validation
+After running any use case, verify results by checking:
+```bash
+# Check S3 output bucket for results
+aws s3 ls s3://maki-{account}-{region}-report/ --recursive
+
+# View summary results
+aws s3 cp s3://maki-{account}-{region}-report/ondemand/summary.json - 
+# or for batch:
+aws s3 cp s3://maki-{account}-{region}-report/batch/summary.json -
 ```
 
 ---
@@ -523,6 +758,181 @@ aws stepfunctions describe-execution --execution-arn <execution-arn>
 
 ---
 
+## Test Cases and Validation
+
+MAKI includes a comprehensive test plan with 4 distinct test scenarios to validate functionality across different modes and processing types. The test plan is located in `tools/test_plan.md` and can be executed using:
+
+```bash
+python tools/execute_test_plan.py
+```
+
+### Test Case 1: Support Cases - Empty Dataset
+**Purpose**: Validates behavior when no support cases are available
+**Command**: 
+```bash
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode cases
+python tools/runMaki.py
+```
+**Expected Result**: Execution stops with "no events were found to process" status
+
+### Test Case 2: Support Cases - On-Demand Processing
+**Purpose**: Tests individual case processing with < 100 cases
+**Command**:
+```bash
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode cases
+python tools/generate_synth_cases.py -q
+python tools/runMaki.py
+```
+**Expected Result**: Individual case analysis with categorization, sentiment, and suggestions
+
+### Test Case 3: Support Cases - Batch Processing
+**Purpose**: Tests batch inference with ≥ 100 cases for cost optimization
+**Command**:
+```bash
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode cases
+python tools/copy_s3_data.py from-temp
+python tools/runMaki.py
+```
+**Expected Result**: Batch processing through Bedrock batch inference jobs
+
+### Test Case 4: Health Events Processing
+**Purpose**: Tests health events analysis from OpenSearch
+**Commands**:
+```bash
+# Empty dataset test
+python tools/purge_s3_data.py
+python tools/flip_mode.py --mode health
+python tools/opensearch_client.py --size 0
+python tools/runMaki.py
+
+# On-demand processing (1 event)
+python tools/opensearch_client.py --size 1
+python tools/runMaki.py
+
+# Batch processing (101+ events)
+python tools/opensearch_client.py --size 101
+python tools/runMaki.py
+```
+
+### Test Optimization Tips
+- Use `python tools/copy_s3_data.py from-temp` to reuse pre-generated test cases
+- Store test cases in `s3://maki-temp` for repeated testing
+- Use `-q` flag with `generate_synth_cases.py` for quiet operation
+
+---
+
+## Tools Directory Scripts
+
+The `tools/` directory contains utility scripts for managing, testing, and operating MAKI. Each script serves a specific purpose in the MAKI workflow:
+
+### Core Operational Scripts
+
+#### `runMaki.py`
+**Purpose**: Main driver script for executing MAKI outside the AWS Lambda console
+- Starts Step Function execution with real-time monitoring
+- Shows current mode configuration and AWS identity
+- Displays detailed step-by-step progress
+- Provides execution results and timing information
+- **Usage**: `python tools/runMaki.py`
+
+#### `flip_mode.py`
+**Purpose**: Manages MAKI's data source mode switching between 'cases' and 'health'
+- Displays current mode from SSM Parameter Store
+- Switches between support cases and health events processing
+- Toggles mode automatically or sets specific mode
+- **Usage**: 
+  - `python tools/flip_mode.py` (show current mode)
+  - `python tools/flip_mode.py --mode cases` (set to cases mode)
+  - `python tools/flip_mode.py --mode health` (set to health mode)
+
+### Data Generation and Management Scripts
+
+#### `generate_synth_cases.py`
+**Purpose**: Generates synthetic AWS support cases for testing and development
+- Creates realistic test cases across all predefined categories
+- Uses Bedrock models to generate varied case content
+- Stores generated cases in S3 for processing
+- **Usage**: `python tools/generate_synth_cases.py --min-cases 1 --max-cases 5`
+
+#### `generate_synth_health_events.py`
+**Purpose**: Creates synthetic AWS Health events and loads them into OpenSearch
+- Generates realistic health events across AWS services
+- Creates vector embeddings for semantic search
+- Loads events directly into OpenSearch Serverless collection
+- **Usage**: `python tools/generate_synth_health_events.py --synth 100 --verbose`
+
+#### `get_health_events.py`
+**Purpose**: Retrieves real AWS Health events and processes them for MAKI analysis
+- Fetches events from AWS Health API with date filtering
+- Generates vector embeddings for event descriptions
+- Loads events into OpenSearch with proper indexing
+- Supports both file output and direct OpenSearch loading
+- **Usage**: `python tools/get_health_events.py --load-to-opensearch --start-time "2024-01-01T00:00:00Z"`
+
+### Data Management Utilities
+
+#### `purge_s3_data.py`
+**Purpose**: Cleans all MAKI S3 buckets for fresh testing
+- Deletes all objects from MAKI-related S3 buckets
+- Preserves bucket structure while removing content
+- Essential for test case preparation and cleanup
+- **Usage**: `python tools/purge_s3_data.py`
+
+#### `copy_s3_data.py`
+**Purpose**: Manages test data copying between S3 buckets
+- Copies pre-generated test cases from temporary storage
+- Enables reuse of test datasets across multiple runs
+- Supports both 'to-temp' and 'from-temp' operations
+- **Usage**: `python tools/copy_s3_data.py from-temp`
+
+### OpenSearch Management
+
+#### `opensearch_client.py`
+**Purpose**: Manages OpenSearch Serverless collection and query settings
+- Gets and sets OpenSearch query size limits
+- Controls how many health events are processed per execution
+- Manages OpenSearch collection configuration
+- **Usage**: 
+  - `python tools/opensearch_client.py --size 100` (set query size)
+  - `python tools/opensearch_client.py` (show current size)
+
+### Testing and Validation Scripts
+
+#### `execute_test_plan.py`
+**Purpose**: Automated execution of comprehensive test scenarios
+- Runs all 4 predefined test cases automatically
+- Validates S3 outputs and processing results
+- Provides detailed test execution reporting
+- Supports timeout handling and progress monitoring
+- **Usage**: `python tools/execute_test_plan.py`
+
+#### `environment_validation.py`
+**Purpose**: Validates Python environment and dependencies
+- Checks installed packages against requirements
+- Verifies version compatibility
+- Reports missing or incompatible dependencies
+- **Usage**: `python tools/environment_validation.py`
+
+### Script Dependencies and Requirements
+
+All scripts share common dependencies defined in `tools/requirements.txt`:
+- `boto3` - AWS SDK for Python
+- `opensearch-py` - OpenSearch client
+- `requests-aws4auth` - AWS authentication for requests
+
+### Script Execution Context
+
+Most scripts automatically handle path resolution to work from either:
+- Root directory: `python tools/script_name.py`
+- Tools directory: `cd tools && python script_name.py`
+
+Scripts dynamically import the main `config.py` and required modules regardless of execution location.
+
+---
+
 ## Advanced Features
 
 #### Dual Mode Processing
@@ -535,6 +945,22 @@ aws stepfunctions describe-execution --execution-arn <execution-arn>
 - **Batch**: ≥ 100 events, cost-effective batch processing
 - **Configuration**: `BEDROCK_ONDEMAND_BATCH_INFLECTION = 100`
 - **Mode Aware**: Works for both support cases and health events
+
+#### State Machine Architecture
+MAKI uses AWS Step Functions with sophisticated routing logic:
+- **Pre-execution Checks**: Validates Bedrock models and running jobs
+- **Mode-based Routing**: Automatically routes to appropriate data source
+- **Processing Decision**: Chooses on-demand vs batch based on event count
+- **Error Handling**: Graceful handling of various failure scenarios
+- **Parallel Processing**: Map state for concurrent event processing
+
+#### Lambda Function Architecture
+MAKI consists of 13+ specialized Lambda functions:
+- **Data Ingestion**: `GetCasesFromCID`, `GetHealthFromOpenSearch`
+- **Processing**: `bedrockOnDemandInference`, `bedrockBatchInferenceJob`
+- **Output Processing**: `bedrockProcessBatchOutput`, `bedrockProcessOnDemandOutput`
+- **Validation**: `checkEnabledModels`, `checkRunningJobs`, `checkBatchInferenceJobs`
+- **Utilities**: `cleanOutputFiles`, `genBatchInferenceRecords`
 
 #### Custom Categories
 1. Add new category to `CATEGORIES` list in `config.py`
@@ -565,11 +991,12 @@ BEDROCK_EMBEDDING_MODEL = "amazon.titan-embed-text-v2:0"
   - Custom analytics applications
   - OpenSearch Dashboards (Health mode)
 
-#### Future Enhancements (In Development)
-- **Enhanced Health Integration**: Additional AWS Health event types
-- **Cross-Mode Analysis**: Correlate support cases with health events
-- **Advanced Vector Search**: Improved semantic search capabilities
-- **Agentic Interface**: MCP servers for conversational data access
+#### Development and Testing Tools
+- **Synthetic Data Generation**: `generate_synth_cases.py` for testing
+- **Data Management**: `purge_s3_data.py`, `copy_s3_data.py` for test setup
+- **Mode Management**: `flip_mode.py` for switching between modes
+- **OpenSearch Client**: `opensearch_client.py` for health events management
+- **Environment Validation**: `environment_validation.py` for setup verification
 
 ---
 
