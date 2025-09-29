@@ -96,16 +96,26 @@ def buildStateMachine(self, functions, log_group):
         self, config.BEDROCK_BATCH_INF_JOB_NAME_BASE,
         lambda_function=lambdaBedrockBatchInference,
         payload_response_only=True,
-        input_path="$",
-        output_path = "$"
+        result_path="$.batchInferenceResult",
+        payload=sfn.TaskInput.from_object({
+            "mode.$": "$.mode",
+            "eventsTotal.$": "$.eventsTotal", 
+            "events.$": "$.events",
+            "executionName.$": "$$.Execution.Name"
+        })
     )
 
     stepBedrockBatchInferenceHealth = tasks.LambdaInvoke(
         self, "health-" + config.BEDROCK_BATCH_INF_JOB_NAME_BASE,
         lambda_function=lambdaBedrockBatchInferenceHealth,
         payload_response_only=True,
-        input_path="$",
-        output_path = "$"
+        result_path="$.batchInferenceResult",
+        payload=sfn.TaskInput.from_object({
+            "mode.$": "$.mode",
+            "eventsTotal.$": "$.eventsTotal", 
+            "events.$": "$.events",
+            "executionName.$": "$$.Execution.Name"
+        })
     )
 
     stepPostCheckBatchInferenceJobsCase = tasks.LambdaInvoke(
