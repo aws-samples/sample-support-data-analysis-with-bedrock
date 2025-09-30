@@ -61,20 +61,10 @@ python tools/runMaki.py
 ### OUTPUT
 {
   "Summary": {
+    "eventsTotal": 0,
+    "events": [],
+    "ondemand_run_datetime": "*",
     "mode": "*",
-    "enabledModelsCheck": {
-      "enabledModels": *
-    },
-    "runningJobsCheck": {
-      "runningExecutions": *,
-      "stateMachineArn": "*",
-      "originalPayload": {
-        "mode": "*",
-        "enabledModelsCheck": {
-          "enabledModels": *
-        }
-      }
-    },
     "status": {
       "status": "*"
     }
