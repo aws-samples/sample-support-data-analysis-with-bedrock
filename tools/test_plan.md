@@ -150,10 +150,11 @@ python tools/runMaki.py
 ### END OUTPUT
 
 ## Test 6: Health / OnDemand
+python tools/generate_synth_health_events.py --synth 10
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
 python tools/opensearch_client.py --endpoint
-python tools/opensearch_client.py --size 1 
+python tools/opensearch_client.py --size 5 
 python tools/runMaki.py
 ### OUTPUT
 {
@@ -179,10 +180,11 @@ python tools/runMaki.py
 ### END OUTPUT
 
 ## Test 7: Health / Batch
+python tools/generate_synth_health_events.py --synth 150
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
 python tools/opensearch_client.py --endpoint
-python tools/opensearch_client.py --size 101 
+python tools/opensearch_client.py --size 120
 python tools/runMaki.py
 ### OUTPUT
 {

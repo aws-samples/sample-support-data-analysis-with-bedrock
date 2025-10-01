@@ -291,7 +291,7 @@ def main():
     parser.add_argument('--index-name', default=config.OPENSEARCH_INDEX, help=f'OpenSearch index name (default: {config.OPENSEARCH_INDEX})')
     parser.add_argument('--region', default=config.REGION, help=f'AWS region (default: {config.REGION})')
     parser.add_argument('--verbose', action='store_true', help='Show detailed output for each synthetic event generated and loaded')
-    parser.add_argument('-synth', type=int, default=100, help='Number of synthetic health events to generate (default: 100)')
+    parser.add_argument('--synth', type=int, default=100, help='Number of synthetic health events to generate (default: 100)')
     
     args = parser.parse_args()
     
