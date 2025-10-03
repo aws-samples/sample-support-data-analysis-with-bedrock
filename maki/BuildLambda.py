@@ -1,4 +1,44 @@
-# Builds S3 components of MAKI
+"""
+MAKI Lambda Functions and Layers Builder
+
+This module creates all Lambda functions and layers required for MAKI operations,
+including data ingestion, processing, analysis, and output generation for both
+support cases and health events processing modes.
+
+Purpose:
+- Create Lambda functions for all MAKI processing stages
+- Build reusable Lambda layers for common dependencies
+- Configure environment variables and resource limits
+- Establish proper dependencies and integration points
+
+Lambda Functions Created:
+- Check functions: Model availability, running jobs, batch inference status
+- Data ingestion: Support cases from CID, health events from OpenSearch
+- Processing: On-demand and batch inference for both data types
+- Output processing: Summary generation and report creation
+- Utility functions: Data cleanup and maintenance
+
+Lambda Layers Created:
+- S3 utilities: Common S3 operations and data handling
+- JSON utilities: JSON processing and validation
+- Prompt generation: Bedrock prompt templates and formatting
+- OpenSearch utilities: OpenSearch client and query operations
+- Requests layer: HTTP client for external API calls
+
+Key Features:
+- Configurable timeouts, memory, and retry settings
+- Environment variable injection for runtime configuration
+- Layer-based dependency management for code reuse
+- Support for both x86_64 architecture
+- Integration with CloudWatch logging
+- Proper error handling and retry mechanisms
+
+Processing Modes:
+- Support Cases Mode: CID integration, synthetic data generation
+- Health Events Mode: OpenSearch integration, vector embeddings
+- Dual mode support with runtime switching via SSM parameters
+"""
+
 import aws_cdk as cdk
 import aws_cdk.aws_lambda as _lambda
 import aws_cdk.aws_iam as iam

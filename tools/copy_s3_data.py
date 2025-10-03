@@ -1,4 +1,29 @@
 #!/usr/bin/env python3
+"""
+MAKI S3 Data Copy Utility
+
+This tool manages copying of support case data between the main MAKI S3 bucket and a temporary 
+storage bucket for testing and development purposes.
+
+Purpose:
+- Backup generated synthetic support cases to a temporary bucket for reuse
+- Restore previously generated test cases from temporary storage
+- Avoid regenerating large datasets for repeated testing scenarios
+
+Usage:
+    python tools/copy_s3_data.py to-temp    # Copy from main bucket to temp storage
+    python tools/copy_s3_data.py from-temp  # Restore from temp storage to main bucket
+
+Key Features:
+- Automatically detects AWS account ID and region for dynamic bucket naming
+- Creates temporary bucket if it doesn't exist
+- Copies all objects while preserving structure and metadata
+- Useful for Test 4 (Support Cases - Batch Processing) in the test plan
+
+Buckets:
+- Source/Destination: maki-{account}-{region}-cases-agg (main processing bucket)
+- Temporary Storage: maki-temp (cross-account temporary storage)
+"""
 
 import boto3
 import sys

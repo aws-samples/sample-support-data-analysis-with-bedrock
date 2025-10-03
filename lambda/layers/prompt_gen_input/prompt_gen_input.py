@@ -1,3 +1,74 @@
+"""
+MAKI Prompt Generation and Input Processing Layer
+
+This Lambda layer provides comprehensive prompt generation capabilities for both 
+support cases and health events, including synthetic data generation and batch 
+inference record creation for Bedrock processing.
+
+Purpose:
+- Generate Bedrock-compatible prompts for support cases and health events
+- Create synthetic support cases for testing and development
+- Generate batch inference records for large-scale processing
+- Provide categorization and analysis prompt templates
+- Support both on-demand and batch processing workflows
+
+Key Features:
+- Synthetic support case generation using Bedrock models
+- Batch inference record creation for both data types
+- Category-based prompt generation with examples
+- Support case categorization with sentiment analysis
+- Health event analysis with operational insights
+- Configurable prompt templates and parameters
+
+Functions Provided:
+- generate_15_digit_number(): Unique identifier generation
+- generate_conversation(): Core Bedrock conversation interface
+- gen_synth_prompt(): Synthetic support case generation
+- gen_batch_record_cases(): Support case batch record creation
+- gen_batch_record_health(): Health event batch record creation
+
+Synthetic Data Generation:
+- Realistic support case creation across all categories
+- Category-specific content generation
+- Unique identifier assignment
+- JSONL format output for consistency
+- Example-based generation for authenticity
+
+Batch Record Creation:
+- Bedrock batch inference compatible format
+- Comprehensive prompt engineering for categorization
+- Support case analysis with sentiment detection
+- Health event analysis with operational focus
+- Configurable inference parameters
+
+Categorization Framework:
+- 16 predefined support case categories
+- Category examples and descriptions integration
+- Multi-step categorization logic
+- Sentiment analysis integration
+- Suggested actions and documentation links
+
+Prompt Engineering:
+- Technical account manager persona for support cases
+- SRE/DevOps manager persona for health events
+- Step-by-step analysis instructions
+- JSON output format enforcement
+- Category-specific guidance and examples
+
+Integration Points:
+- S3 utilities: Category examples and descriptions
+- Bedrock runtime: Model inference and conversation
+- Batch processing: Large-scale inference job creation
+- Data validation: JSON and JSONL format handling
+
+Use Cases:
+- Support case categorization and analysis
+- Health event operational analysis
+- Synthetic data generation for testing
+- Batch processing preparation
+- Prompt template management
+"""
+
 import logging
 import boto3
 import json

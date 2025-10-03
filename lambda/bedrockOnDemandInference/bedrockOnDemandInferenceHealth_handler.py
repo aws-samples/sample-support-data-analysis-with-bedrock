@@ -1,3 +1,54 @@
+"""
+MAKI Bedrock On-Demand Inference Handler for Health Events
+
+This Lambda function processes individual AWS Health events through Amazon Bedrock 
+on-demand inference, providing immediate analysis and categorization for small 
+volumes of health events (< 100 events).
+
+Purpose:
+- Process individual health events through Bedrock models
+- Generate health event analysis, categorization, and impact assessment
+- Handle real-time inference for immediate operational insights
+- Manage S3 file operations for health event processing
+
+Key Features:
+- Exponential backoff retry logic for robust API handling
+- Individual health event processing with detailed analysis
+- S3 file management with organized output structure
+- Error handling and recovery mechanisms
+- Integration with MAKI prompt generation system for health events
+
+Processing Flow:
+1. Receive individual health event data from Step Functions Map state
+2. Retrieve health event file from S3 input bucket
+3. Parse JSONL format and extract Bedrock prompt components
+4. Execute Bedrock inference with exponential backoff retry
+5. Process and store analysis results in organized S3 structure
+6. Maintain input files (no deletion for health events)
+
+Environment Variables:
+- S3_INPUT: Input bucket containing health event files
+- S3_OUTPUT: Output bucket for processed results
+- BEDROCK_TEXT_MODEL: Bedrock model ID for inference
+
+Input Event Structure:
+- case: S3 key for the health event file to process
+- ondemand_run_datetime: Timestamp for output organization
+
+Output Structure:
+- event_file: Processed health event file identifier
+
+Retry Logic:
+- Implements exponential backoff (1, 2, 4 seconds)
+- Maximum 5 retry attempts for transient failures
+- Handles Bedrock throttling and temporary service issues
+
+Health Event Specific Features:
+- Preserves original health event files (no deletion)
+- Handles health event specific data structures
+- Supports vector embedding context from OpenSearch
+"""
+
 import sys
 sys.path.append('/opt')
 

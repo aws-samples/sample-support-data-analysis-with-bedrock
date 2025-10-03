@@ -1,4 +1,34 @@
 #!/usr/bin/env python3
+"""
+MAKI Mode Management Tool
+
+This tool manages MAKI's data source mode switching between 'cases' and 'health' processing 
+modes through AWS Systems Manager Parameter Store. The mode determines which data pipeline 
+and processing workflow MAKI uses.
+
+Purpose:
+- Switch between Support Cases mode and Health Events mode
+- Display current mode configuration
+- Toggle between modes automatically
+- Manage SSM parameter: maki-{account}-{region}-maki-mode
+
+Data Modes:
+- 'cases': Processes AWS Enterprise Support cases from CID or synthetic data
+- 'health': Processes AWS Health events from OpenSearch Serverless
+
+Usage:
+    python tools/flip_mode.py                    # Show current mode
+    python tools/flip_mode.py --show            # Show current mode (explicit)
+    python tools/flip_mode.py --mode cases      # Set to cases mode
+    python tools/flip_mode.py --mode health     # Set to health mode
+    python tools/flip_mode.py                   # Toggle between modes
+
+Key Features:
+- Automatic AWS account ID and region detection
+- SSM Parameter Store integration for persistent configuration
+- Mode validation and error handling
+- Used by test scenarios to switch between processing modes
+"""
 
 import boto3
 import argparse

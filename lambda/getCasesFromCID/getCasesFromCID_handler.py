@@ -1,3 +1,72 @@
+"""
+MAKI Support Cases Data Ingestion Handler
+
+This Lambda function serves as the primary data ingestion point for AWS 
+Enterprise Support cases, retrieving data from Cloud Intelligence Dashboard 
+(CID) or processing synthetic data for testing purposes.
+
+Purpose:
+- Ingest support cases from CID or synthetic data sources
+- Process and merge case communications with metadata
+- Generate Bedrock-compatible batch inference records
+- Provide event counts for processing mode decisions (on-demand vs batch)
+- Support both real CID data and synthetic test data
+
+Key Features:
+- CID integration with configurable skip option for testing
+- Support case communication and metadata merging
+- Batch record generation for Bedrock inference
+- SSM Parameter Store integration for configuration
+- Flexible data source handling (CID or synthetic)
+- Event counting for processing mode determination
+
+Processing Flow:
+1. Retrieve configuration from SSM Parameter Store
+2. Check CID_SKIP flag to determine data source
+3. Extract case communications from CID (if enabled)
+4. Extract case metadata from CID (if enabled)
+5. Merge communications with metadata
+6. Generate Bedrock batch inference records
+7. Store processed records in aggregation bucket
+8. Count available files and return processing information
+
+Environment Variables:
+- CID_SKIP: Flag to skip CID and use synthetic data ('true'/'false')
+- S3_AGG: Aggregation bucket for processed cases
+- S3_CID: CID data bucket
+- BEDROCK_CATEGORIZE_TEMPERATURE: Temperature for categorization
+- BEDROCK_MAX_TOKENS: Maximum tokens for processing
+- BEDROCK_CATEGORIZE_TOP_P: Top-p parameter for categorization
+- CATEGORY_BUCKET_NAME: Bucket containing category examples
+- CATEGORIES: List of supported categories
+- CASES_CATEGORY_OUTPUT_FORMAT: Output format specification
+
+SSM Parameters Used:
+- maki-{account}-{region}-events-since: Start time for event retrieval
+- maki-{account}-{region}-mode: Processing mode (retrieved for consistency)
+
+Input Event Structure:
+- No specific input required (uses environment variables and SSM)
+
+Output Structure:
+- eventsTotal: Total number of cases available for processing
+- events: List of case file keys for processing
+- ondemand_run_datetime: Timestamp range for output organization
+- mode: Current processing mode from SSM
+
+Data Processing:
+- Merges case communications with metadata
+- Converts to JSONL format for Bedrock compatibility
+- Generates batch inference records with prompts
+- Organizes files for both on-demand and batch processing
+
+Integration Points:
+- CID: Primary data source for real support cases
+- SSM Parameter Store: Configuration and timing parameters
+- S3: Data storage and file organization
+- Step Functions: Provides event counts for processing decisions
+"""
+
 import os
 import sys
 import boto3

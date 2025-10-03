@@ -1,3 +1,64 @@
+"""
+MAKI Bedrock Batch Inference Jobs Status Checker
+
+This Lambda function monitors and reports on the status of Amazon Bedrock batch 
+inference jobs, providing comprehensive job tracking and status management for 
+MAKI's batch processing operations.
+
+Purpose:
+- Monitor status of all Bedrock batch inference jobs
+- Provide detailed job status information for Step Functions
+- Track job completion and failure states
+- Support EventBridge integration for job completion events
+- Enable proper workflow orchestration based on job status
+
+Key Features:
+- Comprehensive job status monitoring across all states
+- Pagination support for large numbers of jobs
+- Job grouping by status for easy analysis
+- Detailed job information including S3 output locations
+- EventBridge event handling for job completion notifications
+- Incomplete job tracking for workflow decisions
+
+Job Status States Monitored:
+- Submitted: Jobs submitted but not yet started
+- Validating: Jobs undergoing input validation
+- Scheduled: Jobs scheduled for execution
+- InProgress: Jobs currently running
+- Completed: Successfully completed jobs
+- Failed: Jobs that failed during execution
+- Stopping: Jobs in the process of being stopped
+- Stopped: Jobs that were manually stopped
+
+Processing Flow:
+1. Connect to Bedrock service
+2. List all batch inference jobs with optional status filtering
+3. Retrieve detailed information for completed jobs
+4. Group jobs by status for analysis
+5. Calculate counts and identify incomplete jobs
+6. Return comprehensive status information
+
+Environment Variables:
+- None required (uses default AWS credentials and region)
+
+Input Event Structure:
+- statusFilter: Optional filter for specific job status
+- detail: EventBridge job completion event details (if applicable)
+
+Output Structure:
+- statusCounts: Count of jobs by status
+- totalJobs: Total number of jobs found
+- incompleteJobsCount: Number of jobs not yet complete
+- incompleteJobs: List of incomplete job details
+- allJobs: Complete list of all jobs
+- batchJobs: List of completed jobs ready for processing
+
+Integration Points:
+- Step Functions: Workflow decision making based on job status
+- EventBridge: Job completion event handling
+- S3: Output location tracking for completed jobs
+"""
+
 import sys
 sys.path.append('/opt')
 import boto3

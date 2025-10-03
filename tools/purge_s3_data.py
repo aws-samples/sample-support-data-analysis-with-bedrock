@@ -1,4 +1,35 @@
 #!/usr/bin/env python3
+"""
+MAKI S3 Data Purge Utility
+
+This tool cleans all MAKI S3 buckets by deleting their contents while preserving the 
+bucket structure. It's essential for test preparation and ensuring clean execution 
+environments between different test scenarios.
+
+Purpose:
+- Clean all MAKI S3 buckets before test execution
+- Remove previous processing results and generated data
+- Ensure consistent starting state for test scenarios
+- Prevent interference between different test runs
+
+Buckets Purged:
+- maki-{account}-{region}-archive: Archived processing data
+- maki-{account}-{region}-batches: Batch inference job data
+- maki-{account}-{region}-cases-agg: Support cases aggregation data
+- maki-{account}-{region}-health-agg: Health events aggregation data
+- maki-{account}-{region}-llm-output: LLM processing outputs
+- maki-{account}-{region}-report: Final analysis reports
+
+Usage:
+    python tools/purge_s3_data.py
+
+Key Features:
+- Automatic AWS account ID and region detection
+- Batch deletion for efficient processing
+- Comprehensive error handling and reporting
+- Preserves bucket structure while removing all objects
+- Used by all test scenarios to ensure clean starting state
+"""
 
 import boto3
 

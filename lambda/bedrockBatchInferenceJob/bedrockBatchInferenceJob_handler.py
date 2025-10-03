@@ -1,3 +1,51 @@
+"""
+MAKI Bedrock Batch Inference Job Handler
+
+This Lambda function creates and manages Amazon Bedrock batch inference jobs for 
+processing large volumes of events (≥100 events) in a cost-effective manner.
+
+Purpose:
+- Create Bedrock batch inference jobs for large-scale processing
+- Organize input files into batch-sized chunks for optimal processing
+- Move files to dedicated batch processing S3 locations
+- Generate unique job names and manage job lifecycle
+
+Key Features:
+- Automatic batching of events into configurable chunk sizes
+- Unique job naming with account/region/execution context
+- S3 file organization and movement for batch processing
+- Support for both support cases and health events modes
+- Proper error handling and job status tracking
+
+Processing Flow:
+1. Receive events list and total count from Step Functions
+2. Break events into chunks based on BEDROCK_ONDEMAND_BATCH_INFLECTION
+3. Create unique batch job names with execution context
+4. Move input files to batch processing S3 locations
+5. Submit batch inference jobs to Bedrock
+6. Return job details for monitoring and status tracking
+
+Environment Variables:
+- S3_INPUT: Source bucket for input files
+- S3_BATCHES: Batch processing bucket for organized files
+- S3_OUTPUT: Output bucket for batch results
+- MODEL_ID: Bedrock model identifier for inference
+- ROLE: IAM role ARN for batch job execution
+- NAME: Base name for batch job identification
+- BEDROCK_ONDEMAND_BATCH_INFLECTION: Minimum batch size threshold
+
+Input Event Structure:
+- eventsTotal: Total number of events to process
+- events: List of event file keys for processing
+- mode: Processing mode ('cases' or 'health')
+- executionName: Step Functions execution identifier
+
+Output Structure:
+- batch_jobs: List of created batch job details
+- remaining_files: Count of files not included in batches
+- temp_dir: Temporary directory name for this execution
+"""
+
 import sys
 sys.path.append('/opt')
 

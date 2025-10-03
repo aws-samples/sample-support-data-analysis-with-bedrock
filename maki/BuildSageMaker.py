@@ -1,3 +1,42 @@
+"""
+MAKI SageMaker Components Builder
+
+This module creates SageMaker notebook instances for MAKI data analysis and 
+exploration, providing secure development environments for advanced analytics.
+
+Purpose:
+- Create secure SageMaker notebook instances for data analysis
+- Configure VPC-based deployment for network security
+- Enable encrypted storage for sensitive data protection
+- Provide development environment for MAKI data exploration
+
+Components Created:
+- SageMaker notebook instance with configurable instance type
+- KMS key for notebook storage encryption
+- VPC integration for secure network access
+- Security group association for controlled access
+
+Key Features:
+- VPC deployment in private subnets for security
+- Direct internet access disabled for enhanced security
+- Storage encryption using customer-managed KMS keys
+- Integration with MAKI execution role for AWS service access
+- Configurable instance types through config.py
+
+Security Configuration:
+- Deployed in private subnets only
+- Direct internet access disabled (AwsSolutions-SM3 compliance)
+- Storage encryption enabled (AwsSolutions-SM2 compliance)
+- VPC placement for network isolation (AwsSolutions-SM1 compliance)
+- KMS key rotation enabled for enhanced security
+
+Usage:
+- Provides Jupyter notebook environment for data analysis
+- Access to MAKI S3 buckets and processed data
+- Integration with Bedrock models for interactive analysis
+- Support for custom analysis and visualization workflows
+"""
+
 import aws_cdk as cdk
 import aws_cdk.aws_sagemaker as sagemaker
 import aws_cdk.aws_iam as iam

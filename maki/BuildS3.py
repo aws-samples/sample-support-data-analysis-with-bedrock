@@ -1,16 +1,49 @@
-# Builds S3 components of MAKI
+"""
+MAKI S3 Storage Components Builder
+
+This module creates the comprehensive S3 storage infrastructure for MAKI, including
+data buckets, access logging, lifecycle policies, and initial data deployment.
+
+Purpose:
+- Create secure S3 buckets for all MAKI data storage needs
+- Configure lifecycle policies for cost optimization
+- Enable access logging for security and compliance
+- Deploy initial reference data and examples
+
+S3 Buckets Created:
+- Cases aggregation: Support case data and processing results
+- Health aggregation: Health events data and processing results
+- Report: Final analysis outputs and summaries
+- Archive: Long-term storage of processed data
+- Batches: Bedrock batch inference job data
+- LLM output: Direct model outputs and intermediate results
+
+Key Features:
+- Server-side encryption with S3-managed keys
+- Versioning enabled for data protection
+- Block public access for security
+- SSL enforcement for data in transit
+- Lifecycle rules for automatic cost optimization
+- Access logging for audit and compliance
+- Auto-delete on stack removal for development environments
+
+Security Configuration:
+- All buckets block public access by default
+- SSL/TLS enforcement for all requests
+- Server-side encryption enabled
+- Access logging to dedicated logging buckets
+- IAM-based access control integration
+
+Data Deployment:
+- Automatic deployment of category examples and reference data
+- Support for both support cases and health events categories
+- Configurable deployment paths and prefixes
+"""
+
 import aws_cdk as cdk
 import aws_cdk.aws_s3 as s3
 import aws_cdk.aws_s3_deployment as s3deploy
 import aws_cdk.aws_lambda as _lambda
-import config
-import random
-import datetime
-
-# Builds S3 components of MAKI
-import aws_cdk as cdk
-import aws_cdk.aws_s3 as s3
-import aws_cdk.aws_s3_deployment as s3deploy
 import config
 import random
 import datetime

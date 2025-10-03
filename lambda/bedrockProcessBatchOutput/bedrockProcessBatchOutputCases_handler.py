@@ -1,3 +1,58 @@
+"""
+MAKI Bedrock Batch Output Processing Handler for Support Cases
+
+This Lambda function processes the outputs from Bedrock batch inference jobs for 
+support cases, aggregating individual results into comprehensive summaries and 
+organizing outputs for reporting and analysis.
+
+Purpose:
+- Process batch inference job outputs for support cases
+- Aggregate individual case analyses into comprehensive summaries
+- Organize processed results in S3 for reporting and analysis
+- Generate executive summaries using advanced Bedrock models
+- Clean up temporary batch processing files
+
+Key Features:
+- Batch output file discovery and processing across multiple jobs
+- JSON validation and error handling for malformed outputs
+- Aggregation of case summaries, sentiments, and insights
+- Executive summary generation using sophisticated models
+- S3 file organization with timestamped directory structure
+- Cleanup of temporary batch processing files
+
+Processing Flow:
+1. Receive batch job details from Step Functions
+2. Discover and collect all batch output files from S3
+3. Process individual case analysis results
+4. Extract and validate JSON outputs from batch inference
+5. Aggregate case summaries and sentiment analysis
+6. Generate executive summary using advanced Bedrock model
+7. Store organized results in report bucket
+8. Clean up temporary batch processing files
+
+Environment Variables:
+- S3_BATCH_OUTPUT: Bucket containing batch inference outputs
+- S3_REPORT: Bucket for final processed reports
+- S3_ARCHIVE: Bucket for long-term storage
+- S3_BATCHES: Temporary batch processing bucket
+- MODEL_ID: Advanced Bedrock model for summary generation
+- BEDROCK_MAX_TOKENS: Maximum tokens for summary generation
+- BEDROCK_SUMMARY_TEMPERATURE: Temperature for summary generation
+- SUMMARY_OUTPUT_FORMAT: Format specification for summaries
+
+Input Event Structure:
+- batchInferenceResult: Contains batch job details and output locations
+- batch_jobs: List of completed batch jobs with output URIs
+
+Output Structure:
+- summary: Generated executive summary of all processed cases
+
+File Organization:
+- Individual results: batch/{timestamp}/events/{case-id}-output.json
+- Executive summary: batch/{timestamp}/summary.json
+- Timestamped directories for historical tracking
+"""
+
 import os
 import sys
 import json
