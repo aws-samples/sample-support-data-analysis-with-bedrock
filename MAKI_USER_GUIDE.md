@@ -69,6 +69,93 @@ MAKI (Machine Augmented Key Insights) is an educational sample application that 
 
 ## Installation & Setup
 
+### Prerequisites Installation
+
+Before setting up MAKI, ensure all required components are installed and configured:
+
+#### 1. Install Python 3.9+
+**macOS (using Homebrew):**
+```bash
+# Install Homebrew if not already installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Python 3.9+
+brew install python@3.9
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update
+sudo apt install python3.9 python3.9-venv python3-pip
+```
+
+**Windows:**
+Download and install Python 3.9+ from [python.org](https://www.python.org/downloads/)
+
+#### 2. Install Node.js (for AWS CDK)
+**macOS (using Homebrew):**
+```bash
+brew install node
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+**Windows:**
+Download and install Node.js from [nodejs.org](https://nodejs.org/)
+
+#### 3. Install AWS CLI
+**macOS:**
+```bash
+brew install awscli
+```
+
+**Linux:**
+```bash
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+```
+
+**Windows:**
+Download and install from [AWS CLI installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+
+#### 4. Install AWS CDK v2
+```bash
+npm install -g aws-cdk
+```
+
+#### 5. Configure AWS CLI
+```bash
+aws configure
+```
+You'll need:
+- AWS Access Key ID
+- AWS Secret Access Key
+- Default region name (e.g., us-east-1)
+- Default output format (json recommended)
+
+#### 6. Enable Amazon Bedrock Models
+1. Navigate to the [Amazon Bedrock console](https://console.aws.amazon.com/bedrock/)
+2. Go to "Model access" in the left navigation
+3. Request access for the following models:
+   - **Nova Micro** (us.amazon.nova-micro-v1:0) - Light model for individual processing
+   - **Claude 3.5 Sonnet** (us.anthropic.claude-3-5-sonnet-20241022-v2:0) - Sophisticated model for aggregation
+   - **Titan Embed Text v2** (amazon.titan-embed-text-v2:0) - Embedding model for health events
+
+#### 7. Set Up AWS Enterprise Support (Optional)
+- Required only for real support case data
+- Contact AWS Support to upgrade to Enterprise Support if needed
+- For testing, synthetic data can be used instead
+
+#### 8. Install AWS Cloud Intelligence Dashboard (Optional)
+- Follow the [CID installation guide](https://docs.aws.amazon.com/guidance/latest/cloud-intelligence-dashboards/getting-started.html)
+- Required only for real support case data from CID
+- Can be skipped for testing with synthetic data
+
 ### 1. Clone and Setup Environment
 ```bash
 git clone <repository-url>
