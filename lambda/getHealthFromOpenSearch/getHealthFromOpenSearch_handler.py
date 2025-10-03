@@ -1,3 +1,79 @@
+"""
+MAKI Health Events Data Ingestion Handler
+
+This Lambda function serves as the primary data ingestion point for AWS Health 
+events, retrieving data from OpenSearch Serverless and processing it for 
+MAKI analysis workflows.
+
+Purpose:
+- Ingest AWS Health events from OpenSearch Serverless
+- Process health events into Bedrock-compatible batch inference records
+- Support vector embedding context from OpenSearch storage
+- Provide event counts for processing mode decisions (on-demand vs batch)
+- Enable operational health insights and impact analysis
+
+Key Features:
+- OpenSearch Serverless integration with AWS authentication
+- Health event querying with time-based filtering
+- Vector embedding support for semantic analysis
+- Batch record generation for Bedrock inference
+- SSM Parameter Store integration for configuration
+- Configurable query size limits for performance optimization
+
+Processing Flow:
+1. Retrieve configuration from SSM Parameter Store
+2. Connect to OpenSearch Serverless with AWS authentication
+3. Query health events based on lastUpdatedTime filter
+4. Process each health event into structured format
+5. Generate Bedrock batch inference records with prompts
+6. Store processed records in health aggregation bucket
+7. Count available files and return processing information
+
+Environment Variables:
+- OPENSEARCH_INDEX: OpenSearch index containing health events
+- S3_HEALTH_AGG: Aggregation bucket for processed health events
+- HEALTH_OUTPUT_FORMAT: Output format specification for health events
+- BEDROCK_CATEGORIZE_TEMPERATURE: Temperature for categorization
+- BEDROCK_MAX_TOKENS: Maximum tokens for processing
+- BEDROCK_CATEGORIZE_TOP_P: Top-p parameter for categorization
+
+SSM Parameters Used:
+- maki-{account}-{region}-opensearch-endpoint: OpenSearch collection endpoint
+- maki-{account}-{region}-opensearch-query-size: Maximum events per query
+- maki-{account}-{region}-events-since: Start time for event retrieval
+- maki-{account}-{region}-mode: Processing mode (retrieved for consistency)
+
+Input Event Structure:
+- No specific input required (uses environment variables and SSM)
+
+Output Structure:
+- eventsTotal: Total number of health events available for processing
+- events: List of health event file keys for processing
+- ondemand_run_datetime: Timestamp range for output organization
+- mode: Always returns 'health' for this handler
+
+Health Event Processing:
+- Extracts comprehensive health event metadata
+- Preserves event descriptions and affected entities
+- Maintains event ARNs and service information
+- Converts to JSONL format for Bedrock compatibility
+- Generates batch inference records with health-specific prompts
+
+OpenSearch Integration:
+- Uses AWSV4SignerAuth for OpenSearch Serverless authentication
+- Queries based on lastUpdatedTime for recent events
+- Supports configurable result size limits
+- Handles vector embedding context when available
+- Provides error handling for connection issues
+
+Integration Points:
+- OpenSearch Serverless: Primary data source for health events
+- SSM Parameter Store: Configuration and timing parameters
+- S3: Data storage and file organization
+- Step Functions: Provides event counts for processing decisions
+- Bedrock: Downstream processing for health event analysis
+"""
+
 import os
 import sys
 import json

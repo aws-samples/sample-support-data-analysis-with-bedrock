@@ -1,4 +1,5 @@
-# builds unique key for build
+# parameters used in building MAKI
+
 import boto3
 
 ####

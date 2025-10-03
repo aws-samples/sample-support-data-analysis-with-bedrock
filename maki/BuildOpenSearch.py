@@ -1,4 +1,42 @@
-# Builds OpenSearch Serverless components of MAKI
+"""
+MAKI OpenSearch Serverless Components Builder
+
+This module creates OpenSearch Serverless infrastructure for MAKI's health events 
+processing mode, providing vector search capabilities and scalable event storage.
+
+Purpose:
+- Create OpenSearch Serverless collection for health events storage
+- Configure security policies for encryption, network access, and data access
+- Enable vector search capabilities for semantic analysis
+- Provide dashboard access for data exploration and monitoring
+
+Components Created:
+- OpenSearch Serverless collection with search optimization
+- Encryption policy using AWS-owned keys
+- Network policy allowing public access (secured by data access policy)
+- Data access policy with least-privilege permissions
+- IAM policies for dashboard access and collection management
+
+Key Features:
+- Serverless architecture with automatic scaling
+- Vector search support for semantic similarity
+- Comprehensive security policy configuration
+- Integration with MAKI execution role and current user
+- Dashboard access for data visualization and debugging
+
+Security Configuration:
+- Encryption at rest using AWS-owned keys
+- Network access controlled through security policies
+- Data access restricted to MAKI execution role and deploying user
+- Separate permissions for collection operations and index management
+
+Usage:
+- Deployed by MakiEmbeddings stack for health events mode
+- Stores health events with vector embeddings for semantic search
+- Provides scalable storage for large volumes of health data
+- Enables advanced querying and similarity search capabilities
+"""
+
 import aws_cdk as cdk
 import aws_cdk.aws_opensearchserverless as opensearch
 import aws_cdk.aws_iam as iam

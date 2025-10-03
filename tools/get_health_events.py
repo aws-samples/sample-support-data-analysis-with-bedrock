@@ -1,4 +1,40 @@
 #!/usr/bin/env python3
+"""
+MAKI AWS Health Events Collector
+
+This tool queries the AWS Health API to retrieve real health events from the past year 
+and loads them into OpenSearch Serverless with vector embeddings for semantic analysis. 
+It serves as the primary data ingestion tool for health events processing mode.
+
+Purpose:
+- Collect real AWS Health events from the Health API
+- Enrich events with vector embeddings for semantic search
+- Load events into OpenSearch Serverless for MAKI processing
+- Support both file output and direct OpenSearch loading
+
+Data Collection Scope:
+- Events received in the past year (based on lastUpdatedTime)
+- Future scheduled events that were received in the past year
+- Comprehensive event details including descriptions and affected entities
+- Vector embeddings for event descriptions using Bedrock Titan Embed
+
+Usage:
+    python tools/get_health_events.py                              # Load to OpenSearch
+    python tools/get_health_events.py --output-dir ./health_data  # Save to files
+    python tools/get_health_events.py --verbose                   # Show detailed output
+
+Requirements:
+- AWS Business or Enterprise Support plan for Health API access
+- Bedrock access for Titan Embed Text v2 model
+- OpenSearch Serverless collection configured in MAKI
+
+Key Features:
+- Automatic date range calculation (past year)
+- Batch processing of event details (10 events per API call)
+- Vector embedding generation for semantic search
+- Comprehensive error handling and progress reporting
+- Support for both OpenSearch loading and file export
+"""
 
 import boto3
 import json

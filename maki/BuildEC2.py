@@ -1,3 +1,34 @@
+"""
+MAKI EC2 and VPC Components Builder
+
+This module creates the foundational networking infrastructure for MAKI, including VPC, 
+subnets, security groups, and VPC Flow Logs for comprehensive network monitoring.
+
+Purpose:
+- Establish secure networking foundation for MAKI components
+- Create VPC with public and private subnets across multiple AZs
+- Configure security groups with least-privilege access
+- Enable VPC Flow Logs for network monitoring and compliance
+
+Components Created:
+- VPC with 3 Availability Zones (required for OpenSearch Serverless)
+- Public and private subnets with appropriate routing
+- Security group with restricted SSH access
+- VPC Flow Logs with CloudWatch integration
+
+Key Features:
+- Multi-AZ deployment for high availability
+- Private subnets with NAT Gateway for secure outbound access
+- VPC Flow Logs for network traffic monitoring
+- Security group with restricted access from trusted networks only
+- Proper tagging for resource identification
+
+Usage:
+- Called by MakiFoundations stack during deployment
+- VPC is used by OpenSearch Serverless, Lambda functions, and SageMaker
+- Security group provides controlled access for development resources
+"""
+
 import aws_cdk as cdk
 import aws_cdk.aws_ec2 as ec2
 import aws_cdk.aws_logs as logs

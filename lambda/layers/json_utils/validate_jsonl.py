@@ -1,3 +1,58 @@
+"""
+MAKI JSON and JSONL Validation Utilities Layer
+
+This Lambda layer provides comprehensive utilities for JSON and JSONL (JSON Lines) 
+data validation, conversion, and manipulation throughout the MAKI processing pipeline.
+
+Purpose:
+- Validate JSON and JSONL data integrity
+- Convert between different JSON formats (JSON, JSONL, dictionaries)
+- Provide robust error handling for malformed data
+- Support batch processing data validation requirements
+
+Key Features:
+- String to dictionary conversion with multiple parsing strategies
+- JSON to JSONL format conversion for Bedrock batch processing
+- Dictionary to JSONL conversion for data pipeline integration
+- JSONL to dictionary parsing for data extraction
+- Comprehensive validation with detailed error reporting
+- File-based JSONL validation for large datasets
+
+Functions Provided:
+- string_to_dict(): Convert string representations to dictionaries
+- json_to_jsonl(): Convert JSON strings to JSONL format
+- dict_to_jsonl(): Convert dictionaries to JSONL strings
+- jsonl_to_dict(): Parse JSONL strings into dictionaries
+- json_to_dict(): Convert JSON strings to dictionaries
+- validate_jsonl_file(): Validate JSONL files with required key checking
+- validate_jsonl(): Validate JSONL strings with error details
+- is_valid_json(): Simple JSON validation check
+
+Data Format Support:
+- JSON: Standard JSON object and array formats
+- JSONL: JSON Lines format (one JSON object per line)
+- Dictionary: Python dictionary objects
+- String representations: Various string-encoded data formats
+
+Error Handling:
+- Graceful handling of malformed JSON data
+- Detailed error reporting with line numbers and content
+- Multiple parsing strategies (json.loads, ast.literal_eval)
+- Comprehensive validation feedback
+
+Integration Points:
+- Bedrock batch inference: JSONL format requirements
+- S3 data processing: File format validation
+- Lambda functions: Data integrity checks
+- Prompt generation: Input data validation
+
+Use Cases:
+- Validating support case data from CID
+- Converting health events for batch processing
+- Ensuring data integrity in processing pipelines
+- Debugging malformed data issues
+"""
+
 import json
 
 def string_to_dict(input_string):

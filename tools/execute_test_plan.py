@@ -1,4 +1,37 @@
 #!/usr/bin/env python3
+"""
+MAKI Test Plan Execution Engine
+
+This tool automates the execution of MAKI's comprehensive test plan, validating functionality 
+across different modes and processing types. It parses test_plan.md and executes all 7 test 
+scenarios with output validation and progress monitoring.
+
+Purpose:
+- Automated testing of MAKI deployment and functionality
+- Validation of both support cases and health events processing modes
+- Output verification against expected JSON patterns using wildcards
+- Progress monitoring with real-time step function execution tracking
+
+Test Scenarios Covered:
+1. Deploy - CDK stack deployment validation
+2. Support Cases - Empty Dataset (error handling)
+3. Support Cases - On-Demand Processing (< 100 cases)
+4. Support Cases - Batch Processing (≥ 100 cases)
+5. Health Events - Empty Dataset (error handling)
+6. Health Events - On-Demand Processing (< 100 events)
+7. Health Events - Batch Processing (≥ 100 events)
+
+Usage:
+    python tools/execute_test_plan.py                    # Execute full test plan
+    python tools/execute_test_plan.py --check-files-only # Only validate S3 outputs
+
+Key Features:
+- Real-time progress monitoring with elapsed time tracking
+- JSON structure comparison with wildcard support (*)
+- S3 output validation for batch and on-demand processing
+- Automatic test failure detection and reporting
+- Integration with runMaki.py for step function progress display
+"""
 
 import subprocess
 import sys

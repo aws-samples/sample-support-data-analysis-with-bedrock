@@ -1,3 +1,63 @@
+"""
+MAKI Health Events Aggregation Prompt Layer
+
+This Lambda layer provides specialized prompt generation and aggregation capabilities 
+for AWS Health events, creating operational summaries and health improvement 
+recommendations from individual health event analyses.
+
+Purpose:
+- Generate operational summaries from multiple health event analyses
+- Create health and monitoring improvement recommendations
+- Provide SRE/DevOps manager perspective on infrastructure health
+- Aggregate individual health insights into operational strategies
+
+Key Features:
+- Advanced Bedrock model integration for operational analysis
+- Health event aggregation with operational focus
+- Operational summary generation with actionable insights
+- Infrastructure health status assessment
+- Monitoring and alerting improvement plans
+- JSON-formatted output for consistent reporting
+
+Functions Provided:
+- generate_conversation(): Core Bedrock conversation interface
+- aggregate_prompt(): Main aggregation function for health events
+
+Aggregation Capabilities:
+- Multi-event operational synthesis
+- Health and operational theme identification
+- Overall infrastructure health assessment
+- Operational improvement recommendations
+- Executive-level operational summary generation
+
+Prompt Engineering:
+- SRE/DevOps manager persona specialized in health monitoring
+- Operational resilience analysis framework
+- Health monitoring recommendation generation
+- Infrastructure optimization insights
+- AWS operational best practices integration
+
+Output Format:
+- Structured JSON with Health Summary and Operational Plan fields
+- Operational-level language and insights
+- Actionable monitoring recommendations
+- Strategic health themes
+- Infrastructure health assessment
+
+Integration Points:
+- Bedrock runtime: Advanced model inference
+- Batch processing: Large-scale health event aggregation
+- On-demand processing: Real-time operational summary generation
+- Report generation: Operational summary creation
+
+Use Cases:
+- Operational health reporting
+- Infrastructure monitoring assessment and planning
+- SRE team insights and recommendations
+- Operational excellence initiatives
+- Health monitoring strategy development
+"""
+
 import logging
 import boto3
 import json

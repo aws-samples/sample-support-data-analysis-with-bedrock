@@ -1,4 +1,41 @@
-# simple driver script to develop lambda outside AWS lambda console
+#!/usr/bin/env python3
+"""
+MAKI Step Function Execution Driver
+
+This tool serves as the primary interface for executing MAKI outside the AWS Lambda console. 
+It starts the Step Function state machine, monitors execution progress in real-time, and 
+provides comprehensive output including both summary analysis and example event data.
+
+Purpose:
+- Execute MAKI Step Function state machine with real-time monitoring
+- Display current processing mode and AWS identity information
+- Show detailed step-by-step progress with timing information
+- Provide combined JSON output with summary and example event data
+
+Execution Flow:
+1. Retrieves current mode from SSM Parameter Store
+2. Starts Step Function execution with mode configuration
+3. Monitors execution progress with step-level detail
+4. Displays real-time timing and function information
+5. Outputs combined results including summary and example events
+
+Usage:
+    python tools/runMaki.py
+
+Output Format:
+- Real-time progress display with step names and durations
+- Final JSON output combining summary analysis and example event
+- Comprehensive error reporting with step-level failure details
+
+Key Features:
+- Real-time Step Function execution monitoring
+- Automatic mode detection from SSM Parameter Store
+- Step-level progress tracking with timing information
+- Combined output generation from S3 results
+- Integration with both support cases and health events processing
+- Used by test scenarios and manual MAKI execution
+"""
+
 import boto3
 import json
 from time import sleep

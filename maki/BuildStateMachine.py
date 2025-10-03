@@ -1,3 +1,44 @@
+"""
+MAKI Step Functions State Machine Builder
+
+This module creates the comprehensive Step Functions state machine that orchestrates
+all MAKI operations, including data ingestion, processing, analysis, and output 
+generation for both support cases and health events modes.
+
+Purpose:
+- Orchestrate end-to-end MAKI processing workflow
+- Implement conditional logic for mode-based processing
+- Manage parallel processing and batch operations
+- Provide error handling and retry mechanisms
+
+State Machine Flow:
+1. Pre-flight checks: Model availability, running jobs, batch inference status
+2. Mode injection: Determine processing mode from input or SSM parameter
+3. Data source routing: Support cases (CID) or health events (OpenSearch)
+4. Processing decision: On-demand vs batch based on event volume
+5. Analysis execution: Bedrock inference with appropriate models
+6. Output processing: Summary generation and report creation
+
+Processing Modes:
+- Support Cases Mode: CID integration, synthetic data support
+- Health Events Mode: OpenSearch integration, vector embeddings
+- Automatic mode detection and routing
+
+Key Features:
+- Conditional routing based on data source mode
+- Volume-based processing decisions (on-demand vs batch)
+- Parallel processing with configurable concurrency
+- Comprehensive error handling and status reporting
+- Integration with all MAKI Lambda functions
+- CloudWatch logging and X-Ray tracing enabled
+
+Execution Patterns:
+- Small datasets (< 100 events): On-demand parallel processing
+- Large datasets (≥ 100 events): Batch inference for cost optimization
+- Empty datasets: Graceful termination with status reporting
+- Error conditions: Proper error handling and status reporting
+"""
+
 import aws_cdk as cdk
 import aws_cdk.aws_lambda as lambda_
 import aws_cdk.aws_stepfunctions as sfn

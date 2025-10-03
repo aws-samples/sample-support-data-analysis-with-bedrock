@@ -1,3 +1,49 @@
+"""
+MAKI Bedrock On-Demand Inference Handler for Support Cases
+
+This Lambda function processes individual support cases through Amazon Bedrock 
+on-demand inference, providing immediate analysis and categorization for small 
+volumes of cases (< 100 cases).
+
+Purpose:
+- Process individual support cases through Bedrock models
+- Generate case analysis, categorization, and sentiment analysis
+- Handle real-time inference for immediate results
+- Manage S3 file operations for input and output processing
+
+Key Features:
+- Exponential backoff retry logic for robust API handling
+- Individual case processing with detailed analysis
+- S3 file management with organized output structure
+- Error handling and recovery mechanisms
+- Integration with MAKI prompt generation system
+
+Processing Flow:
+1. Receive individual case data from Step Functions Map state
+2. Retrieve case file from S3 input bucket
+3. Parse JSONL format and extract Bedrock prompt components
+4. Execute Bedrock inference with exponential backoff retry
+5. Process and store analysis results in organized S3 structure
+6. Clean up input files after successful processing
+
+Environment Variables:
+- S3_INPUT: Input bucket containing case files
+- S3_OUTPUT: Output bucket for processed results
+- BEDROCK_TEXT_MODEL: Bedrock model ID for inference
+
+Input Event Structure:
+- case: S3 key for the case file to process
+- ondemand_run_datetime: Timestamp for output organization
+
+Output Structure:
+- event_file: Processed case file identifier
+
+Retry Logic:
+- Implements exponential backoff (1, 2, 4 seconds)
+- Maximum 5 retry attempts for transient failures
+- Handles Bedrock throttling and temporary service issues
+"""
+
 import sys
 sys.path.append('/opt')
 

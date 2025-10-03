@@ -1,4 +1,78 @@
-# gets files from s3
+"""
+MAKI S3 Operations Utilities Layer
+
+This Lambda layer provides comprehensive S3 operations and utilities for all MAKI 
+data processing workflows, including file management, data retrieval, and 
+specialized operations for support cases and health events.
+
+Purpose:
+- Provide comprehensive S3 operations for MAKI data processing
+- Handle file uploads, downloads, and management operations
+- Support category-based data organization and retrieval
+- Enable efficient data processing workflows
+- Manage temporary and permanent data storage
+
+Key Features:
+- Complete S3 bucket and object management
+- Category-based data organization for support cases
+- Batch file operations for large-scale processing
+- Data format handling with JSON/JSONL support
+- Error handling and retry logic for robust operations
+
+Functions Provided:
+- empty_s3_bucket(): Complete bucket cleanup operations
+- list_bucket_objects(): Object listing with metadata
+- list_bucket_object_keys(): Simple key listing for processing
+- get_category_desc(): Category description retrieval
+- get_category_examples(): Category example data retrieval
+- get_s3_obj_body(): Object content retrieval with decoding
+- store_data(): Data storage with format handling
+- upload_directory_to_s3(): Bulk directory upload operations
+- find_files_in_s3(): File discovery with filtering
+- extract_bucket_name(): S3 URI parsing utilities
+- rename_s3_object(): Object renaming operations
+- move_s3_object(): Cross-bucket object movement
+- delete_s3_object(): Safe object deletion
+
+Category Management:
+- Support case category organization
+- Example data retrieval for prompt generation
+- Description text management
+- Category-specific file filtering
+
+Data Processing Support:
+- JSON/JSONL format handling
+- Automatic data reformatting
+- Batch processing file organization
+- Temporary file management
+
+Bulk Operations:
+- Directory upload with structure preservation
+- Batch file discovery and filtering
+- Cross-bucket data movement
+- Efficient pagination for large datasets
+
+Error Handling:
+- Comprehensive exception handling
+- Detailed error logging and reporting
+- Graceful degradation for missing data
+- Retry logic for transient failures
+
+Integration Points:
+- Lambda functions: Core data operations
+- Bedrock processing: Input/output file management
+- Category system: Example and description management
+- Batch processing: File organization and movement
+
+Use Cases:
+- Support case data ingestion from CID
+- Health event data processing
+- Category example management
+- Batch processing file organization
+- Temporary data cleanup
+- Cross-bucket data migration
+"""
+
 import boto3
 from botocore.exceptions import ClientError
 import os

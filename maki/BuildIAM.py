@@ -1,4 +1,40 @@
-# Builds IAM components of MAKI
+"""
+MAKI IAM Components Builder
+
+This module creates the comprehensive IAM role and policies required for MAKI operations,
+providing least-privilege access to all necessary AWS services while maintaining security.
+
+Purpose:
+- Create unified execution role for all MAKI components
+- Define comprehensive permissions for multi-service integration
+- Implement least-privilege access patterns
+- Support both support cases and health events processing modes
+
+Services Integrated:
+- Amazon Bedrock: Model invocation and batch inference jobs
+- Amazon S3: Data storage, retrieval, and lifecycle management
+- AWS Lambda: Function execution and invocation
+- AWS Step Functions: State machine execution and monitoring
+- Amazon OpenSearch Serverless: Health events storage and search
+- AWS Systems Manager: Parameter Store for configuration
+- AWS Glue: Data cataloging and crawling (if needed)
+- Amazon SageMaker: Notebook instances for analysis
+
+Key Features:
+- Composite principal supporting multiple AWS services
+- Resource-specific permissions with account/region scoping
+- Support for both on-demand and batch Bedrock inference
+- OpenSearch Serverless API access for health events
+- S3 access to MAKI buckets and CID data sources
+- SSM Parameter Store access for configuration management
+
+Security Considerations:
+- Least-privilege access with specific resource ARNs
+- Account and region-scoped permissions
+- No wildcard permissions except where required by service limitations
+- Proper trust relationships for service-to-service access
+"""
+
 import aws_cdk.aws_iam as iam
 import sys
 sys.path.append('..')

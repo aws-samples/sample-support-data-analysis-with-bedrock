@@ -1,3 +1,50 @@
+"""
+MAKI JSON File Processing Utilities Layer
+
+This Lambda layer provides specialized utilities for JSON file processing, 
+validation, and formatting within the MAKI S3 data processing pipeline.
+
+Purpose:
+- Validate and process JSON files in S3 operations
+- Fix common JSON formatting issues in data sources
+- Compress and reformat JSON data for efficient storage
+- Support both JSON and JSONL file type detection
+
+Key Features:
+- JSON and JSONL file type detection
+- JSON validation with error handling
+- Common typo correction (e.g., "submittedBY" to "submittedBy")
+- JSON compression and reformatting
+- Multi-object JSON parsing and JSONL conversion
+
+Functions Provided:
+- isJsonFile(): File type detection for JSON/JSONL files
+- is_valid_json(): Simple JSON validation check
+- fix_submitted_by_typo(): Correct common field name typos
+- reformatJson(): Complete JSON reformatting pipeline
+- compress_json(): JSON compression and JSONL conversion
+
+Data Processing Features:
+- Automatic typo correction for known issues
+- Multi-object JSON parsing support
+- JSONL format conversion for batch processing
+- Whitespace and formatting optimization
+- Error handling for malformed data
+
+Integration Points:
+- S3 operations: File processing and validation
+- Data ingestion: Format standardization
+- Batch processing: JSONL format preparation
+- Error handling: Data quality assurance
+
+Use Cases:
+- CID data processing and cleanup
+- S3 file format standardization
+- Batch inference data preparation
+- Data quality validation
+- Storage optimization through compression
+"""
+
 import json
 
 def isJsonFile(filename):

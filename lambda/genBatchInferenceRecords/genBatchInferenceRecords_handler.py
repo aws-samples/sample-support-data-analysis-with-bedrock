@@ -1,3 +1,43 @@
+"""
+MAKI Batch Inference Records Generator (Legacy/Unused)
+
+This Lambda function was designed to generate batch inference records from 
+CID (Cloud Intelligence Dashboard) data, but is currently not used in the 
+active MAKI workflow. The functionality has been integrated into the main 
+getCasesFromCID handler.
+
+Purpose:
+- Originally intended for separate batch record generation
+- Would have processed CID support case data into Bedrock-compatible format
+- Part of earlier MAKI architecture with separate processing stages
+
+Legacy Functionality:
+- CID data extraction and processing
+- Support case communication and metadata merging
+- Batch record generation for Bedrock inference
+- JSONL format conversion for batch processing
+
+Current Status:
+- Not actively used in current MAKI workflow
+- Functionality integrated into getCasesFromCID_handler
+- Maintained for historical reference
+
+Environment Variables:
+- S3_AGG: Aggregation bucket for processed cases
+- S3_CID: CID data bucket
+- BEDROCK_CATEGORIZE_TEMPERATURE: Temperature for categorization
+- BEDROCK_MAX_TOKENS: Maximum tokens for processing
+- BEDROCK_CATEGORIZE_TOP_P: Top-p parameter for categorization
+- CATEGORY_BUCKET_NAME: Bucket containing category examples
+- CATEGORIES: List of supported categories
+- CASES_CATEGORY_OUTPUT_FORMAT: Output format specification
+
+Note:
+This function is maintained for historical reference but is not part of 
+the active MAKI processing pipeline. Current MAKI architecture handles 
+batch record generation within the main data ingestion process.
+"""
+
 import os
 import sys
 sys.path.append('/opt')

@@ -1,4 +1,36 @@
 #!/usr/bin/env python3
+"""
+MAKI Synthetic Health Events Generator
+
+This tool generates realistic synthetic AWS Health events and loads them directly into 
+OpenSearch Serverless for testing and development purposes. It creates events across 
+multiple AWS services with vector embeddings for semantic search capabilities.
+
+Purpose:
+- Generate test health events when real AWS Health API data is not available
+- Create varied synthetic events across AWS services (EC2, RDS, S3, Lambda, etc.)
+- Support testing of health events processing pipeline
+- Enable development without requiring Business/Enterprise support for Health API
+
+Event Types Generated:
+- Scheduled maintenance events (EC2, RDS, ELB)
+- Operational issues across AWS services
+- Service degradations and connectivity problems
+- Infrastructure upgrades and capacity events
+
+Usage:
+    python tools/generate_synth_health_events.py                    # Generate 100 events
+    python tools/generate_synth_health_events.py --synth 50        # Generate 50 events
+    python tools/generate_synth_health_events.py --verbose         # Show detailed output
+
+Key Features:
+- Generates realistic health events with proper AWS ARN structure
+- Creates vector embeddings using Bedrock Titan Embed model
+- Loads events directly into OpenSearch Serverless collection
+- Supports affected entities and detailed event metadata
+- Auto-detects OpenSearch endpoint from MAKI configuration
+- Provides comprehensive loading statistics and error handling
+"""
 
 import boto3
 import json

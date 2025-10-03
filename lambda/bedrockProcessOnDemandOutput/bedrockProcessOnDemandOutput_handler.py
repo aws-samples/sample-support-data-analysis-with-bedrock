@@ -1,3 +1,55 @@
+"""
+MAKI Bedrock On-Demand Output Processing Handler
+
+This Lambda function processes the outputs from Bedrock on-demand inference 
+operations, aggregating individual case or event analyses into comprehensive 
+summaries for immediate reporting and analysis.
+
+Purpose:
+- Process on-demand inference outputs for immediate analysis
+- Aggregate individual analyses into comprehensive summaries
+- Generate executive summaries using advanced Bedrock models
+- Organize results in S3 with timestamped directory structure
+
+Key Features:
+- On-demand output file discovery and aggregation
+- Real-time summary generation for immediate insights
+- Integration with advanced Bedrock models for synthesis
+- Organized S3 file structure for easy access
+- Support for both support cases and health events modes
+
+Processing Flow:
+1. Receive on-demand processing completion event
+2. Discover and collect all on-demand output files from S3
+3. Aggregate individual analysis results
+4. Generate executive summary using advanced Bedrock model
+5. Store summary in organized S3 structure
+
+Environment Variables:
+- S3_AGG_OUTPUT: Bucket containing on-demand outputs and final reports
+- MODEL_ID: Advanced Bedrock model for summary generation
+- BEDROCK_MAX_TOKENS: Maximum tokens for summary generation
+- BEDROCK_SUMMARY_TEMPERATURE: Temperature for summary generation
+- SUMMARY_OUTPUT_FORMAT: Format specification for summaries
+
+Input Event Structure:
+- ondemand_run_datetime: Timestamp for output organization
+
+Output Structure:
+- summary: Generated executive summary of all processed events
+
+File Organization:
+- Individual results: ondemand/{timestamp}/{event-id}.json
+- Executive summary: ondemand/{timestamp}/summary.json
+- Timestamped directories for historical tracking
+
+Processing Characteristics:
+- Immediate processing for real-time insights
+- Smaller dataset handling compared to batch processing
+- Direct aggregation from S3 output files
+- Suitable for urgent analysis needs
+"""
+
 import os
 import sys
 from datetime import datetime

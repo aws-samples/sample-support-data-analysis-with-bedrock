@@ -1,4 +1,36 @@
-# this generates synthetic cases using examples from the categories
+#!/usr/bin/env python3
+"""
+MAKI Synthetic Support Cases Generator
+
+This tool generates realistic synthetic AWS support cases using Amazon Bedrock models for 
+testing and development purposes. It creates cases across all predefined categories using 
+example cases and category descriptions as templates.
+
+Purpose:
+- Generate test data when real support cases from CID are not available
+- Create varied synthetic cases across all MAKI categories
+- Support both small-scale testing and large-scale batch processing validation
+- Enable development and testing without requiring AWS Enterprise Support
+
+Categories Supported:
+- limit-reached, customer-release, development-issue, customer-networking
+- throttling, ice-error, feature-request, customer-dependency
+- aws-release, customer-question, exceeding-capability, lack-monitoring
+- security-issue, service-event, transient-issues, upgrade-management
+
+Usage:
+    python tools/generate_synth_cases.py                           # Generate default cases
+    python tools/generate_synth_cases.py -q                       # Quick test (minimal cases)
+    python tools/generate_synth_cases.py --min-cases 5 --max-cases 10  # Custom range
+
+Key Features:
+- Uses Bedrock models to generate realistic case content
+- Configurable case volume per category
+- Quick test mode for rapid validation
+- Outputs in JSONL format for batch inference compatibility
+- Integrates with MAKI's categorization and processing pipeline
+"""
+
 import sys
 import os
 import boto3

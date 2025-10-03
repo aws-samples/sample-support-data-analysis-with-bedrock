@@ -1,3 +1,36 @@
+"""
+MAKI EventBridge Scheduling Components Builder
+
+This module creates EventBridge (CloudWatch Events) rules for automated scheduling 
+of MAKI operations, enabling periodic execution of analysis workflows and reporting.
+
+Purpose:
+- Schedule automated execution of MAKI Step Function state machine
+- Configure periodic reporting and maintenance tasks
+- Enable hands-off operation for continuous analysis
+
+Components Created:
+- Main cron job for Step Function execution
+- Reporting cron job for periodic report generation
+- Configurable scheduling through config.py parameters
+
+Key Features:
+- Flexible cron scheduling with configurable timing
+- Integration with Step Functions for main workflow execution
+- Separate scheduling for reporting functions
+- Proper dependency management with target resources
+
+Scheduling Configuration:
+- Main job: Configurable through CRON_MAIN_* parameters
+- Report job: Configurable through CRON_REPORT_* parameters
+- Standard cron syntax support (minute, hour, day, month, year)
+
+Usage:
+- Called by MakiFoundations stack during deployment
+- Enables automated periodic execution of MAKI analysis
+- Can be disabled by modifying cron expressions in config.py
+"""
+
 import aws_cdk.aws_events_targets as targets
 import aws_cdk.aws_events as events
 

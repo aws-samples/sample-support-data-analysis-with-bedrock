@@ -1,3 +1,34 @@
+"""
+MAKI CDK Stack Definitions
+
+This module defines the three main CDK stacks that comprise the MAKI (Machine Augmented 
+Key Insights) infrastructure. Each stack has a specific purpose and deployment order 
+to ensure proper dependency management and resource organization.
+
+Stack Architecture:
+1. MakiFoundations: Core infrastructure and Lambda functions
+2. MakiData: Reference data and category examples deployment
+3. MakiEmbeddings: OpenSearch Serverless and health events infrastructure
+
+Purpose:
+- Organize MAKI infrastructure into logical deployment units
+- Manage dependencies between different infrastructure components
+- Enable selective deployment and updates of specific functionality
+- Support both support cases and health events processing modes
+
+Key Features:
+- Modular stack design for flexible deployment
+- Proper dependency management between stacks
+- Resource sharing through CloudFormation exports
+- Support for both development and production environments
+- Comprehensive error handling and validation
+
+Deployment Order:
+1. Deploy MakiFoundations first (core infrastructure)
+2. Deploy MakiData second (reference data)
+3. Deploy MakiEmbeddings third (health events support)
+"""
+
 import sys
 import config
 from constructs import Construct
@@ -31,40 +62,84 @@ from . import (
 
 from constructs import Construct
 
-# Build the foundational layers of Maki
 class MakiFoundations(Stack):
+    """
+    MakiFoundations Stack - Core Infrastructure and Processing Components
+    
+    This is the primary MAKI stack that creates all foundational infrastructure
+    required for MAKI operations, including networking, storage, compute, and
+    orchestration components.
+    
+    Components Created:
+    - IAM roles and policies for comprehensive service access
+    - VPC with multi-AZ subnets and security groups
+    - CloudWatch log groups for centralized logging
+    - S3 buckets for all data storage needs
+    - Lambda functions for all processing stages
+    - Lambda layers for shared dependencies
+    - Step Functions state machine for workflow orchestration
+    - EventBridge rules for automated scheduling
+    - SageMaker notebook for data analysis
+    - SSM parameters for configuration management
+    
+    Key Features:
+    - Support for both support cases and health events processing
+    - Scalable architecture with on-demand and batch processing
+    - Comprehensive security with least-privilege access
+    - Cost optimization through lifecycle policies and resource sizing
+    - Monitoring and logging for operational visibility
+    
+    Dependencies:
+    - Must be deployed first before other MAKI stacks
+    - Requires Bedrock model access to be enabled
+    - Exports security group ID for use by other stacks
+    
+    Usage:
+    - Deploy with: cdk deploy MakiFoundations
+    - Provides core functionality for both processing modes
+    - Creates all necessary infrastructure for MAKI operations
+    """
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # build IAM
+        # Build core infrastructure components
+        # IAM role with comprehensive permissions for all MAKI operations
         makiRole = BuildIAM.buildMakiRole(self)
 
-        # build VPC
+        # VPC with multi-AZ deployment for high availability and OpenSearch requirements
         vpc = BuildEC2.buildVPC(self, makiRole)
-        sg = BuildEC2.buildSecurityGroup(self, vpc) # needed for SageMaker notebook
-        log_group = BuildCloudWatch.buildCWLogGroup(self,vpc)
+        sg = BuildEC2.buildSecurityGroup(self, vpc)  # Security group for SageMaker notebook
+        log_group = BuildCloudWatch.buildCWLogGroup(self, vpc)  # Centralized logging
 
+        # Create S3 buckets for all MAKI data storage needs
+        # Category examples and reference data
         categoryBucketName = utils.returnName(config.BUCKET_NAME_CATEGORY_BASE)
         BuildS3.buildS3Bucket(self, makiRole, categoryBucketName)
 
+        # Support cases aggregation and processing
         casesAggBucketName = utils.returnName(config.BUCKET_NAME_CASES_AGG_BASE)
-        BuildS3.buildS3Bucket(self,makiRole,casesAggBucketName)
+        BuildS3.buildS3Bucket(self, makiRole, casesAggBucketName)
 
+        # Health events aggregation (bucket name defined for consistency)
         healthAggBucketName = utils.returnName(config.BUCKET_NAME_HEALTH_AGG_BASE)
 
+        # Bedrock batch inference job data
         batchesBucketName = utils.returnName(config.BUCKET_NAME_BATCHES)
         BuildS3.buildS3Bucket(self, makiRole, batchesBucketName)
 
+        # Direct LLM outputs and intermediate results
         llmOutputBucketName = utils.returnName(config.BUCKET_NAME_LLM_BASE)
-        BuildS3.buildS3Bucket(self,makiRole,llmOutputBucketName)
+        BuildS3.buildS3Bucket(self, makiRole, llmOutputBucketName)
 
+        # Final analysis reports and summaries
         reportBucketName = utils.returnName(config.BUCKET_NAME_REPORT_BASE)
-        reportBucket = BuildS3.buildS3Bucket(self,makiRole,reportBucketName)
+        reportBucket = BuildS3.buildS3Bucket(self, makiRole, reportBucketName)
 
+        # Long-term archive storage
         archiveBucketName = utils.returnName(config.BUCKET_NAME_ARCHIVE)
-        BuildS3.buildS3Bucket(self,makiRole,archiveBucketName)
+        BuildS3.buildS3Bucket(self, makiRole, archiveBucketName)
 
-        # Build SSM Parameters
+        # Build SSM Parameters for runtime configuration management
         ssm_parameters = BuildSSM.buildSSMParameters(self)
 
         s3_utils_layer = BuildLambda.buildLambdaLayer(

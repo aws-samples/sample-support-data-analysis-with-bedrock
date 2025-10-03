@@ -1,3 +1,63 @@
+"""
+MAKI Support Cases Aggregation Prompt Layer
+
+This Lambda layer provides specialized prompt generation and aggregation capabilities 
+for AWS Enterprise Support cases, creating executive summaries and resilience 
+recommendations from individual case analyses.
+
+Purpose:
+- Generate executive summaries from multiple support case analyses
+- Create resilience improvement recommendations for customers
+- Provide technical account manager perspective on customer experience
+- Aggregate individual case insights into strategic recommendations
+
+Key Features:
+- Advanced Bedrock model integration for sophisticated analysis
+- Support case aggregation with resilience focus
+- Executive summary generation with strategic insights
+- Customer experience sentiment aggregation
+- Actionable resilience improvement plans
+- JSON-formatted output for consistent reporting
+
+Functions Provided:
+- generate_conversation(): Core Bedrock conversation interface
+- aggregate_prompt(): Main aggregation function for support cases
+
+Aggregation Capabilities:
+- Multi-case analysis synthesis
+- Resilience theme identification
+- Overall customer sentiment assessment
+- Strategic improvement recommendations
+- Executive-level summary generation
+
+Prompt Engineering:
+- Technical account manager persona
+- Resilience-focused analysis framework
+- Strategic recommendation generation
+- Customer experience optimization
+- AWS best practices integration
+
+Output Format:
+- Structured JSON with Summary and Plan fields
+- Executive-level language and insights
+- Actionable recommendations
+- Strategic resilience themes
+- Customer experience assessment
+
+Integration Points:
+- Bedrock runtime: Advanced model inference
+- Batch processing: Large-scale case aggregation
+- On-demand processing: Real-time summary generation
+- Report generation: Executive summary creation
+
+Use Cases:
+- Executive reporting on customer health
+- Resilience assessment and planning
+- Customer success management
+- Technical account management insights
+- Strategic customer engagement planning
+"""
+
 import logging
 import boto3
 import json

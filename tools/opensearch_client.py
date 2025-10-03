@@ -1,4 +1,34 @@
 #!/usr/bin/env python3
+"""
+MAKI OpenSearch Client Management Tool
+
+This tool manages OpenSearch Serverless configuration and operations for MAKI's health 
+events processing mode. It handles query size limits, endpoint configuration, and record 
+counting through AWS Systems Manager Parameter Store integration.
+
+Purpose:
+- Configure OpenSearch query size limits for health events processing
+- Manage OpenSearch endpoint URLs in SSM Parameter Store
+- Count records in OpenSearch indexes for validation
+- Support health events processing pipeline configuration
+
+SSM Parameters Managed:
+- maki-{account}-{region}-opensearch-query-size: Controls max events returned
+- maki-{account}-{region}-opensearch-endpoint: OpenSearch collection endpoint URL
+
+Usage:
+    python tools/opensearch_client.py                    # Show current settings
+    python tools/opensearch_client.py --size 50         # Set query size limit
+    python tools/opensearch_client.py --endpoint        # Auto-detect endpoint
+    python tools/opensearch_client.py --count           # Count records in index
+
+Key Features:
+- Automatic OpenSearch endpoint detection from collection name
+- SSM Parameter Store integration for persistent configuration
+- Record counting with proper authentication
+- Query size management for controlling processing volume
+- Used by test scenarios to configure health events processing
+"""
 
 import boto3
 import argparse
