@@ -224,8 +224,10 @@ python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
 
 # Generate sample cases for testing (when CID_SKIP='true')
-# this can take a while, to generate a large number of synthetic support cases
+# this can take a while to generate a large number of synthetic support cases
 python tools/generate_synth_cases.py --min-cases 10 --max-cases 15
+# rather than running the above every time, you can pre-generate the cases with the above tool,
+# and use tools/copy_s3_data.py (see directions for this tool under its own heading) 
 
 # Run batch analysis
 python tools/runMaki.py

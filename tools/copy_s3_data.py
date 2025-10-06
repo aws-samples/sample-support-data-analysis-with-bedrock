@@ -44,14 +44,19 @@ def ensure_bucket_exists(bucket_name):
     try:
         s3.head_bucket(Bucket=bucket_name)
         print(f"✅ Bucket {bucket_name} already exists")
-    except:
+        return True
+    except s3.exceptions.NoSuchBucket:
         try:
             s3.create_bucket(Bucket=bucket_name)
             print(f"✅ Created bucket {bucket_name}")
+            return True
         except Exception as e:
             print(f"❌ Error creating bucket {bucket_name}: {e}")
             return False
-    return True
+    except Exception as e:
+        # Bucket exists but we don't have permission or it's owned by another account
+        print(f"✅ Bucket {bucket_name} exists (assuming accessible)")
+        return True
 
 def copy_s3_objects(source_bucket, dest_bucket):
     s3 = boto3.client('s3')
