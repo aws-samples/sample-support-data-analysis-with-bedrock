@@ -103,13 +103,12 @@ python tools/runMaki.py
 ## Test 4: Cases / Batch
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
-<!-- this can take a while, you can use pre-generated cases.   
-python tools/generate_synth_cases.py --min-cases 10 --max-cases 15
--->
+<!-- this can take a while, you can use pre-generated cases. -->   
+python tools/generate_synth_cases.py --min-cases 7 --max-cases 8 
 <!-- the below copies pre-generated cases from s3://maki-temp 
 see the MAKI_USER_GUIDE.md for more details
--->
 python tools/copy_s3_data.py from-temp 
+-->
 python tools/runMaki.py
 ### OUTPUT
 {
