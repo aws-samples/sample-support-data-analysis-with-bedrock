@@ -790,7 +790,9 @@ aws stepfunctions describe-execution --execution-arn <execution-arn>
 MAKI includes a comprehensive test plan with 7 distinct test scenarios to validate functionality across different modes and processing types. The test plan is located in `tools/test_plan.md` and can be executed using:
 
 ```bash
-python tools/execute_test_plan.py
+python tools/execute_test_plan.py              # Run all tests
+python tools/execute_test_plan.py --test-case 3 # Run only Test 3
+python tools/execute_test_plan.py --test-plan custom_test_plan.md # Use custom test plan file
 ```
 
 ### Test 1: Deploy
@@ -876,11 +878,14 @@ python tools/runMaki.py
 ### Test Execution Features
 
 The `execute_test_plan.py` script provides:
-- **Automated execution** of all 7 test scenarios
+- **Automated execution** of all 7 test scenarios or individual tests
 - **Output validation** against expected JSON patterns using wildcards
 - **S3 verification** for batch and on-demand processing results
 - **Progress monitoring** with detailed test execution reporting
 - **Timeout handling** and error detection
+- **Individual test execution** using `--test-case N` parameter
+- **Custom test plan support** using `--test-plan` parameter to specify alternative test plan files
+- **Custom test plan support** using `--test-plan` parameter to specify alternative test plan files
 
 ### Test Optimization Tips
 - Use `python tools/copy_s3_data.py from-temp` to reuse pre-generated test cases for Test 4
@@ -969,11 +974,14 @@ The `tools/` directory contains utility scripts for managing, testing, and opera
 
 #### `execute_test_plan.py`
 **Purpose**: Automated execution of comprehensive test scenarios
-- Runs all 4 predefined test cases automatically
+- Runs all 7 predefined test cases automatically or individually
 - Validates S3 outputs and processing results
 - Provides detailed test execution reporting
 - Supports timeout handling and progress monitoring
-- **Usage**: `python tools/execute_test_plan.py`
+- **Usage**: 
+  - `python tools/execute_test_plan.py` (run all tests)
+  - `python tools/execute_test_plan.py --test-case N` (run specific test 1-7)
+  - `python tools/execute_test_plan.py --test-plan custom_test_plan.md` (use custom test plan file)
 
 ### Script Dependencies and Requirements
 
