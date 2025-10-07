@@ -408,6 +408,10 @@ def parse_test_plan(test_plan_path='test_plan.md', test_case_filter=None):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         test_plan_path = os.path.join(script_dir, test_plan_path)
     
+    # Check if file exists
+    if not os.path.exists(test_plan_path):
+        raise FileNotFoundError(f"Test plan file not found: {test_plan_path}")
+    
     with open(test_plan_path, 'r') as f:
         content = f.read()
     
