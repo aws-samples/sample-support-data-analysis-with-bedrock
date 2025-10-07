@@ -12,6 +12,3 @@ The sample application, MAKI (Machine Augmented Key Insights), demonstrates how 
 
 - **[MAKI User Guide](MAKI_USER_GUIDE.md)** - Complete guide for deploying and using MAKI
 - **[MAKI Agent Guide](MAKI_AGENT_GUIDE.md)** - Guide for using the MAKI FastMCP agent with Amazon Q CLI
-
-## How can I use MAKI?
-Please see the [MAKI User Guide](MAKI_USER_GUIDE.md) for detailed instructions.
