@@ -23,7 +23,10 @@ Test Scenarios Covered:
 
 Usage:
     python tools/execute_test_plan.py                    # Execute full test plan
+    python tools/execute_test_plan.py --test-case 3      # Execute only Test 3
     python tools/execute_test_plan.py --check-files-only # Only validate S3 outputs
+    python tools/execute_test_plan.py --test-plan custom_test_plan.md # Use custom test plan file
+    python tools/execute_test_plan.py --test-plan custom_test_plan.md # Use custom test plan file
 
 Key Features:
 - Real-time progress monitoring with elapsed time tracking
@@ -31,6 +34,7 @@ Key Features:
 - S3 output validation for batch and on-demand processing
 - Automatic test failure detection and reporting
 - Integration with runMaki.py for step function progress display
+- Individual test case execution for faster iteration
 """
 
 import subprocess
@@ -264,6 +268,10 @@ def run_command(cmd, description, expected_output=None, check_files_only=False):
     """Run a command and handle errors with timer"""
     print(f"\n=== {description} ===")
     
+    # Print expected output if provided
+    if expected_output:
+        print(f"Expected Output:\n{expected_output}\n")
+    
     if check_files_only:
         if expected_output:
             return check_s3_files(description, expected_output)
@@ -390,11 +398,17 @@ def run_maki_with_progress(cmd, description, expected_output):
         print(f"\rFailed after {elapsed:.1f}s with error: {e}")
         return False
 
-def parse_test_plan():
-    """Parse commands from test_plan.md"""
+def parse_test_plan(test_plan_path='test_plan.md', test_case_filter=None):
+    """Parse commands from test plan file"""
     commands = []
     
-    with open('tools/test_plan.md', 'r') as f:
+    # Handle relative path - if test_plan.md is specified without directory,
+    # look for it in the same directory as this script
+    if not os.path.dirname(test_plan_path):
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        test_plan_path = os.path.join(script_dir, test_plan_path)
+    
+    with open(test_plan_path, 'r') as f:
         content = f.read()
     
     # Remove HTML comments
@@ -406,27 +420,36 @@ def parse_test_plan():
     
     lines = content.strip().split('\n')
     current_section = ""
+    current_test_num = None
     i = 0
     
     while i < len(lines):
         line = lines[i].strip()
         if line.startswith('## '):
             current_section = line[3:]
+            # Extract test number if present
+            test_match = re.match(r'Test (\d+):', current_section)
+            current_test_num = int(test_match.group(1)) if test_match else None
         elif line and not line.startswith('#'):
-            commands.append((line, current_section, None))
-        elif line == '### OUTPUT':
-            # Associate output with the last command
-            if commands:
-                output_lines = []
-                i += 1
-                while i < len(lines) and lines[i].strip() != '### END OUTPUT':
-                    output_lines.append(lines[i])
-                    i += 1
-                if i < len(lines):  # Found ### END OUTPUT
-                    expected_output = '\n'.join(output_lines).strip()
-                    # Update the last command with expected output
-                    last_cmd, last_section, _ = commands[-1]
-                    commands[-1] = (last_cmd, last_section, expected_output)
+            # Only add command if no filter or matches filter
+            if test_case_filter is None or current_test_num == test_case_filter:
+                # Check if next non-empty line is ### OUTPUT
+                expected_output = None
+                j = i + 1
+                while j < len(lines) and not lines[j].strip():
+                    j += 1
+                if j < len(lines) and lines[j].strip() == '### OUTPUT':
+                    # Found output section, collect it
+                    output_lines = []
+                    j += 1
+                    while j < len(lines) and lines[j].strip() != '### END OUTPUT':
+                        output_lines.append(lines[j])
+                        j += 1
+                    if j < len(lines):  # Found ### END OUTPUT
+                        expected_output = '\n'.join(output_lines).strip()
+                        i = j  # Skip to after ### END OUTPUT
+                
+                commands.append((line, current_section, expected_output))
         i += 1
     
     return commands
@@ -435,11 +458,17 @@ def main():
     parser = argparse.ArgumentParser(description="Execute MAKI Test Plan")
     parser.add_argument("-check-files-only", "-c", action="store_true",
                        help="Only check S3 files against expected output, skip command execution")
+    parser.add_argument("--test-case", type=int, choices=range(1, 8),
+                       help="Run only the specified test case (1-7)")
+    parser.add_argument("--test-plan", type=str, default="test_plan.md",
+                       help="Path to the test plan file (default: test_plan.md in same directory as script)")
     args = parser.parse_args()
     
     print("Starting MAKI Test Plan Execution")
     if args.check_files_only:
         print("CHECK-FILES-ONLY MODE: Commands will not be executed, only S3 files checked")
+    if args.test_case:
+        print(f"SINGLE TEST MODE: Running only Test {args.test_case}")
     
     # Get the script directory and project root
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -450,7 +479,14 @@ def main():
     print(f"Changed to directory: {os.getcwd()}")
     
     # Parse test plan
-    commands = parse_test_plan()
+    commands = parse_test_plan(args.test_plan, args.test_case)
+    
+    if not commands:
+        if args.test_case:
+            print(f"No commands found for Test {args.test_case}")
+        else:
+            print("No commands found in test plan")
+        sys.exit(1)
     
     # Execute each command
     for cmd, section, expected_output in commands:
@@ -459,6 +495,8 @@ def main():
             sys.exit(1)
     
     print("\n=== Test Plan Execution Complete ===")
+    if args.test_case:
+        print(f"Test {args.test_case} completed successfully")
 
 if __name__ == "__main__":
     main()
