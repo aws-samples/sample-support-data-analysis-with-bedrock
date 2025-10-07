@@ -33,8 +33,11 @@ Deploy the MAKI backend infrastructure first:
 # Clone and navigate to MAKI directory
 cd /path/to/sample-support-data-analysis-with-bedrock
 
-# Deploy infrastructure (follow MAKI_USER_GUIDE.md for detailed steps)
+# Deploy main infrastructure (follow MAKI_USER_GUIDE.md for detailed steps)
 cdk deploy
+
+# Deploy the MakiAgents stack (required for MCP server functionality)
+cdk deploy MakiAgents
 ```
 
 ## Step 3: Set Up MCP Server
@@ -45,62 +48,20 @@ pip install fastmcp boto3 pandas
 ```
 
 ### Create MCP Server Configuration
-Create `mcp_config.json`:
+Add the below entry in your `mcp.json` file.  Ensure that the path to the `maki/BuildAGents.py` is correct.
 
 ```json
 {
   "mcpServers": {
     "maki": {
       "command": "python",
-      "args": ["maki_mcp_server.py"],
+      "args": ["maki/BuildAgents.py"],
       "env": {
         "AWS_REGION": "us-east-1"
       }
     }
   }
 }
-```
-
-### Create MAKI MCP Server
-Create `maki_mcp_server.py`:
-
-```python
-from fastmcp import FastMCP
-import boto3
-import json
-
-mcp = FastMCP("MAKI Support Analysis")
-
-@mcp.tool()
-def analyze_support_cases(query: str, time_range: str = "30d") -> str:
-    """Analyze support cases using MAKI backend"""
-    # Connect to your deployed MAKI infrastructure
-    client = boto3.client('lambda')
-    
-    response = client.invoke(
-        FunctionName='maki-analysis-function',
-        Payload=json.dumps({
-            'query': query,
-            'timeRange': time_range
-        })
-    )
-    
-    return json.loads(response['Payload'].read())
-
-@mcp.tool()
-def get_case_insights(case_id: str) -> str:
-    """Get detailed insights for a specific support case"""
-    client = boto3.client('lambda')
-    
-    response = client.invoke(
-        FunctionName='maki-case-insights-function',
-        Payload=json.dumps({'caseId': case_id})
-    )
-    
-    return json.loads(response['Payload'].read())
-
-if __name__ == "__main__":
-    mcp.run()
 ```
 
 ## Step 4: Configure Amazon Q CLI with MCP
@@ -115,53 +76,53 @@ q chat --mcp
 
 ## Example Queries
 
-Once connected, you can use these example queries:
+Once connected, you can use these example queries focused on AWS Health Events:
 
-### General Support Analysis
+### Recent Health Events Analysis
 ```
-Analyze support cases from the last 7 days and identify the top 3 most common issues
-```
-
-### Service-Specific Analysis
-```
-What are the trending EC2-related support cases this month?
+Analyze AWS Health Events from the last 7 days and identify the most impactful service disruptions
 ```
 
-### Case Deep Dive
+### Service-Specific Health Events
 ```
-Get detailed insights for support case 12345678901234567890
-```
-
-### Trend Analysis
-```
-Compare support case volume between this month and last month, broken down by service
+What AWS Health Events have affected EC2 services in the last 30 days?
 ```
 
-### Sentiment Analysis
+### Regional Health Event Analysis
 ```
-Analyze customer sentiment in support cases related to billing issues in the last 30 days
+Show me AWS Health Events in us-east-1 region for the past 14 days
 ```
 
-### Resolution Time Analysis
+### Health Event Impact Assessment
 ```
-What's the average resolution time for P1 cases in the last quarter?
+Analyze the customer impact of recent AWS Health Events related to S3 service outages
+```
+
+### Health Event Trends
+```
+Compare AWS Health Event frequency between this month and last month across all services
+```
+
+### Critical Health Events
+```
+Find all high-severity AWS Health Events in the last quarter and their resolution times
 ```
 
 ## Advanced Usage
 
-### Custom Time Ranges
+### Custom Time Ranges for Health Events
 ```
-Analyze support cases from 2024-01-01 to 2024-03-31 for Lambda service issues
-```
-
-### Multi-Service Analysis
-```
-Compare support case patterns between S3, EC2, and RDS services over the last 60 days
+Analyze AWS Health Events from 2024-01-01 to 2024-03-31 for Lambda service issues
 ```
 
-### Executive Summary
+### Multi-Service Health Event Analysis
 ```
-Generate an executive summary of support trends and key insights for the last month
+Compare AWS Health Event patterns between S3, EC2, and RDS services over the last 60 days
+```
+
+### Health Event Executive Summary
+```
+Generate an executive summary of AWS Health Event trends and service reliability for the last month
 ```
 
 ## Troubleshooting
@@ -169,21 +130,21 @@ Generate an executive summary of support trends and key insights for the last mo
 ### MCP Server Not Starting
 - Verify Python dependencies are installed
 - Check AWS credentials are configured
-- Ensure MAKI infrastructure is deployed
+- Ensure MAKI infrastructure and MakiAgents stack are deployed
 
 ### Connection Issues
-- Verify `mcp_config.json` path is correct
+- Verify `mcp.json` path is correct
 - Check AWS region matches your deployment
 - Confirm Lambda functions are accessible
 
 ### Query Errors
-- Ensure case IDs are valid
+- Ensure AWS Health Event IDs are valid
 - Check time range format (e.g., "7d", "30d", "2024-01-01")
-- Verify you have permissions to access support data
+- Verify you have permissions to access AWS Health data
 
 ## Next Steps
 
 - Customize the MCP server for your specific use cases
 - Add additional analysis functions
-- Integrate with your existing support workflows
+- Integrate with your existing AWS Health monitoring workflows
 - Set up automated reporting using the Q CLI
