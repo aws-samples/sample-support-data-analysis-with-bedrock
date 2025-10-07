@@ -30,6 +30,7 @@ Deployment Order:
 """
 
 import sys
+import json
 import config
 from constructs import Construct
 sys.path.append('utils')    
@@ -39,12 +40,14 @@ from aws_cdk import (
     Stack,
     CfnOutput,
     Fn,
+    Duration,
     aws_lambda as lambda_,
     aws_iam as iam,
     aws_s3 as s3,
     aws_logs as logs,
     aws_cloudwatch as cw,
     aws_ec2 as ec2,
+    custom_resources as cr,
 )
 
 from . import (
@@ -379,7 +382,6 @@ class MakiEmbeddings(Stack):
         )
 
         # Update SSM parameter with actual OpenSearch endpoint
-        from aws_cdk import custom_resources as cr
         ssm_update = cr.AwsCustomResource(
             self, "UpdateOpenSearchEndpointSSM",
             on_create=cr.AwsSdkCall(
@@ -445,10 +447,47 @@ class MakiEmbeddings(Stack):
             config.OPENSEARCH_UTILS_LAYER_DESC, 
             config.OPENSEARCH_UTILS_LAYER_NAME_BASE + "-embeddings") 
 
-        # Build the getHealthFromOpenSearch Lambda function (depends on OpenSearch)
+        # Create Lambda function to initialize health events data
+        init_health_events_function = lambda_.Function(
+            self, "InitHealthEventsFunction",
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="init_health_events.handler",
+            code=lambda_.Code.from_asset("lambda/initHealthEvents"),
+            timeout=Duration.minutes(15),
+            memory_size=1024,
+            role=makiRole,
+            layers=[s3_utils_layer, json_utils_layer, opensearch_utils_layer],
+            environment={
+                "OPENSEARCH_ENDPOINT": opensearch_endpoint,
+                "INDEX_NAME": config.OPENSEARCH_INDEX,
+                "REGION": config.REGION
+            }
+        )
 
-        # Create health aggregation S3 bucket
-        healthAggBucketName = utils.returnName(config.BUCKET_NAME_HEALTH_AGG_BASE)
+        # Create custom resource to trigger the initialization
+        init_health_events = cr.AwsCustomResource(
+            self, "InitHealthEventsData",
+            on_create=cr.AwsSdkCall(
+                service="Lambda",
+                action="invoke",
+                parameters={
+                    "FunctionName": init_health_events_function.function_name,
+                    "Payload": json.dumps({
+                        "RequestType": "Create"
+                    })
+                },
+                physical_resource_id=cr.PhysicalResourceId.of("init-health-events")
+            ),
+            policy=cr.AwsCustomResourcePolicy.from_statements([
+                iam.PolicyStatement(
+                    actions=["lambda:InvokeFunction"],
+                    resources=[init_health_events_function.function_arn]
+                )
+            ])
+        )
+
+        # Add dependency to ensure collection is created first
+        init_health_events.node.add_dependency(opensearch_collection)
 
 
 class MakiAgents(Stack):
