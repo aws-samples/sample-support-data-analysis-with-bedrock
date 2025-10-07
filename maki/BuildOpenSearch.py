@@ -92,7 +92,7 @@ def buildOpenSearchCollection(self, execution_role):
         policy=f"""[{{
             "Rules": [{{
                 "ResourceType": "index",
-                "Resource": ["index/{collection_name}/*"],
+                "Resource": ["index/{collection_name}/*", "index/{collection_name}/amazon-health-events"],
                 "Permission": ["aoss:CreateIndex", "aoss:DeleteIndex", "aoss:UpdateIndex", "aoss:DescribeIndex", "aoss:ReadDocument", "aoss:WriteDocument"]
             }}, {{
                 "ResourceType": "collection",

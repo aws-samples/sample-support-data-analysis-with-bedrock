@@ -1,3 +1,6 @@
 aws-cdk-lib==2.153.0
 constructs>=10.0.0,<11.0.0
 cdk-nag
+fastmcp
+opensearch-py
+boto3

@@ -182,7 +182,7 @@ BUCKET_NAME_HEALTH_AGG_BASE = 'health-agg'
 ###
 # OpenSearch Serverless Health Events
 OPENSEARCH_COLLECTION_NAME = 'maki-health'
-OPENSEARCH_INDEX = 'aws-health-events'
+OPENSEARCH_INDEX = 'amazon-health-events'
 
 ####
 # IAM

@@ -81,7 +81,7 @@ import aws_cdk as cdk
 
 from cdk_nag import AwsSolutionsChecks, NagSuppressions
 
-from maki.maki_stack import MakiFoundations, MakiData, MakiEmbeddings
+from maki.maki_stack import MakiFoundations, MakiData, MakiEmbeddings, MakiAgents
 
 app = cdk.App()
 
@@ -94,9 +94,13 @@ env = cdk.Environment(
 foundations_stack = MakiFoundations(app, "MakiFoundations", env=env, description='Machine Augmented Key Insights (MAKI) foundational layer')
 data_stack = MakiData(app, "MakiData", env=env, description='Machine Augmented Key Insights (MAKI) data layer')
 embeddings_stack = MakiEmbeddings(app, "MakiEmbeddings", env=env, description='Machine Augmented Key Insights (MAKI) embeddings layer')
+agents_stack = MakiAgents(app, "MakiAgents", env=env, description='Machine Augmented Key Insights (MAKI) agents layer')
 
 data_stack.add_dependency(foundations_stack)
 embeddings_stack.add_dependency(foundations_stack)
+agents_stack.add_dependency(foundations_stack)
+agents_stack.add_dependency(data_stack)
+agents_stack.add_dependency(embeddings_stack)
 cdk.Tags.of(app).add("project", "maki")
 cdk.Tags.of(app).add("auto-delete", "no")
 cdk.Aspects.of(app).add(AwsSolutionsChecks())
@@ -113,5 +117,8 @@ NagSuppressions.add_stack_suppressions(embeddings_stack, [
     {"id": "AwsSolutions-IAM5", "reason": "Wildcard permissions are acceptable for sample code."},
     {"id": "AwsSolutions-L1", "reason": "Lambda runtime version is acceptable for sample code."},
     {"id": "AwsSolutions-IAM4", "reason": "Custom resource requires AWS managed policy for Lambda execution"},
+])
+NagSuppressions.add_stack_suppressions(agents_stack, [
+    {"id": "AwsSolutions-IAM5", "reason": "Wildcard permissions are acceptable for sample code and required for OpenSearch Serverless access."},
 ])
 app.synth()

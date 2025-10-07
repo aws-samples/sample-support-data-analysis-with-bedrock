@@ -337,7 +337,12 @@ class MakiFoundations(Stack):
         # Export security group for other stacks
         CfnOutput(self, "SecurityGroupId", 
                  value=sg.security_group_id,
-                 export_name="MakiSecurityGroupId")        
+                 export_name="MakiSecurityGroupId")
+        
+        # Export MAKI role for other stacks
+        CfnOutput(self, "MakiRoleArn",
+                 value=makiRole.role_arn,
+                 export_name="MakiRoleArn")        
 
 class MakiData(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
@@ -444,4 +449,98 @@ class MakiEmbeddings(Stack):
 
         # Create health aggregation S3 bucket
         healthAggBucketName = utils.returnName(config.BUCKET_NAME_HEALTH_AGG_BASE)
+
+
+class MakiAgents(Stack):
+    """
+    MakiAgents Stack - FastMCP Agent Infrastructure
+    
+    This stack creates the infrastructure needed to run MAKI FastMCP agents
+    that can query the OpenSearch instance created by MakiEmbeddings.
+    
+    Components Created:
+    - FastMCP agent configuration
+    - IAM roles for agent access to OpenSearch
+    - Integration with existing MAKI infrastructure
+    
+    Key Features:
+    - Semantic search using vector embeddings
+    - Lexical search for exact term matching
+    - Integration with Amazon Q CLI
+    - Access to OpenSearch Serverless collection
+    
+    Dependencies:
+    - Requires MakiFoundations stack (core infrastructure)
+    - Requires MakiData stack (reference data)
+    - Requires MakiEmbeddings stack (OpenSearch collection)
+    
+    Usage:
+    - Deploy with: cdk deploy MakiAgents
+    - Run agent with: python maki/BuildAgents.py
+    """
+    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
+
+        # Import the MAKI role from MakiFoundations stack
+        maki_role_arn = Fn.import_value("MakiRoleArn")
+        maki_role = iam.Role.from_role_arn(
+            self, "ImportedMakiRole",
+            role_arn=maki_role_arn
+        )
+
+        # Add additional permissions for agent operations
+        agent_policy = iam.Policy(
+            self, utils.returnName("maki-agent-policy"),
+            policy_name="maki-agent-policy",
+            document=iam.PolicyDocument(
+                statements=[
+                    # OpenSearch Serverless permissions
+                    iam.PolicyStatement(
+                        effect=iam.Effect.ALLOW,
+                        actions=[
+                            "aoss:APIAccessAll",
+                            "aoss:DashboardsAccessAll"
+                        ],
+                        resources=[f"arn:aws:aoss:{self.region}:{self.account}:collection/{config.OPENSEARCH_COLLECTION_NAME}"]
+                    ),
+                    # Bedrock permissions for embeddings
+                    iam.PolicyStatement(
+                        effect=iam.Effect.ALLOW,
+                        actions=[
+                            "bedrock:InvokeModel"
+                        ],
+                        resources=[
+                            f"arn:aws:bedrock:{self.region}::foundation-model/amazon.titan-embed-text-v1"
+                        ]
+                    ),
+                    # SSM permissions for configuration
+                    iam.PolicyStatement(
+                        effect=iam.Effect.ALLOW,
+                        actions=[
+                            "ssm:GetParameter",
+                            "ssm:GetParameters"
+                        ],
+                        resources=[
+                            f"arn:aws:ssm:{self.region}:{self.account}:parameter/maki-*"
+                        ]
+                    )
+                ]
+            )
+        )
+
+        # Attach the policy to the MAKI role
+        maki_role.attach_inline_policy(agent_policy)
+
+        # Output agent configuration
+        CfnOutput(
+            self, "AgentCommand",
+            value="Configure mcp.json in Amazon Q CLI",
+            description="MAKI agent is configured via mcp.json for Q CLI integration"
+        )
+
+        CfnOutput(
+            self, "AgentDescription",
+            value="MAKI FastMCP agent for semantic and lexical search of OpenSearch data",
+            description="Description of the MAKI agent capabilities"
+        )
 

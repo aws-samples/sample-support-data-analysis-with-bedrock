@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "maki-agent": {
+      "command": "python",
+      "args": ["maki/BuildAgents.py"],
+      "env": {}
+    }
+  }
+}

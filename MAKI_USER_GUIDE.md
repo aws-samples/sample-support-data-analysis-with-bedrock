@@ -1111,6 +1111,7 @@ BEDROCK_EMBEDDING_MODEL = "amazon.titan-embed-text-v2:0"
 - [Amazon Bedrock User Guide](https://docs.aws.amazon.com/bedrock/)
 - [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/)
 - [AWS Step Functions Guide](https://docs.aws.amazon.com/step-functions/)
+- **[MAKI Agent Guide](MAKI_AGENT_GUIDE.md)** - Guide for using the MAKI FastMCP agent with Amazon Q CLI
 
 ### Sample Data
 - Synthetic case generation for testing
