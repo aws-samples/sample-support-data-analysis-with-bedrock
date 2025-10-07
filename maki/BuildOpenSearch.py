@@ -70,7 +70,7 @@ def buildOpenSearchCollection(self, execution_role):
         }}"""
     )
     
-    # Create network policy for public access
+    # Create network policy for public access with dashboard access enabled
     network_policy = opensearch.CfnSecurityPolicy(
         self, utils.returnName("opensearch-network-policy"),
         name=f"{collection_name}-network-policy",
@@ -78,6 +78,9 @@ def buildOpenSearchCollection(self, execution_role):
         policy=f"""[{{
             "Rules": [{{
                 "ResourceType": "collection",
+                "Resource": ["collection/{collection_name}"]
+            }}, {{
+                "ResourceType": "dashboard",
                 "Resource": ["collection/{collection_name}"]
             }}],
             "AllowFromPublic": true

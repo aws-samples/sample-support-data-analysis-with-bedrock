@@ -1,153 +1,189 @@
-# MAKI FastMCP Agent
+# MAKI Agent Guide
 
-This document describes the MAKI FastMCP Agent that provides semantic and lexical search capabilities over the OpenSearch instance created by the MakiEmbeddings stack.
-
-## Overview
-
-The MAKI Agent is a FastMCP (Model Context Protocol) agent that integrates with Amazon Q CLI to query MAKI's health events and support case data stored in OpenSearch Serverless.
+This guide shows how to use MAKI as a FastMCP agent with Amazon Q CLI for interactive support data analysis.
 
 ## Prerequisites
 
-1. **Deploy Required Stacks**: The following CDK stacks must be deployed in order:
-   - `MakiFoundations` - Core infrastructure
-   - `MakiData` - Reference data
-   - `MakiEmbeddings` - OpenSearch collection
-   - `MakiAgents` - Agent infrastructure
+- AWS CLI configured with appropriate permissions
+- Python 3.8 or later
+- Node.js 18 or later (for Amazon Q CLI)
 
-2. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Step 1: Install Amazon Q CLI
 
-3. **AWS Configuration**: Ensure your AWS credentials are configured and you have access to:
-   - OpenSearch Serverless collections
-   - Amazon Bedrock (for embeddings)
-   - AWS Systems Manager Parameter Store
-
-## Deployment
-
-Deploy the MakiAgents stack:
-
+### macOS/Linux
 ```bash
-cdk deploy MakiAgents
+curl -sSL https://amazon-q-developer-cli.s3.us-west-2.amazonaws.com/install.sh | bash
 ```
 
-## Configuration
+### Windows (PowerShell)
+```powershell
+iwr -Uri "https://amazon-q-developer-cli.s3.us-west-2.amazonaws.com/install.ps1" -OutFile "install.ps1"; .\install.ps1
+```
 
-The agent is configured via the `mcp.json` file in the project root. Amazon Q CLI will automatically read this configuration.
+### Verify Installation
+```bash
+q --version
+```
 
-### MCP Configuration (`mcp.json`)
+## Step 2: Deploy MAKI Infrastructure
 
-Create an `mcp.json` file in your project root directory:
+Deploy the MAKI backend infrastructure first:
+
+```bash
+# Clone and navigate to MAKI directory
+cd /path/to/sample-support-data-analysis-with-bedrock
+
+# Deploy infrastructure (follow MAKI_USER_GUIDE.md for detailed steps)
+cdk deploy
+```
+
+## Step 3: Set Up MCP Server
+
+### Install Dependencies
+```bash
+pip install fastmcp boto3 pandas
+```
+
+### Create MCP Server Configuration
+Create `mcp_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "maki-agent": {
+    "maki": {
       "command": "python",
-      "args": ["maki/BuildAgents.py"],
-      "env": {}
+      "args": ["maki_mcp_server.py"],
+      "env": {
+        "AWS_REGION": "us-east-1"
+      }
     }
   }
 }
 ```
 
-**Important**: The path `maki/BuildAgents.py` is relative to your project root directory. Ensure this file exists at the correct location.
+### Create MAKI MCP Server
+Create `maki_mcp_server.py`:
 
-## Usage
+```python
+from fastmcp import FastMCP
+import boto3
+import json
 
-### Starting Amazon Q CLI
+mcp = FastMCP("MAKI Support Analysis")
 
-Once configured, start Amazon Q CLI in the project directory:
+@mcp.tool()
+def analyze_support_cases(query: str, time_range: str = "30d") -> str:
+    """Analyze support cases using MAKI backend"""
+    # Connect to your deployed MAKI infrastructure
+    client = boto3.client('lambda')
+    
+    response = client.invoke(
+        FunctionName='maki-analysis-function',
+        Payload=json.dumps({
+            'query': query,
+            'timeRange': time_range
+        })
+    )
+    
+    return json.loads(response['Payload'].read())
+
+@mcp.tool()
+def get_case_insights(case_id: str) -> str:
+    """Get detailed insights for a specific support case"""
+    client = boto3.client('lambda')
+    
+    response = client.invoke(
+        FunctionName='maki-case-insights-function',
+        Payload=json.dumps({'caseId': case_id})
+    )
+    
+    return json.loads(response['Payload'].read())
+
+if __name__ == "__main__":
+    mcp.run()
+```
+
+## Step 4: Configure Amazon Q CLI with MCP
 
 ```bash
-q chat
+# Initialize Q CLI with MCP configuration
+q config set mcp-config-path ./mcp_config.json
+
+# Start Q CLI with MCP support
+q chat --mcp
 ```
 
-Amazon Q CLI will automatically detect and load the `mcp.json` configuration file in the current directory. The MAKI agent will be loaded and available for use.
+## Example Queries
 
-### Available Tools
+Once connected, you can use these example queries:
 
-The agent provides three main tools accessible through Q CLI:
-
-#### 1. Semantic Search
-Performs vector-based semantic search using embeddings:
-- Query: "database connection issues"
-- Finds conceptually similar events
-- Uses Amazon Titan embeddings
-
-#### 2. Lexical Search
-Performs exact term matching:
-- Query: "RDS connectivity"
-- Exact term matching across fields
-- Multi-field search support
-
-#### 3. Index Statistics
-Gets information about the OpenSearch index:
-- Document counts
-- Storage size
-- Index health status
-
-### Example Queries in Q CLI
-
+### General Support Analysis
 ```
-Search for database performance issues using semantic search
-Find RDS connectivity problems with lexical search
-Show me statistics for the health-events index
+Analyze support cases from the last 7 days and identify the top 3 most common issues
 ```
 
-## Search Capabilities
+### Service-Specific Analysis
+```
+What are the trending EC2-related support cases this month?
+```
 
-### Semantic Search Features
-- Uses Amazon Titan embeddings for vector search
-- Finds conceptually similar events even with different terminology
-- Supports natural language queries
-- Returns relevance scores
+### Case Deep Dive
+```
+Get detailed insights for support case 12345678901234567890
+```
 
-### Lexical Search Features
-- Exact term matching across specified fields
-- Multi-field search capabilities
-- Boolean query support
-- Field-specific filtering
+### Trend Analysis
+```
+Compare support case volume between this month and last month, broken down by service
+```
 
-## Configuration
+### Sentiment Analysis
+```
+Analyze customer sentiment in support cases related to billing issues in the last 30 days
+```
 
-The agent uses AWS Systems Manager Parameter Store for configuration:
+### Resolution Time Analysis
+```
+What's the average resolution time for P1 cases in the last quarter?
+```
 
-- `maki-{account}-{region}-opensearch-endpoint`: OpenSearch collection endpoint
-- `maki-{account}-{region}-opensearch-query-size`: Maximum query results
+## Advanced Usage
+
+### Custom Time Ranges
+```
+Analyze support cases from 2024-01-01 to 2024-03-31 for Lambda service issues
+```
+
+### Multi-Service Analysis
+```
+Compare support case patterns between S3, EC2, and RDS services over the last 60 days
+```
+
+### Executive Summary
+```
+Generate an executive summary of support trends and key insights for the last month
+```
 
 ## Troubleshooting
 
-### Common Issues
+### MCP Server Not Starting
+- Verify Python dependencies are installed
+- Check AWS credentials are configured
+- Ensure MAKI infrastructure is deployed
 
-1. **OpenSearch client not initialized**
-   - Ensure MakiEmbeddings stack is deployed
-   - Check SSM parameter for OpenSearch endpoint
-   - Verify IAM permissions
+### Connection Issues
+- Verify `mcp_config.json` path is correct
+- Check AWS region matches your deployment
+- Confirm Lambda functions are accessible
 
-2. **Bedrock access denied**
-   - Ensure Bedrock model access is enabled
-   - Check IAM permissions for bedrock:InvokeModel
-   - Verify the Titan embedding model is available
+### Query Errors
+- Ensure case IDs are valid
+- Check time range format (e.g., "7d", "30d", "2024-01-01")
+- Verify you have permissions to access support data
 
-3. **Agent not loading in Q CLI**
-   - Verify mcp.json is in the correct directory
-   - Check that all dependencies are installed
-   - Ensure Python path is correct
+## Next Steps
 
-### Testing
-
-Test the agent configuration:
-
-```bash
-python test_agent.py
-```
-
-## Security
-
-The agent follows security best practices:
-- Uses IAM roles for authentication
-- Leverages AWS-managed encryption
-- Implements least-privilege access
-- Integrates with existing MAKI security model
+- Customize the MCP server for your specific use cases
+- Add additional analysis functions
+- Integrate with your existing support workflows
+- Set up automated reporting using the Q CLI

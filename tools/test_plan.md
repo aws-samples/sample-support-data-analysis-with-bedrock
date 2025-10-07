@@ -52,6 +52,8 @@ cdk synth MakiData
 cdk deploy MakiData --require-approvals never 
 cdk synth MakiEmbeddings
 cdk deploy MakiEmbeddings --require-approvals never
+cdk synth MakiAgents
+cdk deploy MakiAgents --require-approvals never
 
 ## Test 2: Cases / Empty
 python tools/purge_s3_data.py

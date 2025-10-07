@@ -14,7 +14,7 @@ class MakiAgent:
     """MAKI FastMCP Agent for OpenSearch querying"""
     
     def __init__(self):
-        self.mcp = FastMCP("MAKI Agent")
+        self.mcp = FastMCP("MAKI Agent - AWS Health Events Analysis")
         self.opensearch_client = None
         self.collection_endpoint = None
         self._setup_opensearch()
@@ -69,7 +69,7 @@ class MakiAgent:
         
         @self.mcp.tool()
         def semantic_search(query: str, size: int = None, index: str = None) -> Dict[str, Any]:
-            """Perform semantic search using vector embeddings"""
+            """Search AWS Health Events using semantic vector embeddings to find similar incidents, outages, and service disruptions"""
             if not self.opensearch_client:
                 return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
             
@@ -111,7 +111,7 @@ class MakiAgent:
         
         @self.mcp.tool()
         def lexical_search(query: str, size: int = None, index: str = None, fields: Optional[List[str]] = None) -> Dict[str, Any]:
-            """Perform lexical search for exact term matching"""
+            """Search AWS Health Events using exact keyword matching to find specific service names, regions, or event types"""
             if not self.opensearch_client:
                 return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
             
@@ -154,7 +154,7 @@ class MakiAgent:
         
         @self.mcp.tool()
         def get_index_stats(index: str = None) -> Dict[str, Any]:
-            """Get statistics about an OpenSearch index"""
+            """Get statistics about the AWS Health Events index including document count and storage metrics"""
             if not self.opensearch_client:
                 return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
             
