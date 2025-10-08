@@ -3,7 +3,7 @@
 This guide shows how to use MAKI as a FastMCP agent with Amazon Q CLI for interactive support data analysis.
 
 ## Agentic Workflow
-![MAKI Architecture Agentic Workflow](maki-architecture-agentic-workflow.png)
+![MAKI Architecture Agentic Workflow](maki-architecture-agentic-workflow.jpeg)
 
 ## Prerequisites
 
