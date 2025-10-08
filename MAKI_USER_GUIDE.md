@@ -19,7 +19,7 @@ This document illustrates how to deploy MAKI and how to use it for Reporting and
 For Agentic usage, refer to the **[MAKI Agent Guide](MAKI_AGENT_GUIDE.md)**. 
 
 ## Reporting and Analysis
-![MAKI Architecture Reporting and Analysis](maki-architecture-reporting-analysis.png)
+![MAKI Architecture Reporting and Analysis](maki-architecture-reporting-analysis.jpeg)
 
 
 ## Overview
