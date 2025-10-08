@@ -7,10 +7,10 @@ This is a sample application for educational purposes which processes Amazon Ent
 The sample application, MAKI (Machine Augmented Key Insights), demonstrates how Amazon Bedrock can analyze Amazon Enterprise Support cases and derive insightful information. This repo can be studied and used to build other AWS Enterprise Support data analysis pipelines. This repo is meant as an educational reference and not production code. The implementer of an organization can use MAKI as a reference to build their own application, which should then be reviewed by the necessary oversight teams at the organization.
 
 ## Reporting and Analysis
-![MAKI Architecture Reporting and Analysis](maki-architecture-reporting-analysis.png)
+![MAKI Architecture Reporting and Analysis](maki-architecture-reporting-analysis.jpeg)
 
 ## Agentic Workflow
-![MAKI Architecture Agentic Workflow](maki-architecture-agentic-workflow.png)
+![MAKI Architecture Agentic Workflow](maki-architecture-agentic-workflow.jpeg)
 
 ## Documentation
 
