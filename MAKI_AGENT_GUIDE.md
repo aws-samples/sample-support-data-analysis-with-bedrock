@@ -2,6 +2,8 @@
 
 This guide shows how to use MAKI as a FastMCP agent with Amazon Q CLI for interactive support data analysis.
 
+As of now, only the AWS Health Events agents are implemented (via Amazon OpenSearch). AWS Support Case agents (via S3 Vector and S3 Select) are work in progress.
+
 ## Agentic Workflow
 ![MAKI Architecture Agentic Workflow](maki-architecture-agentic-workflow.jpeg)
 
