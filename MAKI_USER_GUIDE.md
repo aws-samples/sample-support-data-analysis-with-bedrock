@@ -15,6 +15,13 @@
 
 ---
 
+This document illustrates how to deploy MAKI and how to use it for Reporting and Analysis.
+For Agentic usage, refer to the **[MAKI Agent Guide](MAKI_AGENT_GUIDE.md)**. 
+
+## Reporting and Analysis
+![MAKI Architecture Reporting and Analysis](maki-architecture-reporting-analysis.png)
+
+
 ## Overview
 
 MAKI (Machine Augmented Key Insights) is an educational sample application that demonstrates how Amazon Bedrock can analyze AWS data to derive meaningful insights. It supports two data source modes:

@@ -2,6 +2,9 @@
 
 This guide shows how to use MAKI as a FastMCP agent with Amazon Q CLI for interactive support data analysis.
 
+## Agentic Workflow
+![MAKI Architecture Agentic Workflow](maki-architecture-agentic-workflow.png)
+
 ## Prerequisites
 
 - AWS CLI configured with appropriate permissions
@@ -48,7 +51,7 @@ pip install fastmcp boto3 pandas
 ```
 
 ### Create MCP Server Configuration
-Add the below entry in your `mcp.json` file.  Ensure that the path to the `maki/BuildAGents.py` is correct.
+Add the below entry in your `mcp.json` file. Ensure that the path to the `maki/BuildAgents.py` is correct.
 
 ```json
 {
@@ -68,10 +71,10 @@ Add the below entry in your `mcp.json` file.  Ensure that the path to the `maki/
 
 ```bash
 # Initialize Q CLI with MCP configuration
-q config set mcp-config-path ./mcp_config.json
+q config set mcp-config-path ./mcp.json
 
-# Start Q CLI with MCP support
-q chat --mcp
+# Start Q CLI
+q chat 
 ```
 
 ## Example Queries
