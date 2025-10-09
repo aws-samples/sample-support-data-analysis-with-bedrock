@@ -45,17 +45,8 @@ python tools/copy_s3_data.py from-temp
 ```
 
 ## End Usage
-## Test 1: Deploy
-cdk synth MakiFoundations
-cdk deploy MakiFoundations --require-approvals never
-cdk synth MakiData
-cdk deploy MakiData --require-approvals never 
-cdk synth MakiEmbeddings
-cdk deploy MakiEmbeddings --require-approvals never
-cdk synth MakiAgents
-cdk deploy MakiAgents --require-approvals never
 
-## Test 2: Cases / Empty
+## Test 1: Cases / Empty
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
 python tools/runMaki.py
@@ -74,7 +65,7 @@ python tools/runMaki.py
 }
 ### END OUTPUT
 
-## Test 3: Cases / OnDemand
+## Test 2: Cases / OnDemand
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
 python tools/generate_synth_cases.py -q
@@ -102,7 +93,7 @@ python tools/runMaki.py
 }
 ### END OUTPUT
 
-## Test 4: Cases / Batch
+## Test 3: Cases / Batch
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode cases
 <!-- this can take a while, you can use pre-generated cases. -->   
@@ -135,7 +126,7 @@ python tools/runMaki.py
 }
 ### END OUTPUT
 
-## Test 5: Health / Empty
+## Test 4: Health / Empty
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
 python tools/opensearch_client.py --size 0
@@ -155,7 +146,7 @@ python tools/runMaki.py
 }
 ### END OUTPUT
 
-## Test 6: Health / OnDemand
+## Test 5: Health / OnDemand
 python tools/generate_synth_health_events.py --synth 10
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
@@ -185,7 +176,7 @@ python tools/runMaki.py
 }
 ### END OUTPUT
 
-## Test 7: Health / Batch
+## Test 6: Health / Batch
 python tools/generate_synth_health_events.py --synth 150
 python tools/purge_s3_data.py
 python tools/flip_mode.py --mode health
