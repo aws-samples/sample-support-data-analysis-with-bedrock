@@ -798,24 +798,11 @@ MAKI includes a comprehensive test plan with 7 distinct test scenarios to valida
 
 ```bash
 python tools/execute_test_plan.py              # Run all tests
-python tools/execute_test_plan.py --test-case 3 # Run only Test 3
+python tools/execute_test_plan.py --test-case 2 # Run only Test 2
 python tools/execute_test_plan.py --test-plan custom_test_plan.md # Use custom test plan file
 ```
 
-### Test 1: Deploy
-**Purpose**: Validates CDK deployment of all MAKI stacks
-**Commands**: 
-```bash
-cdk synth MakiFoundations
-cdk deploy MakiFoundations --require-approvals never
-cdk synth MakiData
-cdk deploy MakiData --require-approvals never 
-cdk synth MakiEmbeddings
-cdk deploy MakiEmbeddings --require-approvals never
-```
-**Expected Result**: All three CDK stacks deploy successfully
-
-### Test 2: Support Cases - Empty Dataset
+### Test 1: Support Cases - Empty Dataset
 **Purpose**: Validates behavior when no support cases are available
 **Commands**: 
 ```bash
@@ -825,7 +812,7 @@ python tools/runMaki.py
 ```
 **Expected Result**: Execution stops with "no events were found to process" status
 
-### Test 3: Support Cases - On-Demand Processing
+### Test 2: Support Cases - On-Demand Processing
 **Purpose**: Tests individual case processing with < 100 cases
 **Commands**:
 ```bash
@@ -836,7 +823,7 @@ python tools/runMaki.py
 ```
 **Expected Result**: Individual case analysis with categorization, sentiment, and suggestions
 
-### Test 4: Support Cases - Batch Processing
+### Test 3: Support Cases - Batch Processing
 **Purpose**: Tests batch inference with ≥ 100 cases for cost optimization
 **Commands**:
 ```bash
@@ -847,7 +834,7 @@ python tools/runMaki.py
 ```
 **Expected Result**: Batch processing through Bedrock batch inference jobs
 
-### Test 5: Health Events - Empty Dataset
+### Test 4: Health Events - Empty Dataset
 **Purpose**: Validates behavior when no health events are available in OpenSearch
 **Commands**:
 ```bash
@@ -858,7 +845,7 @@ python tools/runMaki.py
 ```
 **Expected Result**: Execution stops with "no events were found to process" status
 
-### Test 6: Health Events - On-Demand Processing
+### Test 5: Health Events - On-Demand Processing
 **Purpose**: Tests individual health event processing with < 100 events
 **Commands**:
 ```bash
@@ -870,7 +857,7 @@ python tools/runMaki.py
 ```
 **Expected Result**: Individual health event analysis with vector embedding context
 
-### Test 7: Health Events - Batch Processing
+### Test 6: Health Events - Batch Processing
 **Purpose**: Tests batch processing with ≥ 100 health events
 **Commands**:
 ```bash
@@ -895,7 +882,7 @@ The `execute_test_plan.py` script provides:
 - **Custom test plan support** using `--test-plan` parameter to specify alternative test plan files
 
 ### Test Optimization Tips
-- Use `python tools/copy_s3_data.py from-temp` to reuse pre-generated test cases for Test 4
+- Use `python tools/copy_s3_data.py from-temp` to reuse pre-generated test cases for Test 3
 - Store test cases in `s3://maki-temp` for repeated testing
 - Use `-q` flag with `generate_synth_cases.py` for quiet operation
 - Tests automatically validate S3 outputs and processing results
@@ -987,7 +974,7 @@ The `tools/` directory contains utility scripts for managing, testing, and opera
 - Supports timeout handling and progress monitoring
 - **Usage**: 
   - `python tools/execute_test_plan.py` (run all tests)
-  - `python tools/execute_test_plan.py --test-case N` (run specific test 1-7)
+  - `python tools/execute_test_plan.py --test-case N` (run specific test 1-6)
   - `python tools/execute_test_plan.py --test-plan custom_test_plan.md` (use custom test plan file)
 
 ### Script Dependencies and Requirements
