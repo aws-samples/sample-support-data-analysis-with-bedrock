@@ -953,6 +953,19 @@ The `tools/` directory contains utility scripts for managing, testing, and opera
 - Supports both 'to-temp' and 'from-temp' operations
 - **Usage**: `python tools/copy_s3_data.py from-temp`
 
+### Business Intelligence and Visualization
+
+#### `create_quicksight_dataset.py`
+**Purpose**: Creates Quick Suite datasets from MAKI processed data for business intelligence
+- Auto-discovers MAKI data in S3 batch processing folders
+- Creates Quick Suite datasets for both cases and health events data
+- Generates manifest files and configures S3 data sources
+- Manages user permissions for dataset and data source access
+- **Usage**: 
+  - `python tools/create_quicksight_dataset.py` (create all datasets)
+  - `python tools/create_quicksight_dataset.py --mode cases` (cases dataset only)
+  - `python tools/create_quicksight_dataset.py --user "Admin/username"` (grant user access)
+
 ### OpenSearch Management
 
 #### `opensearch_client.py`
@@ -1046,7 +1059,7 @@ BEDROCK_EMBEDDING_MODEL = "amazon.titan-embed-text-v2:0"
 
 #### Integration with BI Tools
 - Output JSON files can be consumed by:
-  - Amazon QuickSight
+  - Amazon Quick Suite
   - Tableau
   - Power BI
   - Custom analytics applications
