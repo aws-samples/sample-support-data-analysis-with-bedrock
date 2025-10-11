@@ -955,17 +955,6 @@ The `tools/` directory contains utility scripts for managing, testing, and opera
 
 ### Business Intelligence and Visualization
 
-#### `create_quicksight_dataset.py`
-**Purpose**: Creates Quick Suite datasets from MAKI processed data for business intelligence
-- Auto-discovers MAKI data in S3 batch processing folders
-- Creates Quick Suite datasets for both cases and health events data
-- Generates manifest files and configures S3 data sources
-- Manages user permissions for dataset and data source access
-- **Usage**: 
-  - `python tools/create_quicksight_dataset.py` (create all datasets)
-  - `python tools/create_quicksight_dataset.py --mode cases` (cases dataset only)
-  - `python tools/create_quicksight_dataset.py --user "Admin/username"` (grant user access)
-
 ### OpenSearch Management
 
 #### `opensearch_client.py`
