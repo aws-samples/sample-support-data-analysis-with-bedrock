@@ -37,6 +37,7 @@ import boto3
 import logging
 import random
 import argparse
+from datetime import datetime, timedelta
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -71,7 +72,27 @@ def parse_arguments():
     parser.add_argument('-q', '--quick-test', action='store_true',
                       help='generate cases for only 2 categories: limit-reached and service-event')
     
+    # Date range parameters
+    today = datetime.now()
+    one_year_ago = today - timedelta(days=365)
+    parser.add_argument('--start-t', type=str, default=one_year_ago.strftime('%Y%m%d'),
+                      help='start date for case creation (YYYYMMDD format, default: 1 year ago)')
+    parser.add_argument('--end-t', type=str, default=today.strftime('%Y%m%d'),
+                      help='end date for case creation (YYYYMMDD format, default: today)')
+    
     return parser.parse_args()
+
+def generate_random_timestamp(start_date_str, end_date_str):
+    """Generate a random timestamp between start and end dates."""
+    start_date = datetime.strptime(start_date_str, '%Y%m%d')
+    end_date = datetime.strptime(end_date_str, '%Y%m%d')
+    
+    time_between = end_date - start_date
+    random_days = random.randint(0, time_between.days)
+    random_seconds = random.randint(0, 86400)  # Random time within the day
+    
+    random_date = start_date + timedelta(days=random_days, seconds=random_seconds)
+    return random_date.strftime('%Y/%m/%d %H:%M:%S')
 
 def main():
     logging.basicConfig(level=logging.INFO,
@@ -103,6 +124,9 @@ def main():
         logging.info("\ngenerating " + str(end) + " cases for " + category)
 
         for i in range (start, end):
+            # Generate random timestamp within the specified range
+            case_timestamp = generate_random_timestamp(args.start_t, args.end_t)
+            
             # output must be in jsonl for Bedrock batch inerence
             n = i + 1
             key = 'case-gen-' + category + '-' + str(n) + '.jsonl'
@@ -112,7 +136,8 @@ def main():
                         examples=examples_category,
                         desc=desc_category,
                         category=category,
-                        temperature=config.SYNTH_CASES_TEMPERATURE)
+                        temperature=config.SYNTH_CASES_TEMPERATURE,
+                        timestamp=case_timestamp)
         
             logging.info("generating " + genCasesBucketName + '/' + key) 
 
