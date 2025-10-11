@@ -112,7 +112,7 @@ def generate_conversation(bedrock_client,
     return response
 
 # this prompt generates the synthetic event
-def gen_synth_prompt(model_id_text, examples, desc, category, temperature):
+def gen_synth_prompt(model_id_text, examples, desc, category, temperature, timestamp=None):
     logging.basicConfig(level=logging.INFO,
                         format="%(levelname)s: %(message)s")
     DisplayId = generate_15_digit_number()
@@ -126,7 +126,13 @@ def gen_synth_prompt(model_id_text, examples, desc, category, temperature):
     system_prompt_text += "The synthetic event content must tell a story of:\n" 
     system_prompt_text += category + "\n"
     system_prompt_text += desc + "\n"
-    system_prompt_text += "DisplayId MUST BE: :" + DisplayId + ".\n"
+    system_prompt_text += "displayId MUST BE: " + DisplayId + " (numbers only).\n"
+    if timestamp:
+        system_prompt_text += "timeCreated MUST BE: " + timestamp + ".\n"
+    else:
+        system_prompt_text += "timeCreated field MUST contain a valid timestamp in yyyy/MM/dd HH:mm:ss format.\n"
+    system_prompt_text += "Fields serviceCode, category, and status MUST BE UPPERCASE.\n"
+    system_prompt_text += "Field caseId MUST contain numbers only.\n"
     system_prompt_text += "Output a new synthetic event and nothing else."
     system_prompt_text += "OUTPUT MUST BE IN JSONL FORMAT."
 
