@@ -304,22 +304,23 @@ def grant_permissions_to_user(dataset_id, data_source_id, username):
             }]
         )
         
-        # Grant data source permissions
-        quicksight.update_data_source_permissions(
-            AwsAccountId=account_id,
-            DataSourceId=data_source_id,
-            GrantPermissions=[{
-                'Principal': user_arn,
-                'Actions': [
-                    'quicksight:DescribeDataSource',
-                    'quicksight:DescribeDataSourcePermissions',
-                    'quicksight:PassDataSource',
-                    'quicksight:UpdateDataSource',
-                    'quicksight:DeleteDataSource',
-                    'quicksight:UpdateDataSourcePermissions'
-                ]
-            }]
-        )
+        # Grant data source permissions only if data_source_id is provided
+        if data_source_id:
+            quicksight.update_data_source_permissions(
+                AwsAccountId=account_id,
+                DataSourceId=data_source_id,
+                GrantPermissions=[{
+                    'Principal': user_arn,
+                    'Actions': [
+                        'quicksight:DescribeDataSource',
+                        'quicksight:DescribeDataSourcePermissions',
+                        'quicksight:PassDataSource',
+                        'quicksight:UpdateDataSource',
+                        'quicksight:DeleteDataSource',
+                        'quicksight:UpdateDataSourcePermissions'
+                    ]
+                }]
+            )
         
         print(f"Granted permissions to user: {username}")
         return
@@ -392,68 +393,6 @@ def create_quicksight_dataset(s3_uri, dataset_name, dataset_id, mode, keep_manif
         print(f"Dataset creation failed: {e}")
         return None
 
-def create_combined_dataset(s3_uri, dataset_name, dataset_id):
-    """Create combined QuickSight dataset with UNION of cases and health data."""
-    if not check_dataset_exists(dataset_id):
-        print(f"Skipping combined dataset creation for: {dataset_id}")
-        return None
-        
-    print(f"Combined dataset creation requires existing cases and health data sources.")
-    print(f"Skipping combined dataset creation until individual datasets are ready.")
-    return None
-    """Create QuickSight dataset from S3 URI."""
-    quicksight = boto3.client('quicksight')
-    account_id = get_account_id()
-    
-    # Parse S3 URI and find mode-specific data path
-    bucket_name = s3_uri.split('/')[2]
-    data_path = find_mode_data_path(bucket_name, mode)
-    
-    # Create data source
-    data_source_id = f"{dataset_id}-datasource"
-    table_name = f"maki-table-{mode}"
-    
-    try:
-        quicksight.create_data_source(
-            AwsAccountId=account_id,
-            DataSourceId=data_source_id,
-            Name=f"{dataset_name} Data Source",
-            Type='S3',
-            DataSourceParameters={
-                'S3Parameters': {
-                    'ManifestFileLocation': {
-                        'Bucket': bucket_name,
-                        'Key': f"{data_path}manifest.json"
-                    }
-                }
-            }
-        )
-        print(f"Created data source: {data_source_id}")
-    except quicksight.exceptions.ResourceExistsException:
-        print(f"Data source {data_source_id} already exists")
-    
-    # Create dataset
-    try:
-        response = quicksight.create_data_set(
-            AwsAccountId=account_id,
-            DataSetId=dataset_id,
-            Name=dataset_name,
-            PhysicalTableMap={
-                table_name: {
-                    'S3Source': {
-                        'DataSourceArn': f"arn:aws:quicksight:{get_current_region()}:{account_id}:datasource/{data_source_id}",
-                        'InputColumns': get_table_schema(mode)
-                    }
-                }
-            },
-            ImportMode='SPICE'
-        )
-        print(f"Created dataset: {dataset_id} with table: {table_name} using data from: s3://{bucket_name}/{data_path}")
-        return response['Arn']
-    except quicksight.exceptions.ResourceExistsException:
-        print(f"Dataset {dataset_id} already exists")
-        return None
-
 def main():
     parser = argparse.ArgumentParser(description='Create QuickSight dataset from S3 URI')
     
@@ -502,16 +441,12 @@ def main():
         
         datasets = [
             ('cases', 'MAKI Cases Dataset', 'maki-cases-dataset'),
-            ('health', 'MAKI Health Dataset', 'maki-health-dataset'),
-            ('combined', 'MAKI All Dataset', 'maki-all-dataset')
+            ('health', 'MAKI Health Dataset', 'maki-health-dataset')
         ]
         
         for mode, name, dataset_id in datasets:
             try:
-                if mode == 'combined':
-                    dataset_arn = create_combined_dataset(args.s3_uri, name, dataset_id)
-                else:
-                    dataset_arn = create_quicksight_dataset(args.s3_uri, name, dataset_id, mode, args.keep_manifests, args.user)
+                dataset_arn = create_quicksight_dataset(args.s3_uri, name, dataset_id, mode, args.keep_manifests, args.user)
                 
                 if dataset_arn:
                     print(f"Successfully created {mode} dataset: {dataset_arn}")
