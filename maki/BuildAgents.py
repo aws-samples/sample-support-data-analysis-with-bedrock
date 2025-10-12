@@ -68,7 +68,7 @@ class MakiAgent:
         """Register MCP tools for search functionality"""
         
         @self.mcp.tool()
-        def semantic_search(query: str, size: int = None, index: str = None) -> Dict[str, Any]:
+        def aws_health_events_semantic_search(query: str, size: int = None, index: str = None) -> Dict[str, Any]:
             """Search AWS Health Events using semantic vector embeddings to find similar incidents, outages, and service disruptions"""
             if not self.opensearch_client:
                 return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
@@ -110,7 +110,7 @@ class MakiAgent:
                 return {"error": f"Semantic search failed: {str(e)}"}
         
         @self.mcp.tool()
-        def lexical_search(query: str, size: int = None, index: str = None, fields: Optional[List[str]] = None) -> Dict[str, Any]:
+        def aws_health_events_lexical_search(query: str, size: int = None, index: str = None, fields: Optional[List[str]] = None) -> Dict[str, Any]:
             """Search AWS Health Events using exact keyword matching to find specific service names, regions, or event types"""
             if not self.opensearch_client:
                 return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
