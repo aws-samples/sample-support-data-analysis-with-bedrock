@@ -85,20 +85,11 @@ def generate_embedding(text, bedrock_client, region='us-east-1'):
         print(f"  Error generating embedding: {e}")
         return None
 
-def generate_synthetic_health_events(count=100):
-    """Generate synthetic AWS Health events"""
+def generate_synthetic_health_events(count=100, start_date=None, end_date=None):
+    """Generate synthetic AWS Health events within specified date range"""
     
-    services = ['EC2', 'RDS', 'S3', 'Lambda', 'ELB', 'CloudFront', 'Route53', 'ECS', 'EKS', 'DynamoDB']
-    event_types = [
-        'AWS_EC2_INSTANCE_REBOOT_MAINTENANCE_SCHEDULED',
-        'AWS_RDS_MAINTENANCE_SCHEDULED', 
-        'AWS_ELB_MAINTENANCE_SCHEDULED',
-        'AWS_EC2_OPERATIONAL_ISSUE',
-        'AWS_RDS_OPERATIONAL_ISSUE',
-        'AWS_S3_OPERATIONAL_ISSUE',
-        'AWS_LAMBDA_OPERATIONAL_ISSUE',
-        'AWS_CLOUDFRONT_OPERATIONAL_ISSUE'
-    ]
+    # Use real AWS Health API service-to-eventTypeCode mappings from config
+    service_event_mapping = config.POPULAR_HEALTH_SERVICES
     categories = ['scheduledChange', 'issue', 'accountNotification', 'investigation']
     statuses = ['open', 'upcoming', 'closed']
     regions = ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1', 'us-east-2']
@@ -117,13 +108,19 @@ def generate_synthetic_health_events(count=100):
     events = []
     
     for i in range(count):
-        # Generate random timestamps
-        start_time = datetime.now() - timedelta(days=random.randint(1, 365))
+        # Generate random timestamps within specified date range
+        if start_date and end_date:
+            days_diff = (end_date - start_date).days
+            random_days = random.randint(0, max(0, days_diff))
+            start_time = start_date + timedelta(days=random_days)
+        else:
+            start_time = datetime.now() - timedelta(days=random.randint(1, 365))
+        
         end_time = start_time + timedelta(hours=random.randint(1, 48)) if random.choice([True, False]) else None
         last_updated = start_time + timedelta(minutes=random.randint(0, 120))
         
-        service = random.choice(services)
-        event_type = random.choice(event_types)
+        service = random.choice(list(service_event_mapping.keys()))
+        event_type = random.choice(service_event_mapping[service])
         category = random.choice(categories)
         status = random.choice(statuses)
         region = random.choice(regions)
@@ -324,8 +321,33 @@ def main():
     parser.add_argument('--region', default=config.REGION, help=f'AWS region (default: {config.REGION})')
     parser.add_argument('--verbose', action='store_true', help='Show detailed output for each synthetic event generated and loaded')
     parser.add_argument('--synth', type=int, default=100, help='Number of synthetic health events to generate (default: 100)')
+    parser.add_argument('--start-t', help='Start date for health events in YYYYMMDD format (default: 1 year ago)')
+    parser.add_argument('--end-t', help='End date for health events in YYYYMMDD format (default: today)')
     
     args = parser.parse_args()
+    
+    # Parse date parameters
+    start_date = None
+    end_date = None
+    
+    if args.start_t:
+        try:
+            start_date = datetime.strptime(args.start_t, '%Y%m%d')
+        except ValueError:
+            parser.error('--start-t must be in YYYYMMDD format')
+    else:
+        start_date = datetime.now() - timedelta(days=365)
+    
+    if args.end_t:
+        try:
+            end_date = datetime.strptime(args.end_t, '%Y%m%d')
+        except ValueError:
+            parser.error('--end-t must be in YYYYMMDD format')
+    else:
+        end_date = datetime.now()
+    
+    if start_date > end_date:
+        parser.error('--start-t must be before --end-t')
     
     # Get OpenSearch endpoint - either from argument or auto-detect from collection
     opensearch_endpoint = args.opensearch_endpoint
@@ -344,10 +366,10 @@ def main():
     except Exception as e:
         print(f"Could not determine current identity: {e}")
     
-    print(f"Generating {args.synth} synthetic AWS Health events...")
+    print(f"Generating {args.synth} synthetic AWS Health events between {start_date.strftime('%Y-%m-%d')} and {end_date.strftime('%Y-%m-%d')}...")
     
     # Generate synthetic events
-    events = generate_synthetic_health_events(args.synth)
+    events = generate_synthetic_health_events(args.synth, start_date, end_date)
     
     print(f"Generated {len(events)} synthetic health events")
     
