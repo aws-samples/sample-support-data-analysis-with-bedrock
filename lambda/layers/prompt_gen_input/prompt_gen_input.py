@@ -112,7 +112,8 @@ def generate_conversation(bedrock_client,
     return response
 
 # this prompt generates the synthetic event
-def gen_synth_prompt(model_id_text, examples, desc, category, temperature, timestamp=None):
+def gen_synth_prompt(model_id_text, examples, desc, category, temperature, timestamp=None, serviceCodes=None):
+    import random
     logging.basicConfig(level=logging.INFO,
                         format="%(levelname)s: %(message)s")
     DisplayId = generate_15_digit_number()
@@ -131,6 +132,12 @@ def gen_synth_prompt(model_id_text, examples, desc, category, temperature, times
         system_prompt_text += "timeCreated MUST BE: " + timestamp + ".\n"
     else:
         system_prompt_text += "timeCreated field MUST contain a valid timestamp in yyyy/MM/dd HH:mm:ss format.\n"
+    
+    # Add serviceCode constraint if serviceCodes array is provided
+    if serviceCodes:
+        selected_service = random.choice(serviceCodes)
+        system_prompt_text += "serviceCode MUST BE: " + selected_service + ".\n"
+    
     system_prompt_text += "Fields serviceCode, category, and status MUST BE UPPERCASE.\n"
     system_prompt_text += "Field caseId MUST contain numbers only.\n"
     system_prompt_text += "Output a new synthetic event and nothing else."
@@ -138,7 +145,6 @@ def gen_synth_prompt(model_id_text, examples, desc, category, temperature, times
 
     system_prompt_text = system_prompt_text.replace("\n", " ")
     
-    #system_prompts = [{"text": system_prompt_text}, {"cachePoint":{"type":"default"}}]
     system_prompts = [{"text": system_prompt_text}]
 
     user_msg1 = "Create a new synthetic support event using these examples:"
@@ -148,7 +154,6 @@ def gen_synth_prompt(model_id_text, examples, desc, category, temperature, times
     message_1 = {
         "role": "user",
         "content": [{"text": user_msg1}]
-    #    "content": [{"text": user_msg1}, {"cachePoint":{"type":"default"}}]
     }
     messages = []
 

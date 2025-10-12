@@ -137,7 +137,8 @@ def main():
                         desc=desc_category,
                         category=category,
                         temperature=config.SYNTH_CASES_TEMPERATURE,
-                        timestamp=case_timestamp)
+                        timestamp=case_timestamp,
+                        serviceCodes=config.POPULAR_SERVICE_CODES)
         
             logging.info("generating " + genCasesBucketName + '/' + key) 
 
