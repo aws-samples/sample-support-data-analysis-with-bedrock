@@ -1,0 +1,20 @@
+2025-10-13T14:23:15.234Z [S3-Replication] us-east-1 bucket: prod-data-primary object: documents/report-2025-10-13.pdf replication_status: PENDING destination: us-west-2
+2025-10-13T14:23:16.445Z [S3-Replication] us-east-1 bucket: prod-data-primary object: documents/report-2025-10-13.pdf replication_status: FAILED destination: us-west-2 error: NetworkTimeout
+2025-10-13T14:23:17.123Z [CloudWatch-Metric] MetricName: ReplicationLatency Value: 15234ms Bucket: prod-data-primary DestinationRegion: us-west-2
+2025-10-13T14:25:22.567Z [S3-Replication] us-east-1 bucket: prod-data-primary object: images/logo-v2.png replication_status: COMPLETED destination: us-west-2 duration: 1.2s
+2025-10-13T14:27:45.891Z [S3-Replication] us-east-1 bucket: prod-data-primary object: data/customer-export.csv replication_status: PENDING destination: us-west-2
+2025-10-13T14:27:47.234Z [S3-Replication] us-east-1 bucket: prod-data-primary object: data/customer-export.csv replication_status: FAILED destination: us-west-2 error: ConnectionReset
+2025-10-13T14:28:12.445Z [CloudWatch-Metric] MetricName: ReplicationFailureRate Value: 0.35 Bucket: prod-data-primary DestinationRegion: us-west-2
+2025-10-13T14:30:15.678Z [S3-Replication] us-east-1 bucket: prod-data-primary object: videos/training-module-1.mp4 replication_status: PENDING destination: us-west-2
+2025-10-13T14:30:45.234Z [S3-Replication] us-east-1 bucket: prod-data-primary object: videos/training-module-1.mp4 replication_status: FAILED destination: us-west-2 error: NetworkTimeout
+2025-10-13T14:32:18.567Z [CloudWatch-Metric] MetricName: NumberOfObjectsFailedToReplicate Value: 3 Bucket: prod-data-primary DestinationRegion: us-west-2
+2025-10-13T14:35:22.891Z [S3-Replication] us-east-1 bucket: prod-data-primary object: configs/app-settings.json replication_status: COMPLETED destination: us-west-2 duration: 0.8s
+2025-10-13T14:38:45.123Z [S3-Replication] us-east-1 bucket: prod-data-primary object: backups/db-backup-20251013.sql replication_status: PENDING destination: us-west-2
+2025-10-13T14:39:15.456Z [S3-Replication] us-east-1 bucket: prod-data-primary object: backups/db-backup-20251013.sql replication_status: FAILED destination: us-west-2 error: NetworkTimeout
+2025-10-13T14:40:22.789Z [CloudWatch-Metric] MetricName: ReplicationLatency Value: 18567ms Bucket: prod-data-primary DestinationRegion: us-west-2
+2025-10-13T14:42:33.234Z [S3-Replication] us-east-1 bucket: prod-data-primary object: logs/application-20251013.log replication_status: COMPLETED destination: us-west-2 duration: 2.1s
+2025-10-13T14:45:18.567Z [CloudWatch-Metric] MetricName: NumberOfObjectsFailedToReplicate Value: 4 Bucket: prod-data-primary DestinationRegion: us-west-2
+2025-10-13T14:47:25.891Z [S3-Replication] us-east-1 bucket: prod-data-primary object: documents/contract-template.docx replication_status: PENDING destination: us-west-2
+2025-10-13T14:47:28.123Z [S3-Replication] us-east-1 bucket: prod-data-primary object: documents/contract-template.docx replication_status: FAILED destination: us-west-2 error: ConnectionReset
+2025-10-13T14:50:15.456Z [CloudWatch-Metric] MetricName: ReplicationFailureRate Value: 0.42 Bucket: prod-data-primary DestinationRegion: us-west-2
+2025-10-13T14:52:33.789Z [S3-Replication] us-east-1 bucket: prod-data-primary object: assets/stylesheet.css replication_status: COMPLETED destination: us-west-2 duration: 0.5s

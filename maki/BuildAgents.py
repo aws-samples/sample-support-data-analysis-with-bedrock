@@ -153,6 +153,140 @@ class MakiAgent:
                 return {"error": f"Lexical search failed: {str(e)}"}
         
         @self.mcp.tool()
+        def support_cases_semantic_search(query: str, size: int = 10) -> Dict[str, Any]:
+            """Search AWS Support Cases using semantic vector embeddings to find similar case summaries and suggested actions"""
+            if not self.opensearch_client:
+                return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
+            
+            try:
+                import boto3
+                from config import BEDROCK_EMBEDDING_MODEL
+                
+                # Generate embedding for query
+                bedrock_client = boto3.client('bedrock-runtime')
+                response = bedrock_client.invoke_model(
+                    modelId=BEDROCK_EMBEDDING_MODEL,
+                    body=json.dumps({"inputText": query})
+                )
+                query_embedding = json.loads(response['body'].read())['embedding']
+                
+                # Perform semantic search using script_score
+                search_body = {
+                    "query": {
+                        "script_score": {
+                            "query": {"match_all": {}},
+                            "script": {
+                                "source": "cosineSimilarity(params.query_vector, 'case_summary_suggested_action_embedding') + 1.0",
+                                "params": {"query_vector": query_embedding}
+                            }
+                        }
+                    },
+                    "size": size
+                }
+                
+                try:
+                    response = self.opensearch_client.search(index="maki-cases", body=search_body)
+                except Exception:
+                    # Fallback to text search if vector search fails
+                    search_body = {
+                        "query": {
+                            "multi_match": {
+                                "query": query,
+                                "fields": ["case_summary", "suggested_action", "category_explanation"]
+                            }
+                        },
+                        "size": size
+                    }
+                    response = self.opensearch_client.search(index="maki-cases", body=search_body)
+                
+                results = []
+                for hit in response['hits']['hits']:
+                    source = hit['_source']
+                    results.append({
+                        "score": hit['_score'],
+                        "case_id": source.get('caseId', 'N/A'),
+                        "category": source.get('category', 'N/A'),
+                        "service": source.get('serviceCode', 'N/A'),
+                        "summary": source.get('case_summary', 'N/A')[:200] + "..." if len(source.get('case_summary', '')) > 200 else source.get('case_summary', 'N/A'),
+                        "suggested_action": source.get('suggested_action', 'N/A')[:200] + "..." if len(source.get('suggested_action', '')) > 200 else source.get('suggested_action', 'N/A')
+                    })
+                
+                return {
+                    "query": query,
+                    "total_hits": response['hits']['total']['value'],
+                    "results": results
+                }
+                
+            except Exception as e:
+                return {"error": f"Support cases semantic search failed: {str(e)}"}
+        
+        @self.mcp.tool()
+        def support_cases_lexical_search(query: str, size: int = 10) -> Dict[str, Any]:
+            """Search AWS Support Cases using exact keyword matching across case summaries, categories, and service codes"""
+            if not self.opensearch_client:
+                return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
+            
+            try:
+                search_body = {
+                    "query": {
+                        "multi_match": {
+                            "query": query,
+                            "fields": [
+                                "case_summary^2",
+                                "suggested_action^2", 
+                                "category_explanation",
+                                "category",
+                                "serviceCode",
+                                "status",
+                                "submittedBy",
+                                "sentiment"
+                            ],
+                            "type": "best_fields"
+                        }
+                    },
+                    "size": size,
+                    "highlight": {
+                        "fields": {
+                            "case_summary": {},
+                            "suggested_action": {},
+                            "category_explanation": {}
+                        }
+                    }
+                }
+                
+                response = self.opensearch_client.search(index="maki-cases", body=search_body)
+                
+                results = []
+                for hit in response['hits']['hits']:
+                    source = hit['_source']
+                    result = {
+                        "score": hit['_score'],
+                        "case_id": source.get('caseId', 'N/A'),
+                        "category": source.get('category', 'N/A'),
+                        "service": source.get('serviceCode', 'N/A'),
+                        "status": source.get('status', 'N/A'),
+                        "summary": source.get('case_summary', 'N/A')[:200] + "..." if len(source.get('case_summary', '')) > 200 else source.get('case_summary', 'N/A'),
+                        "suggested_action": source.get('suggested_action', 'N/A')[:200] + "..." if len(source.get('suggested_action', '')) > 200 else source.get('suggested_action', 'N/A')
+                    }
+                    
+                    # Add highlights if available
+                    if 'highlight' in hit:
+                        result['highlights'] = {}
+                        for field, highlights in hit['highlight'].items():
+                            result['highlights'][field] = highlights[0][:150] + "..." if len(highlights[0]) > 150 else highlights[0]
+                    
+                    results.append(result)
+                
+                return {
+                    "query": query,
+                    "total_hits": response['hits']['total']['value'],
+                    "results": results
+                }
+                
+            except Exception as e:
+                return {"error": f"Support cases lexical search failed: {str(e)}"}
+        
+        @self.mcp.tool()
         def get_index_stats(index: str = None) -> Dict[str, Any]:
             """Get statistics about the AWS Health Events index including document count and storage metrics"""
             if not self.opensearch_client:
@@ -181,6 +315,31 @@ class MakiAgent:
                 
             except Exception as e:
                 return {"error": f"Failed to get index stats: {str(e)}"}
+        
+        @self.mcp.tool()
+        def get_cloudwatch_logs() -> Dict[str, Any]:
+            """Get CloudWatch logs from the local file. MCP must always use this tool for CloudWatch logs instead of AWS CloudWatch API."""
+            try:
+                # Get the directory of the current script
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                # Go up one level to the project root and then to tools directory
+                log_file_path = os.path.join(os.path.dirname(current_dir), 'tools', 'cloudwatchlogs.txt')
+                
+                if not os.path.exists(log_file_path):
+                    return {"error": f"CloudWatch logs file not found at {log_file_path}"}
+                
+                with open(log_file_path, 'r') as f:
+                    logs_content = f.read()
+                
+                return {
+                    "source": "local_file",
+                    "file_path": log_file_path,
+                    "logs": logs_content,
+                    "line_count": len(logs_content.splitlines())
+                }
+                
+            except Exception as e:
+                return {"error": f"Failed to read CloudWatch logs: {str(e)}"}
     
     def run(self):
         """Run the FastMCP agent"""
