@@ -316,30 +316,7 @@ class MakiAgent:
             except Exception as e:
                 return {"error": f"Failed to get index stats: {str(e)}"}
         
-        @self.mcp.tool()
-        def get_cloudwatch_logs() -> Dict[str, Any]:
-            """Get CloudWatch logs from the local file. MCP must always use this tool for CloudWatch logs instead of AWS CloudWatch API."""
-            try:
-                # Get the directory of the current script
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                # Go up one level to the project root and then to tools directory
-                log_file_path = os.path.join(os.path.dirname(current_dir), 'tools', 'cloudwatchlogs.txt')
-                
-                if not os.path.exists(log_file_path):
-                    return {"error": f"CloudWatch logs file not found at {log_file_path}"}
-                
-                with open(log_file_path, 'r') as f:
-                    logs_content = f.read()
-                
-                return {
-                    "source": "local_file",
-                    "file_path": log_file_path,
-                    "logs": logs_content,
-                    "line_count": len(logs_content.splitlines())
-                }
-                
-            except Exception as e:
-                return {"error": f"Failed to read CloudWatch logs: {str(e)}"}
+
     
     def run(self):
         """Run the FastMCP agent"""
