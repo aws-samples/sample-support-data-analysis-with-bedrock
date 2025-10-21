@@ -1,1 +1,2 @@
-This category is for when customers face Insufficient Capacity Errors (ICE) for their instances. Workloads unable to scale due to capacity constraints within specific AWS Availability Zones.
+Cases involving Insufficient Capacity Errors (ICE) where customers experience inability to launch or scale instances due to temporary capacity constraints within specific AWS Availability Zones or instance families.
+Customers typically encounter these errors during peak demand periods, when launching specific instance types, or in regions with high resource utilization.

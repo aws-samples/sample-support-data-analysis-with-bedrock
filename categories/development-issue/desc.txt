@@ -1,5 +1,3 @@
-This category is where the customer has questions or issues developing applications on AWS with services such as the below;
-
-AWS APIs
-AWS SDKs
-AWS CDK
+Technical challenges or inquiries encountered during application development and integration with AWS services, specifically involving AWS programmatic interfaces and development tools.
+These cases encompass development-time problems when working with AWS APIs, implementation difficulties with AWS SDKs across supported programming languages, or complications arising from infrastructure automation using AWS CDK.
+Customers may experience issues with API request handling, SDK method implementations, authentication workflows, or CDK construct definitions. 

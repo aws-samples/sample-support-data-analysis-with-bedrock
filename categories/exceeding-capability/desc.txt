@@ -1,1 +1,2 @@
-Support engineers recommending alternative services or architectural changes to accommodate workloads exceeding the capabilities of the current implementation.
+Cases where current customer implementations reach or exceed their operational, architectural, or service limits, requiring strategic recommendations for optimization or re-architecture. 
+These situations arise when existing solutions cannot efficiently handle increased workloads, growing scalability demands, or evolving business requirements.
