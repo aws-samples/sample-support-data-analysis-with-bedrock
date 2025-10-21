@@ -1,1 +1,3 @@
-Incidents that could have been averted with proper monitoring mechanisms, such as alerts for volume capacity.
+Incidents resulting from insufficient or absent monitoring mechanisms where proactive alerts and detection systems could have prevented service disruptions or performance issues. 
+These cases typically emerge when customers experience unexpected resource exhaustion, service degradation, or system failures that proper monitoring would have identified in advance.
+Common scenarios include storage volumes reaching capacity limits, database connection exhaustion, memory depletion, CPU saturation, or quota limits being approached without warning.

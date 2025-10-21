@@ -1,2 +1,5 @@
 Throttling limits of an AWS service was reached.
-Workloads exceeding AWS service quotas, resulting in throttling, often due to inadequate performance testing in production environments.  This throttling would have caused critical impact.
+Incidents where workloads encounter AWS service throttling limits, resulting in request rejections, increased latency, or service disruptions that significantly impact production operations. 
+These situations typically occur when applications exceed prescribed API request rates, service quotas, or transaction limits, often stemming from insufficient load testing, unexpected traffic spikes, or aggressive scaling events. 
+The impact manifests as degraded application performance, failed transactions, increased error rates, or complete service interruption, particularly during peak usage periods or critical business operations. 
+Common scenarios include rapid API calls exceeding permitted rates, concurrent request limits being breached, or sustained high-volume operations overwhelming service quotas.

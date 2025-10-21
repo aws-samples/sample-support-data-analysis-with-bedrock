@@ -1,1 +1,3 @@
-Customers reporting security incidents, such as Distributed Denial of Service (DDoS) attacks, abuse, or potential vulnerabilities.
+Cases involving potential security incidents, threats, or vulnerabilities that may compromise AWS resources, customer data, or service availability. 
+These incidents encompass a wide range of security concerns including active or suspected DDoS attacks, unauthorized access attempts, potential data breaches, suspicious API activity, or reported security vulnerabilities. 
+Customer reports may indicate unusual resource consumption, unexpected network traffic patterns, unauthorized infrastructure modifications, or potential compromise of access credentials.

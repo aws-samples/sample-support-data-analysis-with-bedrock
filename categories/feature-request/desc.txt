@@ -1,1 +1,3 @@
 Where the customer is requesting a new feature associated with an AWS service. 
+Submissions from customers requesting enhancements, new capabilities, or modifications to existing AWS services to better meet their business or technical requirements. 
+These requests encompass desired functionality not currently available in AWS service offerings, improvements to existing features, or suggestions for service integrations.
