@@ -1,1 +1,5 @@
 Customer has missed that an automated update has taken place to their managed service.
+Issues arising when customers experience unexpected behavior or disruption following automated updates to AWS managed services, often due to insufficient awareness or preparation for scheduled maintenance activities. 
+These situations typically surface when automatic version upgrades, security patches, or platform updates occur as part of AWS service management.
+Common scenarios include database engine version updates, operating system patches, security maintenance, or underlying platform modifications that may impact application compatibility or performance. 
+The impact often manifests through changed service behavior, performance variations, deprecated feature usage, or compatibility issues with customer applications.

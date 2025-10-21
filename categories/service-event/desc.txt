@@ -1,1 +1,4 @@
-Caused by service impairment within AWS.
+Incidents directly attributed to degradation, disruption, or impairment of AWS services, infrastructure, or platforms that impact customer workloads.
+These events represent situations where AWS service performance or availability deviates from expected behavior due to internal AWS issues rather than customer configurations. 
+The impact may range from minor performance degradation to complete service unavailability, potentially affecting single or multiple AWS services across one or more regions.
+Such events might manifest as increased API latency, failed resource provisioning, inconsistent service behavior, or broad platform accessibility issues.
