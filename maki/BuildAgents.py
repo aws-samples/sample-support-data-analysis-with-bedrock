@@ -316,6 +316,161 @@ class MakiAgent:
             except Exception as e:
                 return {"error": f"Failed to get index stats: {str(e)}"}
         
+        @self.mcp.tool()
+        def support_cases_hybrid_search(query: str, size: int = 10) -> Dict[str, Any]:
+            """Search AWS Support Cases using hybrid lexical and semantic search against the opensearch index which has both lexical and embeddings fields"""
+            if not self.opensearch_client:
+                return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
+            
+            try:
+                # Hybrid search combining lexical and semantic approaches
+                search_body = {
+                    "query": {
+                        "bool": {
+                            "should": [
+                                {
+                                    "multi_match": {
+                                        "query": query,
+                                        "fields": [
+                                            "case_summary^2",
+                                            "suggested_action^2", 
+                                            "category_explanation",
+                                            "category",
+                                            "serviceCode"
+                                        ],
+                                        "type": "best_fields"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "size": size
+                }
+                
+                # Try to add semantic search if embeddings are available
+                try:
+                    import boto3
+                    from config import BEDROCK_EMBEDDING_MODEL
+                    
+                    bedrock_client = boto3.client('bedrock-runtime')
+                    response = bedrock_client.invoke_model(
+                        modelId=BEDROCK_EMBEDDING_MODEL,
+                        body=json.dumps({"inputText": query})
+                    )
+                    query_embedding = json.loads(response['body'].read())['embedding']
+                    
+                    # Add semantic search to the hybrid query
+                    search_body["query"]["bool"]["should"].append({
+                        "script_score": {
+                            "query": {"match_all": {}},
+                            "script": {
+                                "source": "cosineSimilarity(params.query_vector, 'case_summary_suggested_action_embedding') + 1.0",
+                                "params": {"query_vector": query_embedding}
+                            }
+                        }
+                    })
+                except:
+                    # Continue with lexical-only search if embedding fails
+                    pass
+                
+                response = self.opensearch_client.search(index="maki-cases", body=search_body)
+                
+                results = []
+                for hit in response['hits']['hits']:
+                    source = hit['_source']
+                    results.append({
+                        "score": hit['_score'],
+                        "case_id": source.get('caseId', 'N/A'),
+                        "category": source.get('category', 'N/A'),
+                        "service": source.get('serviceCode', 'N/A'),
+                        "summary": source.get('case_summary', 'N/A')[:200] + "..." if len(source.get('case_summary', '')) > 200 else source.get('case_summary', 'N/A'),
+                        "suggested_action": source.get('suggested_action', 'N/A')[:200] + "..." if len(source.get('suggested_action', '')) > 200 else source.get('suggested_action', 'N/A')
+                    })
+                
+                return {
+                    "query": query,
+                    "total_hits": response['hits']['total']['value'],
+                    "results": results,
+                    "search_type": "hybrid"
+                }
+                
+            except Exception as e:
+                return {"error": f"Support cases hybrid search failed: {str(e)}"}
+        
+        @self.mcp.tool()
+        def aws_health_events_hybrid_search(query: str, size: int = None, index: str = None) -> Dict[str, Any]:
+            """Search AWS Health Events using hybrid lexical and semantic search against the opensearch index which has both lexical and embeddings fields"""
+            if not self.opensearch_client:
+                return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
+            
+            # Use defaults from SSM parameters
+            if size is None:
+                size = self.default_size
+            if index is None:
+                index = self.default_index
+            
+            try:
+                # Hybrid search combining lexical and semantic approaches
+                search_body = {
+                    "query": {
+                        "bool": {
+                            "should": [
+                                {
+                                    "query_string": {
+                                        "query": query,
+                                        "default_operator": "OR"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "size": size
+                }
+                
+                # Try to add semantic search if embeddings are available
+                try:
+                    import boto3
+                    from config import BEDROCK_EMBEDDING_MODEL
+                    
+                    bedrock_client = boto3.client('bedrock-runtime')
+                    response = bedrock_client.invoke_model(
+                        modelId=BEDROCK_EMBEDDING_MODEL,
+                        body=json.dumps({"inputText": query})
+                    )
+                    query_embedding = json.loads(response['body'].read())['embedding']
+                    
+                    # Add semantic search to the hybrid query
+                    search_body["query"]["bool"]["should"].append({
+                        "script_score": {
+                            "query": {"match_all": {}},
+                            "script": {
+                                "source": "cosineSimilarity(params.query_vector, 'embedding_field') + 1.0",
+                                "params": {"query_vector": query_embedding}
+                            }
+                        }
+                    })
+                except:
+                    # Continue with lexical-only search if embedding fails
+                    pass
+                
+                response = self.opensearch_client.search(index=index, body=search_body)
+                
+                results = []
+                for hit in response['hits']['hits']:
+                    results.append({
+                        "score": hit['_score'],
+                        "source": hit['_source']
+                    })
+                
+                return {
+                    "query": query,
+                    "total_hits": response['hits']['total']['value'],
+                    "results": results,
+                    "search_type": "hybrid"
+                }
+                
+            except Exception as e:
+                return {"error": f"AWS Health Events hybrid search failed: {str(e)}"}
 
     
     def run(self):
