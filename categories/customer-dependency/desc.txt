@@ -1,1 +1,5 @@
-Issues acknowledged as originating from external dependencies, such as Lambda functions invoking on-premises APIs.  The dependancy lies somewhere on the customer network or may be the customer network directly.
+Issues that stem from external dependencies or integration points within the customer's ecosystem that impact AWS service functionality. 
+These cases typically manifest when AWS services attempt to interact with customer-managed resources, systems, or APIs located either on-premises or in external environments. 
+The root cause often traces to availability, performance, or configuration problems within the customer's dependent systems rather than AWS services themselves. 
+Common scenarios include AWS Lambda functions experiencing timeouts when calling customer endpoints, integration failures between AWS services and external databases, or disruptions in custom applications that rely on customer-hosted components. 
+The impact may present as service latency, failed transactions, incomplete data processing, or intermittent connectivity issues.
