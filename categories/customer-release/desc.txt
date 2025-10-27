@@ -1,1 +1,5 @@
-Customer has made a Change as part of their Release or Deployment, which broke their system.
+Issues arising directly from customer-initiated changes, deployments, or releases that adversely affect their systems' functionality or integration with AWS services.
+These incidents occur when customers implement code updates, configuration changes, infrastructure modifications, or application deployments that introduce unexpected behavior or failures. 
+The impact may surface immediately following the change or manifest gradually as system load increases. 
+Common scenarios include deployment of incompatible code versions, incorrect infrastructure-as-code modifications, unintended security policy changes, or misconfigurations in continuous integration/continuous deployment (CI/CD) pipelines.
+Issues often involve application performance degradation, authentication failures, resource provisioning errors, or service connectivity problems.
