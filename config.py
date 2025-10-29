@@ -100,13 +100,13 @@ CASES_CATEGORY_OUTPUT_FORMAT = "{ \
  \"status\": status, \
  \"serviceCode\": serviceCode, \
  \"timeCreated\": timeCreated, \
- \"timeResolved\" timeResolved, \
- \"submittedBY\": submittedBy, \
+ \"timeResolved\": timeResolved, \
+ \"submittedBy\": submittedBy, \
  \"category\": Category, \
  \"category_explanation\": Category_Explanation, \
  \"case_summary\": Case_Summary, \
  \"sentiment\": Sentiment, \
- \"suggested_action\": Suggested_Action \
+ \"suggested_action\": Suggested_Action, \
  \"suggestion_link\": Suggestion_Link\
 }"
 
