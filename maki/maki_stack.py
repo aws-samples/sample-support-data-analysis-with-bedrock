@@ -58,6 +58,7 @@ from . import (
     BuildCloudWatch,
     BuildStateMachine,
     BuildEventBridge,
+    BuildHealthEventBridge,
     BuildSageMaker,
     BuildOpenSearch,
     BuildSSM
@@ -333,6 +334,17 @@ class MakiFoundations(Stack):
             self, 
             state_machine
         )
+        
+        # build Health EventBridge integration for real-time health event processing (optional)
+        if config.EVENTBRIDGE_HEALTH_ENABLED:
+            health_eventbridge_components = BuildHealthEventBridge.build_health_eventbridge_integration(
+                self,
+                makiRole,
+                log_group,
+                opensearch_utils_layer,
+                s3_utils_layer, 
+                prompt_gen_input_layer
+            )
 
         # build SageMaker notebook
         notebook = BuildSageMaker.buildNotebookInstance(self, makiRole, vpc, sg)
@@ -376,9 +388,21 @@ class MakiEmbeddings(Stack):
 
         # OpenSearch Serverless doesn't require VPC configuration
 
+        # Get health processor role if it exists (for EventBridge health integration)
+        health_processor_role = None
+        if config.EVENTBRIDGE_HEALTH_ENABLED:
+            try:
+                health_processor_role = iam.Role.from_role_arn(
+                    self, "ImportedHealthProcessorRole",
+                    role_arn=f"arn:aws:iam::{config.account_id}:role/{utils.returnName('health-eventbridge-processor-role')}"
+                )
+            except:
+                # Role doesn't exist yet, will be None
+                pass
+        
         # Create OpenSearch Serverless collection first
         opensearch_collection, opensearch_endpoint = BuildOpenSearch.buildOpenSearchCollection(
-            self, makiRole
+            self, makiRole, health_processor_role
         )
 
         # Update SSM parameter with actual OpenSearch endpoint
