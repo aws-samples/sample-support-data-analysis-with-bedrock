@@ -46,7 +46,7 @@ import sys
 sys.path.append('utils')
 import utils
 
-def buildOpenSearchCollection(self, execution_role, health_processor_role=None):
+def buildOpenSearchCollection(self, execution_role):
     """Build OpenSearch Serverless collection for health events"""
     
     collection_name = config.OPENSEARCH_COLLECTION_NAME
@@ -87,15 +87,8 @@ def buildOpenSearchCollection(self, execution_role, health_processor_role=None):
         }}]"""
     )
     
-    # Create access policy including execution role, current caller, and health processor role
+    # Create access policy with execution role and current caller
     principals = [execution_role.role_arn, caller_arn]
-    if health_processor_role:
-        principals.append(health_processor_role.role_arn)
-    
-    # Always include health processor role ARN (even if role object not available)
-    health_processor_role_arn = f"arn:aws:iam::{config.account_id}:role/{utils.returnName('health-eventbridge-processor-role')}"
-    if health_processor_role_arn not in principals:
-        principals.append(health_processor_role_arn)
     
     import json
     
