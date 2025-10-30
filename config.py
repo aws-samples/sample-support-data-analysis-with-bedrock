@@ -574,6 +574,13 @@ BUCKET_NAME_HEALTH_AGG_BASE = 'health-agg'
 OPENSEARCH_COLLECTION_NAME = 'maki-health'
 OPENSEARCH_INDEX = 'amazon-health-events'
 
+###
+# EventBridge Health Events Integration
+# Enable real-time health event processing via EventBridge
+EVENTBRIDGE_HEALTH_ENABLED = True
+EVENTBRIDGE_IMMEDIATE_PROCESSING = True  # Trigger immediate MAKI processing for critical events
+EVENTBRIDGE_CRITICAL_SERVICES = ['EC2', 'RDS', 'S3', 'LAMBDA', 'DYNAMODB']  # Services that trigger immediate processing
+
 ####
 # IAM
 EXEC_ROLE = 'maki-exec-role'
