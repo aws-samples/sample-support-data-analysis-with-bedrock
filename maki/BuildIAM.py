@@ -159,6 +159,7 @@ def buildMakiRole(self):
             "arn:aws:states:" + config.REGION + ":" + config.account_id + ":stateMachine:" + utils.returnName(config.STATE_MACHINE_NAME_BASE),
             "arn:aws:events:" + config.REGION + ":" + config.account_id + ":rule/maki-*",
             "arn:aws:logs:" + config.REGION + ":" + config.account_id + ":log-group:maki-*",
+            "arn:aws:logs:" + config.REGION + ":" + config.account_id + ":log-group:/aws/lambda/maki-*",
             "arn:aws:iam::" + config.account_id + ":role/" + utils.returnName(config.EXEC_ROLE),
             "arn:aws:logs:"  + config.REGION + ":" + config.account_id + ":log-group:/aws-glue/crawlers:*",
             "arn:aws:glue:" + config.REGION + ":" + config.account_id +  ":catalog",

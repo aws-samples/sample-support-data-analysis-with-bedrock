@@ -58,6 +58,7 @@ from . import (
     BuildCloudWatch,
     BuildStateMachine,
     BuildEventBridge,
+    BuildHealthEventBridge,
     BuildSageMaker,
     BuildOpenSearch,
     BuildSSM
@@ -333,6 +334,17 @@ class MakiFoundations(Stack):
             self, 
             state_machine
         )
+        
+        # build Health EventBridge integration for real-time health event processing (optional)
+        if config.EVENTBRIDGE_HEALTH_ENABLED:
+            health_eventbridge_components = BuildHealthEventBridge.build_health_eventbridge_integration(
+                self,
+                makiRole,
+                log_group,
+                opensearch_utils_layer,
+                s3_utils_layer, 
+                prompt_gen_input_layer
+            )
 
         # build SageMaker notebook
         notebook = BuildSageMaker.buildNotebookInstance(self, makiRole, vpc, sg)

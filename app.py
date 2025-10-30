@@ -107,6 +107,7 @@ cdk.Aspects.of(app).add(AwsSolutionsChecks())
 NagSuppressions.add_stack_suppressions(foundations_stack, [
     {"id": "AwsSolutions-IAM5", "reason": "Wildcard permissions are acceptable for sample code.  Also Bedrock batch inference has no way to make this more granular."},
     {"id": "AwsSolutions-L1", "reason": "Lambda runtime version is acceptable for sample code."},
+    {"id": "AwsSolutions-IAM4", "reason": "EventBridge health processor requires AWS managed policy for Lambda execution"},
 ])
 NagSuppressions.add_stack_suppressions(data_stack, [
     {"id": "AwsSolutions-IAM5", "reason": "Wildcard permissions are acceptable for sample code."},

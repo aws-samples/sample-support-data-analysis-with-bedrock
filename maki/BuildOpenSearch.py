@@ -87,23 +87,27 @@ def buildOpenSearchCollection(self, execution_role):
         }}]"""
     )
     
-    # Create access policy including both execution role and current caller
+    # Create access policy with execution role and current caller
+    principals = [execution_role.role_arn, caller_arn]
+    
+    import json
+    
     access_policy = opensearch.CfnAccessPolicy(
         self, utils.returnName("opensearch-access-policy"),
         name=f"{collection_name}-access-policy",
         type="data",
-        policy=f"""[{{
-            "Rules": [{{
+        policy=json.dumps([{
+            "Rules": [{
                 "ResourceType": "index",
-                "Resource": ["index/{collection_name}/*", "index/{collection_name}/amazon-health-events"],
+                "Resource": [f"index/{collection_name}/*", f"index/{collection_name}/amazon-health-events"],
                 "Permission": ["aoss:CreateIndex", "aoss:DeleteIndex", "aoss:UpdateIndex", "aoss:DescribeIndex", "aoss:ReadDocument", "aoss:WriteDocument"]
-            }}, {{
+            }, {
                 "ResourceType": "collection",
-                "Resource": ["collection/{collection_name}"],
+                "Resource": [f"collection/{collection_name}"],
                 "Permission": ["aoss:CreateCollectionItems", "aoss:DeleteCollectionItems", "aoss:UpdateCollectionItems", "aoss:DescribeCollectionItems"]
-            }}],
-            "Principal": ["{execution_role.role_arn}", "{caller_arn}"]
-        }}]"""
+            }],
+            "Principal": principals
+        }])
     )
     
     # Create OpenSearch Serverless collection
