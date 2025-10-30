@@ -388,21 +388,9 @@ class MakiEmbeddings(Stack):
 
         # OpenSearch Serverless doesn't require VPC configuration
 
-        # Get health processor role if it exists (for EventBridge health integration)
-        health_processor_role = None
-        if config.EVENTBRIDGE_HEALTH_ENABLED:
-            try:
-                health_processor_role = iam.Role.from_role_arn(
-                    self, "ImportedHealthProcessorRole",
-                    role_arn=f"arn:aws:iam::{config.account_id}:role/{utils.returnName('health-eventbridge-processor-role')}"
-                )
-            except:
-                # Role doesn't exist yet, will be None
-                pass
-        
         # Create OpenSearch Serverless collection first
         opensearch_collection, opensearch_endpoint = BuildOpenSearch.buildOpenSearchCollection(
-            self, makiRole, health_processor_role
+            self, makiRole
         )
 
         # Update SSM parameter with actual OpenSearch endpoint
