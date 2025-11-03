@@ -570,6 +570,12 @@ BUCKET_NAME_CASES_AGG_BASE = 'cases-agg'
 BUCKET_NAME_HEALTH_AGG_BASE = 'health-agg'
 
 ###
+# S3 Vector Bucket details
+S3_VECTOR_BUCKET_NAME = KEY + "-s3-vector-bucket"
+S3_VECTOR_INDEX_NAME = KEY + "-s3-vector-index" 
+S3_VECTOR_INDEX_DIMENSION = 1024
+
+###
 # OpenSearch Serverless Health Events
 OPENSEARCH_COLLECTION_NAME = 'maki-health'
 OPENSEARCH_INDEX = 'amazon-health-events'

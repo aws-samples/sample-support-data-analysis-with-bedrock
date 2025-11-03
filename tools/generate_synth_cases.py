@@ -41,6 +41,7 @@ from datetime import datetime, timedelta
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
+boto3.setup_default_session(profile_name='maki')
 
 # Add paths for config.py - handle both tools/ and root directory execution
 if os.path.basename(current_dir) == 'tools':
