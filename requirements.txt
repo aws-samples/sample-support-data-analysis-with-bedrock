@@ -4,3 +4,4 @@ cdk-nag
 fastmcp
 opensearch-py
 boto3
+cdk_s3_vectors
