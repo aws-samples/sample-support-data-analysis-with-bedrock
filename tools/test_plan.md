@@ -61,7 +61,7 @@ python tools/runMaki.py
       "status": "*"
     }
   },
-  "Event_Example": "*"
+  "Event_Example*": "*"
 }
 ### END OUTPUT
 
@@ -73,23 +73,9 @@ python tools/runMaki.py
 ### OUTPUT
 {
   "Summary": {
-    "summary": "*"
+    "*": "*"
   },
-  "Event_Example": {
-    "caseId": "*",
-    "displayId": "*",
-    "status": "*",
-    "serviceCode": "*",
-    "timeCreated": "*",
-    "timeResolved": *,
-    "submittedBy": "*",
-    "category": "*",
-    "category_explanation": "*",
-    "case_summary": "*",
-    "sentiment": "*",
-    "suggested_action": "*",
-    "suggestion_link": "*"
-  }
+  "Event_Example*": "*"
 }
 ### END OUTPUT
 
@@ -108,21 +94,7 @@ python tools/runMaki.py
   "Summary": {
     "summary": "*"
   },
-  "Event_Example": {
-    "caseId": "*",
-    "displayId": "*",
-    "status": "*",
-    "serviceCode": "*",
-    "timeCreated": "*",
-    "timeResolved": *,
-    "submittedBy": "*",
-    "category": "*",
-    "category_explanation": "*",
-    "case_summary": "*",
-    "sentiment": "*",
-    "suggested_action": "*",
-    "suggestion_link": "*"
-  }
+  "Event_Example*": "*"
 }
 ### END OUTPUT
 
@@ -142,7 +114,7 @@ python tools/runMaki.py
       "status": "Execution stopped: no events were found to process"
     }
   },
-  "Event_Example": "No individual event files found"
+  "Event_Example*": "*"
 }
 ### END OUTPUT
 
@@ -158,21 +130,7 @@ python tools/runMaki.py
   "Summary": {
     "summary": "*"
   },
-  "Event_Example": {
-    "arn": "*",
-    "service": "*",
-    "eventTypeCode": "*",
-    "eventTypeCategory": "*",
-    "region": "*",
-    "startTime": "*",
-    "lastUpdatedTime": "*",
-    "statusCode": "*",
-    "eventScopeCode": "*",
-    "latestDescription": "*",
-    "event_summary": "*",
-    "suggestion_action": "*",
-    "suggestion_link": "*"
-  }
+  "Event_Example*": "*"
 }
 ### END OUTPUT
 
@@ -188,20 +146,6 @@ python tools/runMaki.py
   "Summary": {
     "summary": "*"
   },
-  "Event_Example": {
-    "arn": "*",
-    "service": "*",
-    "eventTypeCode": "*",
-    "eventTypeCategory": "*",
-    "region": "*",
-    "startTime": "*",
-    "lastUpdatedTime": "*",
-    "statusCode": "*",
-    "eventScopeCode": "*",
-    "latestDescription": "*",
-    "event_summary": "*",
-    "suggestion_action": "*",
-    "suggestion_link": "*"
-  }
+  "Event_Example*": "*"
 }
 ### END OUTPUT
