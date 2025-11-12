@@ -1,6 +1,9 @@
-aws-cdk-lib==2.153.0
+aws-cdk-lib>=2.153.0
 constructs>=10.0.0,<11.0.0
 cdk-nag
 fastmcp
-opensearch-py
-boto3
+opensearch-py>=2.4.0
+boto3>=1.26.0
+botocore>=1.29.0
+requests-aws4auth>=1.1.0
+packaging>=21.0

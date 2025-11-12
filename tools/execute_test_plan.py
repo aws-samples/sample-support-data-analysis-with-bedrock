@@ -227,9 +227,16 @@ def match_output(actual, expected):
     """Check if actual output matches expected pattern with * wildcards and JSON structure comparison"""
     import re
     
+    # Extract JSON from output (look for the last JSON block)
+    json_match = re.search(r'\{.*\}', actual, re.DOTALL)
+    if json_match:
+        json_part = json_match.group(0)
+    else:
+        json_part = actual
+    
     # Try JSON structure comparison first
     try:
-        actual_json = json.loads(actual)
+        actual_json = json.loads(json_part)
         expected_json = json.loads(expected)
         return match_json_structure(actual_json, expected_json)
     except (json.JSONDecodeError, ValueError):
@@ -239,21 +246,49 @@ def match_output(actual, expected):
 
 def match_json_structure(actual, expected):
     """Recursively compare JSON structures, treating * as wildcards"""
+    # Handle wildcard at any level
     if expected == "*":
         return True
     
-    if type(actual) != type(expected):
-        return False
-    
     if isinstance(expected, dict):
-        for key, expected_value in expected.items():
-            if key not in actual:
+        if not isinstance(actual, dict):
+            return False
+        # Check each expected key against actual keys
+        for expected_key, expected_value in expected.items():
+            found_match = False
+            
+            if expected_key == "*":
+                # Wildcard key matches any key - just check if dict is non-empty
+                if actual and expected_value == "*":
+                    found_match = True
+                elif actual:
+                    # Check if any actual key matches the expected value pattern
+                    for actual_key in actual.keys():
+                        if match_json_structure(actual[actual_key], expected_value):
+                            found_match = True
+                            break
+            elif expected_key.endswith('*'):
+                # Wildcard key - find matching actual keys
+                base_key = expected_key[:-1]
+                for actual_key in actual.keys():
+                    if actual_key.startswith(base_key):
+                        if match_json_structure(actual[actual_key], expected_value):
+                            found_match = True
+                            break
+            else:
+                # Exact key match
+                if expected_key in actual:
+                    if match_json_structure(actual[expected_key], expected_value):
+                        found_match = True
+            
+            if not found_match:
                 return False
-            if not match_json_structure(actual[key], expected_value):
-                return False
+        
         return True
     
     elif isinstance(expected, list):
+        if not isinstance(actual, list):
+            return False
         if len(actual) != len(expected):
             return False
         for actual_item, expected_item in zip(actual, expected):
@@ -262,6 +297,7 @@ def match_json_structure(actual, expected):
         return True
     
     else:
+        # For primitive values, * matches anything, otherwise exact match
         return expected == "*" or actual == expected
 
 def run_command(cmd, description, expected_output=None, check_files_only=False):
