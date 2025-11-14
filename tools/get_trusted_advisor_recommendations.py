@@ -262,9 +262,9 @@ def main():
     
     if recommendations and not args.output_dir:
         print(f"\nSample recommendation structure (keys only for security):")
-        sample_keys = list(recommendations[0].keys())
-        print(f"Top-level fields: {sample_keys}")
-        print("Note: Detailed content omitted to prevent exposure of sensitive resource identifiers.")
+        num_keys = len(recommendations[0].keys())
+        print(f"Top-level fields in first recommendation: {num_keys} fields")
+        print("Note: Detailed content and field names omitted to prevent exposure of sensitive resource identifiers.")
         print("Use --output-dir to save full data to files for processing.")
 
 if __name__ == '__main__':
