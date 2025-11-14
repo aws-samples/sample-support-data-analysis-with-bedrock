@@ -9,19 +9,52 @@ import os
 import sys
 import subprocess
 import boto3
+import re
 from datetime import datetime, timedelta
 from botocore.exceptions import ClientError
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
+
+def validate_bedrock_response(response_body):
+    """Validate Bedrock API response structure"""
+    if not isinstance(response_body, dict):
+        raise ValueError("Invalid Bedrock response: must be dictionary")
+    
+    if 'embedding' not in response_body:
+        raise ValueError("Missing embedding in Bedrock response")
+    
+    embedding = response_body['embedding']
+    if not isinstance(embedding, list) or len(embedding) == 0:
+        raise ValueError("Invalid embedding format")
+    
+    # Validate embedding values are numeric
+    for val in embedding:
+        if not isinstance(val, (int, float)):
+            raise ValueError("Invalid embedding value type")
+    
+    return response_body
+
+def sanitize_text_input(text):
+    """Sanitize text input to prevent injection attacks"""
+    if not isinstance(text, str):
+        return str(text)
+    
+    # Remove potentially dangerous characters
+    sanitized = re.sub(r'[<>"\';\\]', '', text)
+    # Limit length to prevent DoS
+    return sanitized[:10000]
 
 def generate_embedding(text, bedrock_client, region='us-east-1'):
     """Generate embedding using Bedrock model"""
     if not text or not text.strip():
         return None
     
+    # Sanitize input text
+    sanitized_text = sanitize_text_input(text)
+    
     try:
         body = json.dumps({
-            "inputText": text,
+            "inputText": sanitized_text,
             "dimensions": 1024,
             "normalize": True
         })
@@ -34,7 +67,11 @@ def generate_embedding(text, bedrock_client, region='us-east-1'):
         )
         
         response_body = json.loads(response['body'].read())
-        return response_body['embedding']
+        
+        # Validate response structure
+        validated_response = validate_bedrock_response(response_body)
+        
+        return validated_response['embedding']
         
     except Exception as e:
         print(f"Error generating embedding: {e}")

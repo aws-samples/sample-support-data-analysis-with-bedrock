@@ -45,6 +45,22 @@ import threading
 import argparse
 import boto3
 import json
+import shlex
+
+def parse_command_safely(cmd):
+    """Parse command string safely without shell injection risk"""
+    try:
+        # Use shlex to safely parse the command
+        return shlex.split(cmd)
+    except ValueError:
+        # Fallback for complex commands - split on spaces but validate
+        parts = cmd.split()
+        # Basic validation - ensure no shell metacharacters in individual parts
+        dangerous_chars = ['|', '&', ';', '(', ')', '<', '>', '$', '`']
+        for part in parts:
+            if any(char in part for char in dangerous_chars):
+                raise ValueError(f"Potentially unsafe command detected: {part}")
+        return parts
 
 def check_s3_files(section, expected_output):
     """Check S3 files for batch and ondemand processing"""
@@ -227,16 +243,9 @@ def match_output(actual, expected):
     """Check if actual output matches expected pattern with * wildcards and JSON structure comparison"""
     import re
     
-    # Extract JSON from output (look for the last JSON block)
-    json_match = re.search(r'\{.*\}', actual, re.DOTALL)
-    if json_match:
-        json_part = json_match.group(0)
-    else:
-        json_part = actual
-    
     # Try JSON structure comparison first
     try:
-        actual_json = json.loads(json_part)
+        actual_json = json.loads(actual)
         expected_json = json.loads(expected)
         return match_json_structure(actual_json, expected_json)
     except (json.JSONDecodeError, ValueError):
@@ -246,49 +255,21 @@ def match_output(actual, expected):
 
 def match_json_structure(actual, expected):
     """Recursively compare JSON structures, treating * as wildcards"""
-    # Handle wildcard at any level
     if expected == "*":
         return True
     
+    if type(actual) != type(expected):
+        return False
+    
     if isinstance(expected, dict):
-        if not isinstance(actual, dict):
-            return False
-        # Check each expected key against actual keys
-        for expected_key, expected_value in expected.items():
-            found_match = False
-            
-            if expected_key == "*":
-                # Wildcard key matches any key - just check if dict is non-empty
-                if actual and expected_value == "*":
-                    found_match = True
-                elif actual:
-                    # Check if any actual key matches the expected value pattern
-                    for actual_key in actual.keys():
-                        if match_json_structure(actual[actual_key], expected_value):
-                            found_match = True
-                            break
-            elif expected_key.endswith('*'):
-                # Wildcard key - find matching actual keys
-                base_key = expected_key[:-1]
-                for actual_key in actual.keys():
-                    if actual_key.startswith(base_key):
-                        if match_json_structure(actual[actual_key], expected_value):
-                            found_match = True
-                            break
-            else:
-                # Exact key match
-                if expected_key in actual:
-                    if match_json_structure(actual[expected_key], expected_value):
-                        found_match = True
-            
-            if not found_match:
+        for key, expected_value in expected.items():
+            if key not in actual:
                 return False
-        
+            if not match_json_structure(actual[key], expected_value):
+                return False
         return True
     
     elif isinstance(expected, list):
-        if not isinstance(actual, list):
-            return False
         if len(actual) != len(expected):
             return False
         for actual_item, expected_item in zip(actual, expected):
@@ -297,7 +278,6 @@ def match_json_structure(actual, expected):
         return True
     
     else:
-        # For primitive values, * matches anything, otherwise exact match
         return expected == "*" or actual == expected
 
 def run_command(cmd, description, expected_output=None, check_files_only=False):
@@ -339,7 +319,9 @@ def run_command(cmd, description, expected_output=None, check_files_only=False):
     timer_thread.start()
     
     try:
-        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        # Parse command safely without shell=True
+        cmd_parts = parse_command_safely(cmd)
+        result = subprocess.run(cmd_parts, check=True, capture_output=True, text=True)
         timer_running = False
         elapsed = time.time() - start_time
         
@@ -387,8 +369,9 @@ def run_maki_with_progress(cmd, description, expected_output):
     timer_thread.start()
     
     try:
-        # Run the command and capture output line by line
-        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, 
+        # Parse command safely without shell=True
+        cmd_parts = parse_command_safely(cmd)
+        process = subprocess.Popen(cmd_parts, stdout=subprocess.PIPE, 
                                  stderr=subprocess.STDOUT, text=True, bufsize=1)
         
         output_lines = []
