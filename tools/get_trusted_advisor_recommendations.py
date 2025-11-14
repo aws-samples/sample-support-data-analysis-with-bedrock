@@ -225,6 +225,31 @@ def get_trusted_advisor_recommendations(language='en', verbose=False, output_dir
         print(f"Unexpected error: {e}")
         return []
 
+def redact_sensitive_info(recommendation):
+    """Redact sensitive information from recommendation for display"""
+    redacted = recommendation.copy()
+    
+    # Redact flagged resources to remove sensitive identifiers
+    if 'flaggedResources' in redacted:
+        redacted_resources = []
+        for resource in redacted['flaggedResources'][:2]:  # Show max 2 examples
+            redacted_resource = resource.copy()
+            if 'resourceId' in redacted_resource:
+                redacted_resource['resourceId'] = 'REDACTED'
+            if 'metadata' in redacted_resource:
+                # Keep structure but redact potential ARNs/IDs
+                redacted_resource['metadata'] = ['REDACTED' if isinstance(item, str) and 
+                    ('arn:' in item.lower() or len(item) > 20) else item 
+                    for item in redacted_resource['metadata']]
+            redacted_resources.append(redacted_resource)
+        
+        if len(redacted['flaggedResources']) > 2:
+            redacted_resources.append(f"... and {len(redacted['flaggedResources']) - 2} more resources")
+        
+        redacted['flaggedResources'] = redacted_resources
+    
+    return redacted
+
 def main():
     parser = argparse.ArgumentParser(description='Query AWS Trusted Advisor API and collect actionable recommendations')
     parser.add_argument('--language', default='en', help='Language for recommendations (default: en)')
@@ -237,12 +262,7 @@ def main():
     
     if recommendations and not args.output_dir:
         print(f"\nSample recommendation structure:")
-        sample = recommendations[0]
-        # Create a copy for display with truncated flagged resources
-        display_sample = sample.copy()
-        if len(display_sample.get('flaggedResources', [])) > 2:
-            display_sample['flaggedResources'] = display_sample['flaggedResources'][:2] + [f"... and {len(sample['flaggedResources']) - 2} more resources"]
-        
+        display_sample = redact_sensitive_info(recommendations[0])
         print(json.dumps(display_sample, indent=2, default=str))
 
 if __name__ == '__main__':
