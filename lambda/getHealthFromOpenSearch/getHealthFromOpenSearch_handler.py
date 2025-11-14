@@ -78,6 +78,7 @@ import os
 import sys
 import json
 import boto3
+import re
 from datetime import datetime
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 
@@ -85,6 +86,36 @@ sys.path.append('/opt')
 from prompt_gen_input import gen_batch_record_health
 from s3 import store_data
 from validate_jsonl import dict_to_jsonl
+
+def validate_network_payload(data):
+    """Validate network payload structure and content"""
+    if not isinstance(data, dict):
+        raise ValueError("Invalid payload: must be dictionary")
+    
+    # Validate required fields exist and are proper types
+    required_fields = ['hits', 'took', 'timed_out']
+    for field in required_fields:
+        if field not in data:
+            raise ValueError(f"Missing required field: {field}")
+    
+    # Validate hits structure
+    hits = data.get('hits', {})
+    if not isinstance(hits, dict) or 'hits' not in hits:
+        raise ValueError("Invalid hits structure")
+    
+    # Validate individual hit records
+    for hit in hits.get('hits', []):
+        if not isinstance(hit, dict) or '_source' not in hit:
+            raise ValueError("Invalid hit record structure")
+        
+        source = hit['_source']
+        # Sanitize text fields to prevent injection
+        for field in ['eventDescription', 'service', 'eventTypeCategory']:
+            if field in source and isinstance(source[field], str):
+                # Remove potentially dangerous characters
+                source[field] = re.sub(r'[<>"\';\\]', '', source[field])
+    
+    return data
 
 def get_mode_from_ssm():
     """Get MODE value from SSM Parameter Store"""
@@ -167,7 +198,11 @@ def get_health_events_from_opensearch(opensearch_endpoint, opensearch_index, sta
         }
 
         response = client.search(index=opensearch_index, body=query)
-        return response['hits']['hits']
+        
+        # Validate the response payload
+        validated_response = validate_network_payload(response)
+        
+        return validated_response['hits']['hits']
         
     except Exception as e:
         print(f"Error querying OpenSearch: {e}")
