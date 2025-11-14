@@ -261,9 +261,11 @@ def main():
     recommendations = get_trusted_advisor_recommendations(args.language, args.verbose, args.output_dir)
     
     if recommendations and not args.output_dir:
-        print(f"\nSample recommendation structure:")
-        display_sample = redact_sensitive_info(recommendations[0])
-        print(json.dumps(display_sample, indent=2, default=str))
+        print(f"\nSample recommendation structure (keys only for security):")
+        sample_keys = list(recommendations[0].keys())
+        print(f"Top-level fields: {sample_keys}")
+        print("Note: Detailed content omitted to prevent exposure of sensitive resource identifiers.")
+        print("Use --output-dir to save full data to files for processing.")
 
 if __name__ == '__main__':
     main()
