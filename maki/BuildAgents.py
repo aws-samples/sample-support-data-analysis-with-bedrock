@@ -68,6 +68,72 @@ class MakiAgent:
         """Register MCP tools for search functionality"""
         
         @self.mcp.tool()
+        def get_cves(year: int = 2025, count: int = 10) -> Dict[str, Any]:
+            """Get the latest CVEs from a specific year. Use this tool for CVE operations."""
+            import urllib.request
+            import base64
+            
+            try:
+                with urllib.request.urlopen(f'https://api.github.com/repos/CVEProject/cvelistV5/contents/cves/{year}') as r:
+                    years = json.loads(r.read())
+                
+                last_year = sorted([d['name'] for d in years if d['type'] == 'dir'])[-1]
+                with urllib.request.urlopen(f'https://api.github.com/repos/CVEProject/cvelistV5/contents/cves/{year}/{last_year}') as r:
+                    cves = sorted([c['name'].replace('.json', '') for c in json.loads(r.read()) if c['name'].endswith('.json')])[-count:]
+                
+                results = []
+                for cve_id in cves:
+                    url = f'https://api.github.com/repos/CVEProject/cvelistV5/contents/cves/{year}/{last_year}/{cve_id}.json'
+                    with urllib.request.urlopen(url) as r:
+                        data = json.loads(r.read())
+                        content = json.loads(base64.b64decode(data['content']))
+                        desc = content['containers']['cna']['descriptions'][0]['value']
+                        results.append({"cve_id": cve_id, "description": desc})
+                
+                return {"year": year, "count": len(results), "cves": results}
+            except Exception as e:
+                return {"error": f"Failed to fetch CVEs: {str(e)}"}
+        
+        @self.mcp.tool()
+        def check_cves(cve_list: List[str], repo_path: str = "/Users/chojoe/dev2/sample-support-data-analysis-with-bedrock") -> Dict[str, Any]:
+            """Check if CVEs apply to the repository. Use this tool for CVE operations."""
+            import urllib.request
+            import base64
+            
+            try:
+                applicable = []
+                not_applicable = []
+                
+                for cve_id in cve_list:
+                    year = cve_id.split('-')[1]
+                    cve_num = cve_id.split('-')[2]
+                    folder = f"{cve_num[0]}xxx"
+                    url = f'https://api.github.com/repos/CVEProject/cvelistV5/contents/cves/{year}/{folder}/{cve_id}.json'
+                    
+                    try:
+                        with urllib.request.urlopen(url) as r:
+                            data = json.loads(r.read())
+                            content = json.loads(base64.b64decode(data['content']))
+                            desc = content['containers']['cna']['descriptions'][0]['value']
+                            affected = content['containers']['cna'].get('affected', [])
+                            
+                            if 'wordpress' in desc.lower() or 'bluetooth' in desc.lower() or 'bt-ap' in desc.lower():
+                                not_applicable.append({"cve_id": cve_id, "reason": "Not applicable to Python/AWS repository"})
+                            else:
+                                product = affected[0].get('product', 'Unknown') if affected else 'Unknown'
+                                applicable.append({"cve_id": cve_id, "description": desc[:150], "product": product})
+                    except:
+                        not_applicable.append({"cve_id": cve_id, "reason": "Could not fetch CVE details"})
+                
+                return {
+                    "applicable_cves": applicable,
+                    "not_applicable_cves": not_applicable,
+                    "summary": f"{len(applicable)} potentially applicable, {len(not_applicable)} not applicable"
+                }
+            except Exception as e:
+                return {"error": f"Failed to check CVEs: {str(e)}"}
+        
+        @self.mcp.tool()
         def aws_health_events_semantic_search(query: str, size: int = None, index: str = None) -> Dict[str, Any]:
             """Search AWS Health Events using semantic vector embeddings to find similar incidents, outages, and service disruptions"""
             if not self.opensearch_client:
@@ -316,161 +382,6 @@ class MakiAgent:
             except Exception as e:
                 return {"error": f"Failed to get index stats: {str(e)}"}
         
-        @self.mcp.tool()
-        def support_cases_hybrid_search(query: str, size: int = 10) -> Dict[str, Any]:
-            """Search AWS Support Cases using hybrid lexical and semantic search against the opensearch index which has both lexical and embeddings fields"""
-            if not self.opensearch_client:
-                return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
-            
-            try:
-                # Hybrid search combining lexical and semantic approaches
-                search_body = {
-                    "query": {
-                        "bool": {
-                            "should": [
-                                {
-                                    "multi_match": {
-                                        "query": query,
-                                        "fields": [
-                                            "case_summary^2",
-                                            "suggested_action^2", 
-                                            "category_explanation",
-                                            "category",
-                                            "serviceCode"
-                                        ],
-                                        "type": "best_fields"
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "size": size
-                }
-                
-                # Try to add semantic search if embeddings are available
-                try:
-                    import boto3
-                    from config import BEDROCK_EMBEDDING_MODEL
-                    
-                    bedrock_client = boto3.client('bedrock-runtime')
-                    response = bedrock_client.invoke_model(
-                        modelId=BEDROCK_EMBEDDING_MODEL,
-                        body=json.dumps({"inputText": query})
-                    )
-                    query_embedding = json.loads(response['body'].read())['embedding']
-                    
-                    # Add semantic search to the hybrid query
-                    search_body["query"]["bool"]["should"].append({
-                        "script_score": {
-                            "query": {"match_all": {}},
-                            "script": {
-                                "source": "cosineSimilarity(params.query_vector, 'case_summary_suggested_action_embedding') + 1.0",
-                                "params": {"query_vector": query_embedding}
-                            }
-                        }
-                    })
-                except:
-                    # Continue with lexical-only search if embedding fails
-                    pass
-                
-                response = self.opensearch_client.search(index="maki-cases", body=search_body)
-                
-                results = []
-                for hit in response['hits']['hits']:
-                    source = hit['_source']
-                    results.append({
-                        "score": hit['_score'],
-                        "case_id": source.get('caseId', 'N/A'),
-                        "category": source.get('category', 'N/A'),
-                        "service": source.get('serviceCode', 'N/A'),
-                        "summary": source.get('case_summary', 'N/A')[:200] + "..." if len(source.get('case_summary', '')) > 200 else source.get('case_summary', 'N/A'),
-                        "suggested_action": source.get('suggested_action', 'N/A')[:200] + "..." if len(source.get('suggested_action', '')) > 200 else source.get('suggested_action', 'N/A')
-                    })
-                
-                return {
-                    "query": query,
-                    "total_hits": response['hits']['total']['value'],
-                    "results": results,
-                    "search_type": "hybrid"
-                }
-                
-            except Exception as e:
-                return {"error": f"Support cases hybrid search failed: {str(e)}"}
-        
-        @self.mcp.tool()
-        def aws_health_events_hybrid_search(query: str, size: int = None, index: str = None) -> Dict[str, Any]:
-            """Search AWS Health Events using hybrid lexical and semantic search against the opensearch index which has both lexical and embeddings fields"""
-            if not self.opensearch_client:
-                return {"error": "OpenSearch not configured. Please deploy MAKI infrastructure first."}
-            
-            # Use defaults from SSM parameters
-            if size is None:
-                size = self.default_size
-            if index is None:
-                index = self.default_index
-            
-            try:
-                # Hybrid search combining lexical and semantic approaches
-                search_body = {
-                    "query": {
-                        "bool": {
-                            "should": [
-                                {
-                                    "query_string": {
-                                        "query": query,
-                                        "default_operator": "OR"
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "size": size
-                }
-                
-                # Try to add semantic search if embeddings are available
-                try:
-                    import boto3
-                    from config import BEDROCK_EMBEDDING_MODEL
-                    
-                    bedrock_client = boto3.client('bedrock-runtime')
-                    response = bedrock_client.invoke_model(
-                        modelId=BEDROCK_EMBEDDING_MODEL,
-                        body=json.dumps({"inputText": query})
-                    )
-                    query_embedding = json.loads(response['body'].read())['embedding']
-                    
-                    # Add semantic search to the hybrid query
-                    search_body["query"]["bool"]["should"].append({
-                        "script_score": {
-                            "query": {"match_all": {}},
-                            "script": {
-                                "source": "cosineSimilarity(params.query_vector, 'embedding_field') + 1.0",
-                                "params": {"query_vector": query_embedding}
-                            }
-                        }
-                    })
-                except:
-                    # Continue with lexical-only search if embedding fails
-                    pass
-                
-                response = self.opensearch_client.search(index=index, body=search_body)
-                
-                results = []
-                for hit in response['hits']['hits']:
-                    results.append({
-                        "score": hit['_score'],
-                        "source": hit['_source']
-                    })
-                
-                return {
-                    "query": query,
-                    "total_hits": response['hits']['total']['value'],
-                    "results": results,
-                    "search_type": "hybrid"
-                }
-                
-            except Exception as e:
-                return {"error": f"AWS Health Events hybrid search failed: {str(e)}"}
 
     
     def run(self):
