@@ -3,6 +3,7 @@ constructs>=10.0.0,<11.0.0
 cdk-nag
 fastmcp
 opensearch-py>=2.4.0
+cdk_s3_vectors
 boto3>=1.26.0
 botocore>=1.29.0
 requests-aws4auth>=1.1.0
