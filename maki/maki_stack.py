@@ -60,6 +60,7 @@ from . import (
     BuildEventBridge,
     BuildSageMaker,
     BuildOpenSearch,
+    BuildS3Vector,
     BuildSSM
 )
 
@@ -381,6 +382,10 @@ class MakiEmbeddings(Stack):
             self, makiRole
         )
 
+        # Create S3 Vector Bucket and Index
+        # vector_index = config.S3_VECTOR_INDEX_NAME
+        s3vector_bucket, s3vector_index = BuildS3Vector.buildS3Vector(self, makiRole)
+
         # Update SSM parameter with actual OpenSearch endpoint
         ssm_update = cr.AwsCustomResource(
             self, "UpdateOpenSearchEndpointSSM",
@@ -488,6 +493,7 @@ class MakiEmbeddings(Stack):
 
         # Add dependency to ensure collection is created first
         init_health_events.node.add_dependency(opensearch_collection)
+        init_health_events.node.add_dependency(s3vector_bucket)
 
 
 class MakiAgents(Stack):
