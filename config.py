@@ -574,6 +574,12 @@ BUCKET_NAME_HEALTH_AGG_BASE = 'health-agg'
 OPENSEARCH_COLLECTION_NAME = 'maki-health'
 OPENSEARCH_INDEX = 'amazon-health-events'
 
+###
+# S3 Vector Bucket details
+S3_VECTOR_BUCKET_NAME = KEY + "-s3-vector-bucket"
+S3_VECTOR_INDEX_NAME = KEY + "-s3-vector-index"
+S3_VECTOR_INDEX_DIMENSION = 1024
+
 ####
 # IAM
 EXEC_ROLE = 'maki-exec-role'
