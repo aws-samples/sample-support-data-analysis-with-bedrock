@@ -1,4 +1,4 @@
-# MAKITA — Machine Augmented Key Infrastructure
+# MAKITA — Machine Augmented Key Infrastructure Technology Automation
 
 MAKITA is a reference architecture that demonstrates how Amazon DevOps Agent can orchestrate a multi-region Disaster Recovery (DR) failover for an RDS PostgreSQL database. It automates the full lifecycle — pre-flight validation, replica promotion, DNS cutover, post-flight checks, and incident coordination across Slack, ServiceNow, and AWS Support — all driven through a custom MCP server running on Amazon Bedrock AgentCore.
 
