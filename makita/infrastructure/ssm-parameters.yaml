@@ -1,0 +1,195 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Makita DR Reference - SSM Parameter Store configuration (deploy in us-east-1).
+  Populates the /makita-dr/ parameters used by the DR workflow.
+
+Parameters:
+  SlackBotToken:
+    Type: String
+    NoEcho: true
+    Default: xoxb-placeholder
+    Description: Slack bot token for the DR workspace
+  ServiceNowApiKey:
+    Type: String
+    NoEcho: true
+    Default: placeholder-api-key
+    Description: ServiceNow API key (stub server)
+  ServiceNowEndpoint:
+    Type: String
+    Default: http://localhost:8080
+    Description: ServiceNow stub server endpoint
+  SlackWorkspaceId:
+    Type: String
+    Default: T00000000
+    Description: Slack workspace ID
+  MCPServerEndpoint:
+    Type: String
+    Default: https://mcp.example.com
+    Description: MCP server endpoint on AgentCore
+  LambdaFunctionArn:
+    Type: String
+    Default: arn:aws:lambda:us-east-1:123456789012:function:makita-dr-summary
+    Description: ARN of the summary Lambda function
+  GuardrailId:
+    Type: String
+    Default: placeholder-guardrail-id
+    Description: Bedrock Guardrail ID
+  GuardrailVersion:
+    Type: String
+    Default: '1'
+    Description: Bedrock Guardrail version
+  CognitoUserPoolId:
+    Type: String
+    Default: us-east-1_placeholder
+    Description: Cognito User Pool ID for AgentCore Identity
+  CognitoClientId:
+    Type: String
+    Default: placeholder-client-id
+    Description: Cognito App Client ID
+
+Resources:
+  # RDS parameters
+  ParamPrimaryInstanceId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/rds/primary-instance-id
+      Type: String
+      Value: makita-dr-primary
+
+  ParamReplicaInstanceId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/rds/replica-instance-id
+      Type: String
+      Value: makita-dr-replica
+
+  ParamPrimaryRegion:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/rds/primary-region
+      Type: String
+      Value: us-east-1
+
+  ParamDRRegion:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/rds/dr-region
+      Type: String
+      Value: us-east-2
+
+  ParamReplicationLagThreshold:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/rds/replication-lag-threshold-seconds
+      Type: String
+      Value: '30'
+
+  ParamDNSRecordName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/rds/dns-record-name
+      Type: String
+      Value: db.makita-dr.internal
+
+  ParamDNSHostedZoneId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/rds/dns-hosted-zone-id
+      Type: String
+      Value: Z00000000000000000000
+
+  # ServiceNow parameters
+  ParamServiceNowEndpoint:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/servicenow/endpoint
+      Type: String
+      Value: !Ref ServiceNowEndpoint
+
+  ParamServiceNowApiKey:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/servicenow/api-key
+      Type: String
+      Value: !Ref ServiceNowApiKey
+
+  # Slack parameters
+  ParamSlackBotToken:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/slack/bot-token
+      Type: String
+      Value: !Ref SlackBotToken
+
+  ParamSlackWorkspaceId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/slack/workspace-id
+      Type: String
+      Value: !Ref SlackWorkspaceId
+
+  # AWS Support parameters
+  ParamSupportSeverity:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/support/severity
+      Type: String
+      Value: urgent
+
+  ParamSupportServiceCode:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/support/service-code
+      Type: String
+      Value: amazon-rds
+
+  ParamSupportCategoryCode:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/support/category-code
+      Type: String
+      Value: database-connectivity
+
+  # MCP Server parameters
+  ParamMCPServerEndpoint:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/mcp/server-endpoint
+      Type: String
+      Value: !Ref MCPServerEndpoint
+
+  ParamLambdaFunctionArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/mcp/lambda-function-arn
+      Type: String
+      Value: !Ref LambdaFunctionArn
+
+  ParamGuardrailId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/mcp/guardrail-id
+      Type: String
+      Value: !Ref GuardrailId
+
+  ParamGuardrailVersion:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/mcp/guardrail-version
+      Type: String
+      Value: !Ref GuardrailVersion
+
+  # Cognito parameters
+  ParamCognitoUserPoolId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/cognito/user-pool-id
+      Type: String
+      Value: !Ref CognitoUserPoolId
+
+  ParamCognitoClientId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita-dr/cognito/client-id
+      Type: String
+      Value: !Ref CognitoClientId

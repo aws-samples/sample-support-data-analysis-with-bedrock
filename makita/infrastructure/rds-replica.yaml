@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Makita DR Reference - RDS Postgres Cross-Region Read Replica (us-east-2).
+  Deploy this AFTER rds-primary.yaml is complete in us-east-1.
+
+Parameters:
+  SourceDBInstanceArn:
+    Type: String
+    Description: ARN of the primary RDS instance in us-east-1 (from rds-primary stack output PrimaryArn)
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC in us-east-2 to deploy the replica into
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: At least two subnets in different AZs in us-east-2
+
+Resources:
+  ReplicaSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Makita DR replica DB subnet group
+      SubnetIds: !Ref SubnetIds
+      Tags:
+        - Key: Name
+          Value: makita-dr-replica-subnet-group
+
+  ReplicaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Postgres access for Makita DR replica
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 10.0.0.0/8
+      Tags:
+        - Key: Name
+          Value: makita-dr-replica-sg
+
+  RDSReplica:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: makita-dr-replica
+      SourceDBInstanceIdentifier: !Ref SourceDBInstanceArn
+      DBInstanceClass: db.t3.micro
+      DBSubnetGroupName: !Ref ReplicaSubnetGroup
+      VPCSecurityGroups:
+        - !GetAtt ReplicaSecurityGroup.GroupId
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      Tags:
+        - Key: Name
+          Value: makita-dr-replica
+        - Key: Project
+          Value: makita-dr-reference
+
+Outputs:
+  ReplicaInstanceId:
+    Description: RDS Replica instance identifier
+    Value: !Ref RDSReplica
+    Export:
+      Name: makita-dr-replica-instance-id
+  ReplicaEndpoint:
+    Description: RDS Replica endpoint address
+    Value: !GetAtt RDSReplica.Endpoint.Address
+    Export:
+      Name: makita-dr-replica-endpoint
+  ReplicaPort:
+    Description: RDS Replica port
+    Value: !GetAtt RDSReplica.Endpoint.Port
