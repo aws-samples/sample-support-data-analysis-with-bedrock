@@ -1,0 +1,1 @@
+# MAKITA Tests package
