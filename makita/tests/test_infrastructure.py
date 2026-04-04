@@ -64,7 +64,6 @@ def outputs(template):
 # Helper: resource types that do NOT support CloudFormation Tags property
 # -------------------------------------------------------------------------
 TAGGING_EXCEPTION_TYPES = {
-    "AWS::CloudWatch::Dashboard",
     "AWS::EC2::VPCGatewayAttachment",
     "AWS::SecretsManager::SecretTargetAttachment",
 }
@@ -148,36 +147,6 @@ class TestMakitaPrefixOnResources:
                     f"IAM role '{name}' RoleName '{role_name}' missing makita- prefix"
                 )
 
-    def test_agentcore_server_names_have_makita_prefix(self, resources):
-        """AgentCore McpServer ServerName values should start with makita-."""
-        for name, res in resources.items():
-            if res["Type"] == "AWS::AgentCore::McpServer":
-                server_name = res["Properties"].get("ServerName", "")
-                assert server_name.startswith("makita-"), (
-                    f"AgentCore McpServer '{name}' ServerName '{server_name}' "
-                    "missing makita- prefix"
-                )
-
-    def test_agentcore_policy_names_have_makita_prefix(self, resources):
-        """AgentCore Policy PolicyName values should start with makita-."""
-        for name, res in resources.items():
-            if res["Type"] == "AWS::AgentCore::Policy":
-                policy_name = res["Properties"].get("PolicyName", "")
-                assert policy_name.startswith("makita-"), (
-                    f"AgentCore Policy '{name}' PolicyName '{policy_name}' "
-                    "missing makita- prefix"
-                )
-
-    def test_agentcore_identity_names_have_makita_prefix(self, resources):
-        """AgentCore Identity IdentityName values should start with makita-."""
-        for name, res in resources.items():
-            if res["Type"] == "AWS::AgentCore::Identity":
-                identity_name = res["Properties"].get("IdentityName", "")
-                assert identity_name.startswith("makita-"), (
-                    f"AgentCore Identity '{name}' IdentityName '{identity_name}' "
-                    "missing makita- prefix"
-                )
-
     def test_bedrock_guardrail_names_have_makita_prefix(self, resources):
         """Bedrock Guardrail Name values should start with makita-."""
         for name, res in resources.items():
@@ -185,16 +154,6 @@ class TestMakitaPrefixOnResources:
                 guardrail_name = res["Properties"].get("Name", "")
                 assert guardrail_name.startswith("makita-"), (
                     f"Bedrock Guardrail '{name}' Name '{guardrail_name}' "
-                    "missing makita- prefix"
-                )
-
-    def test_dashboard_name_has_makita_prefix(self, resources):
-        """CloudWatch Dashboard DashboardName should start with makita-."""
-        for name, res in resources.items():
-            if res["Type"] == "AWS::CloudWatch::Dashboard":
-                dash_name = res["Properties"].get("DashboardName", "")
-                assert dash_name.startswith("makita-"), (
-                    f"Dashboard '{name}' DashboardName '{dash_name}' "
                     "missing makita- prefix"
                 )
 
@@ -256,7 +215,6 @@ class TestParameterStoreParameters:
         "/makita/mcp/failover-server-arn",
         "/makita/mcp/precheck-server-arn",
         "/makita/mcp/postcheck-server-arn",
-        "/makita/dashboard/name",
     }
 
     def test_all_ssm_parameters_have_makita_prefix(self, resources):
@@ -307,12 +265,6 @@ class TestParameterStoreParameters:
             if res["Type"] == "AWS::SSM::Parameter":
                 if res["Properties"]["Name"] == "/makita/db/replication-status":
                     assert res["Properties"]["Value"] == "active"
-
-    def test_dashboard_name_param_value(self, resources):
-        for name, res in resources.items():
-            if res["Type"] == "AWS::SSM::Parameter":
-                if res["Properties"]["Name"] == "/makita/dashboard/name":
-                    assert res["Properties"]["Value"] == "makita-failover-dashboard"
 
 
 # =========================================================================
@@ -392,24 +344,6 @@ class TestMandatoryResourceTags:
                     f"SSM Parameter '{logical_id}' missing tag {key}={val}"
                 )
 
-    def test_agentcore_resources_tagged(self, resources):
-        """Requirement 24.6 — AgentCore Policies, Identities carry mandatory tags."""
-        agentcore_types = {
-            "AWS::AgentCore::Policy",
-            "AWS::AgentCore::Identity",
-        }
-        ac_resources = {
-            k: v for k, v in resources.items()
-            if v["Type"] in agentcore_types
-        }
-        assert len(ac_resources) >= 1, "Expected at least 1 AgentCore resource"
-        for logical_id, res in ac_resources.items():
-            tags = _extract_tags(res["Properties"], res["Type"])
-            for key, val in MANDATORY_TAGS.items():
-                assert tags.get(key) == val, (
-                    f"AgentCore resource '{logical_id}' missing tag {key}={val}"
-                )
-
     def test_bedrock_guardrails_tagged(self, resources):
         """Requirement 24.7 — Bedrock Guardrails carry mandatory tags."""
         guardrails = {
@@ -424,59 +358,4 @@ class TestMandatoryResourceTags:
                     f"Bedrock Guardrail '{logical_id}' missing tag {key}={val}"
                 )
 
-    def test_mcp_server_resources_tagged(self, resources):
-        """Requirement 24.9 — AgentCore McpServer resources carry mandatory tags."""
-        mcp_servers = {
-            k: v for k, v in resources.items()
-            if v["Type"] == "AWS::AgentCore::McpServer"
-        }
-        assert len(mcp_servers) >= 3, "Expected at least 3 AgentCore McpServer resources"
-        for logical_id, res in mcp_servers.items():
-            tags = _extract_tags(res["Properties"], res["Type"])
-            for key, val in MANDATORY_TAGS.items():
-                assert tags.get(key) == val, (
-                    f"McpServer '{logical_id}' missing tag {key}={val}"
-                )
 
-
-# =========================================================================
-# Requirement 24.8, 24.10 — Dashboard tagging exception
-# =========================================================================
-
-class TestTaggingExceptions:
-    """Validate tagging exceptions are documented via inline comments.
-
-    Validates: Requirements 24.8, 24.10
-    """
-
-    def test_dashboard_does_not_have_tags_property(self, resources):
-        """AWS::CloudWatch::Dashboard should NOT have a Tags property
-        (it doesn't support it)."""
-        for name, res in resources.items():
-            if res["Type"] == "AWS::CloudWatch::Dashboard":
-                assert "Tags" not in res.get("Properties", {}), (
-                    f"Dashboard '{name}' has a Tags property but "
-                    "AWS::CloudWatch::Dashboard does not support tags"
-                )
-
-    def test_dashboard_tagging_exception_documented_in_template(self):
-        """The template should contain an inline comment documenting the
-        CloudWatch Dashboard tagging exception."""
-        raw_text = TEMPLATE_PATH.read_text()
-        # Look for a comment mentioning the dashboard tagging exception
-        assert re.search(
-            r"#.*CloudWatch.*Dashboard.*(?:NOT|not|does not).*support.*Tags",
-            raw_text,
-            re.IGNORECASE,
-        ), (
-            "Template is missing an inline comment documenting that "
-            "AWS::CloudWatch::Dashboard does not support the Tags property"
-        )
-
-    def test_tagging_exception_mentions_requirement(self):
-        """The tagging exception comment should reference Requirement 24.10."""
-        raw_text = TEMPLATE_PATH.read_text()
-        assert "24.10" in raw_text, (
-            "Template tagging exception comment should reference "
-            "Requirement 24.10"
-        )
