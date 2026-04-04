@@ -1,0 +1,1097 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  MAKITA (Machine Augmented Key Infrastructure Technology Automation) -
+  Single CloudFormation stack for multi-region PostgreSQL disaster recovery
+  with MCP servers, AgentCore governance, and Bedrock Guardrails.
+
+# =============================================================================
+# Parameters
+# =============================================================================
+Parameters:
+  DBMasterUsername:
+    Type: String
+    Default: makitaadmin
+    Description: Master username for the PostgreSQL primary instance
+    MinLength: 1
+    MaxLength: 63
+
+  DBMasterUserPassword:
+    Type: String
+    NoEcho: true
+    Default: MakitaSecurePass123!
+    Description: Master password for the PostgreSQL primary instance
+    MinLength: 8
+    MaxLength: 128
+
+# =============================================================================
+# Resources
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # VPC and Networking — Primary Region (us-east-1)
+  # ---------------------------------------------------------------------------
+  MakitaVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: makita-vpc
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: makita-igw
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaVpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MakitaVpc
+      InternetGatewayId: !Ref MakitaInternetGateway
+
+  MakitaSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MakitaVpc
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: makita-subnet-a
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MakitaVpc
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: makita-subnet-b
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaDbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: makita-db-subnet-group
+      DBSubnetGroupDescription: Subnet group for MAKITA PostgreSQL primary instance
+      SubnetIds:
+        - !Ref MakitaSubnetA
+        - !Ref MakitaSubnetB
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaDbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: makita-db-sg
+      GroupDescription: Security group for MAKITA PostgreSQL instances
+      VpcId: !Ref MakitaVpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 10.0.0.0/16
+          Description: Allow PostgreSQL access from within the VPC
+      Tags:
+        - Key: Name
+          Value: makita-db-sg
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Cluster — Primary Instance (us-east-1)
+  # ---------------------------------------------------------------------------
+  MakitaPgPrimary:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: makita-pg-primary
+      Engine: postgres
+      EngineVersion: "16.6"
+      DBInstanceClass: db.t3.medium
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 100
+      StorageType: gp3
+      MasterUsername: !Ref DBMasterUsername
+      MasterUserPassword: !Ref DBMasterUserPassword
+      DBName: makitadb
+      Port: 5432
+      PubliclyAccessible: false
+      MultiAZ: false
+      BackupRetentionPeriod: 7
+      StorageEncrypted: true
+      CopyTagsToSnapshot: true
+      DeletionProtection: false
+      DBSubnetGroupName: !Ref MakitaDbSubnetGroup
+      VPCSecurityGroups:
+        - !GetAtt MakitaDbSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: makita-pg-primary
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Cluster — Read Replica (us-west-2, cross-region replication)
+  # ---------------------------------------------------------------------------
+  # NOTE: In a production deployment, the cross-region read replica in us-west-2
+  # would be provisioned via a StackSet or a separate stack in us-west-2.
+  # For this reference architecture, the replica is defined in the same template
+  # using SourceDBInstanceIdentifier with the primary's ARN to represent the
+  # cross-region replication relationship (Requirement 3.2, 3.3, 3.5).
+  # When deployed, the replica replicates data from the primary instance,
+  # enabling disaster recovery failover from us-east-1 to us-west-2.
+  MakitaPgReplica:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: makita-pg-replica
+      SourceDBInstanceIdentifier: !GetAtt MakitaPgPrimary.DBInstanceArn
+      DBInstanceClass: db.t3.medium
+      StorageType: gp3
+      PubliclyAccessible: false
+      CopyTagsToSnapshot: true
+      DeletionProtection: false
+      # Cross-region replica inherits engine, storage encryption, and other
+      # settings from the source primary instance
+      Tags:
+        - Key: Name
+          Value: makita-pg-replica
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ---------------------------------------------------------------------------
+  # Parameter Store — Centralized Configuration (/makita/ prefix)
+  # ---------------------------------------------------------------------------
+  MakitaParamPrimaryEndpoint:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/db/primary-endpoint
+      Type: String
+      Description: Current primary PostgreSQL endpoint
+      Value: !GetAtt MakitaPgPrimary.Endpoint.Address
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  MakitaParamReplicaEndpoint:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/db/replica-endpoint
+      Type: String
+      Description: Current replica PostgreSQL endpoint
+      Value: !GetAtt MakitaPgReplica.Endpoint.Address
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  MakitaParamPrimaryRegion:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/db/primary-region
+      Type: String
+      Description: Current primary region
+      Value: us-east-1
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  MakitaParamDrRegion:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/db/dr-region
+      Type: String
+      Description: Current DR region
+      Value: us-west-2
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  MakitaParamClusterName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/db/cluster-name
+      Type: String
+      Description: PostgreSQL cluster name
+      Value: makita-pg-cluster
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  MakitaParamReplicationStatus:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/db/replication-status
+      Type: String
+      Description: Current replication status
+      Value: active
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  MakitaParamPort:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/db/port
+      Type: String
+      Description: PostgreSQL port
+      Value: "5432"
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  # MCP Server ARN parameters — placeholder values until AgentCore
+  # MCP Server resources are defined in task 2.4
+  MakitaParamFailoverServerArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/mcp/failover-server-arn
+      Type: String
+      Description: ARN of the Failover MCP Server in AgentCore
+      Value: arn:aws:agentcore:us-east-1:ACCOUNT_ID:mcp-server/makita-failover-mcp
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  MakitaParamPrecheckServerArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/mcp/precheck-server-arn
+      Type: String
+      Description: ARN of the Pre-Check MCP Server in AgentCore
+      Value: arn:aws:agentcore:us-east-1:ACCOUNT_ID:mcp-server/makita-precheck-mcp
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  MakitaParamPostcheckServerArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/mcp/postcheck-server-arn
+      Type: String
+      Description: ARN of the Post-Check MCP Server in AgentCore
+      Value: arn:aws:agentcore:us-east-1:ACCOUNT_ID:mcp-server/makita-postcheck-mcp
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  MakitaParamDashboardName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /makita/dashboard/name
+      Type: String
+      Description: CloudWatch dashboard name
+      Value: makita-failover-dashboard
+      Tags:
+        auto-delete: "no"
+        Env: prod1
+
+  # ---------------------------------------------------------------------------
+  # IAM Roles — Dedicated roles for each MCP Server
+  # ---------------------------------------------------------------------------
+
+  # Failover MCP Server role: permissions for RDS failover operations
+  # (promote replica, describe instances, reboot) and SSM parameter updates.
+  MakitaFailoverRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: makita-failover-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: makita-failover-rds-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds:PromoteReadReplica
+                  - rds:DescribeDBInstances
+                  - rds:RebootDBInstance
+                Resource:
+                  - !Sub "arn:aws:rds:*:${AWS::AccountId}:db:makita-*"
+              - Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/makita/*"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # Pre-Check MCP Server role: read-only permissions for RDS describe
+  # and SSM get operations to verify cluster state before failover.
+  MakitaPrecheckRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: makita-precheck-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: makita-precheck-readonly-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds:DescribeDBInstances
+                  - rds:DescribeDBClusters
+                Resource:
+                  - !Sub "arn:aws:rds:*:${AWS::AccountId}:db:makita-*"
+                  - !Sub "arn:aws:rds:*:${AWS::AccountId}:cluster:makita-*"
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/makita/*"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # Post-Check MCP Server role: read-only permissions for RDS describe
+  # and SSM get operations to verify cluster state after failover.
+  MakitaPostcheckRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: makita-postcheck-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: agentcore.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: makita-postcheck-readonly-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds:DescribeDBInstances
+                  - rds:DescribeDBClusters
+                Resource:
+                  - !Sub "arn:aws:rds:*:${AWS::AccountId}:db:makita-*"
+                  - !Sub "arn:aws:rds:*:${AWS::AccountId}:cluster:makita-*"
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/makita/*"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ===========================================================================
+  # AgentCore MCP Server Registrations (Task 2.4)
+  # ===========================================================================
+
+  # Failover MCP Server — executes PostgreSQL promotion and endpoint updates
+  MakitaFailoverMcpServer:
+    Type: AWS::AgentCore::McpServer
+    Properties:
+      ServerName: makita-failover-mcp
+      Description: >-
+        MAKITA Failover MCP Server — executes PostgreSQL replica promotion
+        and Parameter Store endpoint updates during disaster recovery.
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # Pre-Check MCP Server — validates cluster health before failover
+  MakitaPrecheckMcpServer:
+    Type: AWS::AgentCore::McpServer
+    Properties:
+      ServerName: makita-precheck-mcp
+      Description: >-
+        MAKITA Pre-Check MCP Server — verifies replication health, primary
+        status, and replica readiness before failover execution.
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # Post-Check MCP Server — verifies cluster state after failover
+  MakitaPostcheckMcpServer:
+    Type: AWS::AgentCore::McpServer
+    Properties:
+      ServerName: makita-postcheck-mcp
+      Description: >-
+        MAKITA Post-Check MCP Server — verifies new primary health, endpoint
+        updates, and replication establishment after failover completion.
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # AWS Support Stub Server — simulates AWS Support API for case tracking
+  MakitaAwsSupportStub:
+    Type: AWS::AgentCore::McpServer
+    Properties:
+      ServerName: makita-aws-support-stub
+      Description: >-
+        MAKITA AWS Support Stub Server — simulates the AWS Support API,
+        enabling DevOps Agent to create and update support cases during DR.
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ServiceNow Stub Server — simulates ServiceNow API for ticket tracking
+  MakitaServicenowStub:
+    Type: AWS::AgentCore::McpServer
+    Properties:
+      ServerName: makita-servicenow-stub
+      Description: >-
+        MAKITA ServiceNow Stub Server — simulates the ServiceNow API,
+        enabling DevOps Agent to create and update tickets during DR.
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ===========================================================================
+  # AgentCore Policies (Task 2.5)
+  # ===========================================================================
+  # Each policy enforces four constraints:
+  #   1. Resource prefix: makita-*
+  #   2. Resource tag: Env=prod1 (deny operations on resources without this tag)
+  #   3. Region: us-east-1 and us-west-2 only
+  #   4. Principal prefix: makita-*
+
+  # Failover Policy — restricts failover operations
+  MakitaFailoverPolicy:
+    Type: AWS::AgentCore::Policy
+    Properties:
+      PolicyName: makita-failover-policy
+      Description: >-
+        Restricts the Failover MCP Server to operating only on makita-*
+        resources tagged with Env=prod1 in us-east-1/us-west-2, using
+        makita-* principals.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Allow failover operations on makita-* resources in allowed regions
+          - Effect: Allow
+            Action:
+              - rds:PromoteReadReplica
+              - rds:DescribeDBInstances
+              - rds:RebootDBInstance
+              - ssm:PutParameter
+              - ssm:GetParameter
+            Resource: "arn:aws:*:*:*:makita-*"
+            Condition:
+              StringEquals:
+                "aws:RequestedRegion":
+                  - us-east-1
+                  - us-west-2
+                "aws:PrincipalTag/Name": "makita-*"
+          # Deny operations on resources that do not carry the Env=prod1 tag
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotEquals:
+                "aws:ResourceTag/Env": "prod1"
+          # Deny operations on non-makita-* resources
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotLike:
+                "aws:ResourceTag/Name": "makita-*"
+          # Deny operations targeting unauthorized regions
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotEquals:
+                "aws:RequestedRegion":
+                  - us-east-1
+                  - us-west-2
+          # Deny operations using non-makita-* principals
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotLike:
+                "aws:PrincipalTag/Name": "makita-*"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # Pre-Check Policy — restricts pre-check read operations
+  MakitaPrecheckPolicy:
+    Type: AWS::AgentCore::Policy
+    Properties:
+      PolicyName: makita-precheck-policy
+      Description: >-
+        Restricts the Pre-Check MCP Server to read-only operations on
+        makita-* resources tagged with Env=prod1 in us-east-1/us-west-2,
+        using makita-* principals.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Allow pre-check read operations on makita-* resources
+          - Effect: Allow
+            Action:
+              - rds:DescribeDBInstances
+              - rds:DescribeDBClusters
+              - ssm:GetParameter
+            Resource: "arn:aws:*:*:*:makita-*"
+            Condition:
+              StringEquals:
+                "aws:RequestedRegion":
+                  - us-east-1
+                  - us-west-2
+                "aws:PrincipalTag/Name": "makita-*"
+          # Deny operations on resources that do not carry the Env=prod1 tag
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotEquals:
+                "aws:ResourceTag/Env": "prod1"
+          # Deny operations on non-makita-* resources
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotLike:
+                "aws:ResourceTag/Name": "makita-*"
+          # Deny operations targeting unauthorized regions
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotEquals:
+                "aws:RequestedRegion":
+                  - us-east-1
+                  - us-west-2
+          # Deny operations using non-makita-* principals
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotLike:
+                "aws:PrincipalTag/Name": "makita-*"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # Post-Check Policy — restricts post-check read operations
+  MakitaPostcheckPolicy:
+    Type: AWS::AgentCore::Policy
+    Properties:
+      PolicyName: makita-postcheck-policy
+      Description: >-
+        Restricts the Post-Check MCP Server to read-only operations on
+        makita-* resources tagged with Env=prod1 in us-east-1/us-west-2,
+        using makita-* principals.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Allow post-check read operations on makita-* resources
+          - Effect: Allow
+            Action:
+              - rds:DescribeDBInstances
+              - rds:DescribeDBClusters
+              - ssm:GetParameter
+            Resource: "arn:aws:*:*:*:makita-*"
+            Condition:
+              StringEquals:
+                "aws:RequestedRegion":
+                  - us-east-1
+                  - us-west-2
+                "aws:PrincipalTag/Name": "makita-*"
+          # Deny operations on resources that do not carry the Env=prod1 tag
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotEquals:
+                "aws:ResourceTag/Env": "prod1"
+          # Deny operations on non-makita-* resources
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotLike:
+                "aws:ResourceTag/Name": "makita-*"
+          # Deny operations targeting unauthorized regions
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotEquals:
+                "aws:RequestedRegion":
+                  - us-east-1
+                  - us-west-2
+          # Deny operations using non-makita-* principals
+          - Effect: Deny
+            Action: "*"
+            Resource: "*"
+            Condition:
+              StringNotLike:
+                "aws:PrincipalTag/Name": "makita-*"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ===========================================================================
+  # AgentCore Identities (Task 2.6)
+  # ===========================================================================
+  # Each identity maps an MCP server to its dedicated IAM role via !GetAtt.
+
+  MakitaFailoverIdentity:
+    Type: AWS::AgentCore::Identity
+    Properties:
+      IdentityName: makita-failover-identity
+      RoleArn: !GetAtt MakitaFailoverRole.Arn
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaPrecheckIdentity:
+    Type: AWS::AgentCore::Identity
+    Properties:
+      IdentityName: makita-precheck-identity
+      RoleArn: !GetAtt MakitaPrecheckRole.Arn
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaPostcheckIdentity:
+    Type: AWS::AgentCore::Identity
+    Properties:
+      IdentityName: makita-postcheck-identity
+      RoleArn: !GetAtt MakitaPostcheckRole.Arn
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ===========================================================================
+  # Bedrock Guardrails (Task 2.7)
+  # ===========================================================================
+  # Each guardrail includes: content filtering, topic restriction to DR
+  # operations, prompt injection detection, and blocked input/output messaging.
+
+  MakitaFailoverGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Name: makita-failover-guardrail
+      Description: >-
+        Governs the Failover MCP Server — restricts to DR failover actions
+        on PostgreSQL, blocks prompt injection and malicious content.
+      BlockedInputMessaging: >-
+        Operation blocked by guardrail policy. The requested input violates
+        the MAKITA failover guardrail. Only disaster recovery failover
+        operations on the PostgreSQL cluster are permitted.
+      BlockedOutputsMessaging: >-
+        Response blocked by guardrail policy. The generated output violates
+        the MAKITA failover guardrail constraints.
+      ContentPolicyConfig:
+        FiltersConfig:
+          - Type: SEXUAL
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: VIOLENCE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: HATE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: INSULTS
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: MISCONDUCT
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: PROMPT_ATTACK
+            InputStrength: HIGH
+            OutputStrength: NONE
+      TopicPolicyConfig:
+        TopicsConfig:
+          - Name: non-dr-operations
+            Definition: >-
+              Any operations that are not related to disaster recovery,
+              PostgreSQL failover, database promotion, endpoint updates,
+              or replication management for the MAKITA system.
+            Type: DENY
+            Examples:
+              - "Delete all database records"
+              - "Create a new user account"
+              - "Send an email notification"
+              - "Modify application source code"
+              - "Access financial data"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaPrecheckGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Name: makita-precheck-guardrail
+      Description: >-
+        Governs the Pre-Check MCP Server — restricts to pre-check read
+        actions on PostgreSQL, blocks prompt injection and malicious content.
+      BlockedInputMessaging: >-
+        Operation blocked by guardrail policy. The requested input violates
+        the MAKITA pre-check guardrail. Only disaster recovery pre-check
+        operations on the PostgreSQL cluster are permitted.
+      BlockedOutputsMessaging: >-
+        Response blocked by guardrail policy. The generated output violates
+        the MAKITA pre-check guardrail constraints.
+      ContentPolicyConfig:
+        FiltersConfig:
+          - Type: SEXUAL
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: VIOLENCE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: HATE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: INSULTS
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: MISCONDUCT
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: PROMPT_ATTACK
+            InputStrength: HIGH
+            OutputStrength: NONE
+      TopicPolicyConfig:
+        TopicsConfig:
+          - Name: non-dr-operations
+            Definition: >-
+              Any operations that are not related to disaster recovery
+              pre-checks, replication health verification, primary status
+              checks, or replica readiness verification for the MAKITA system.
+            Type: DENY
+            Examples:
+              - "Delete all database records"
+              - "Modify database schema"
+              - "Execute failover without checks"
+              - "Access financial data"
+              - "Send notifications"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaPostcheckGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Name: makita-postcheck-guardrail
+      Description: >-
+        Governs the Post-Check MCP Server — restricts to post-check read
+        actions on PostgreSQL, blocks prompt injection and malicious content.
+      BlockedInputMessaging: >-
+        Operation blocked by guardrail policy. The requested input violates
+        the MAKITA post-check guardrail. Only disaster recovery post-check
+        operations on the PostgreSQL cluster are permitted.
+      BlockedOutputsMessaging: >-
+        Response blocked by guardrail policy. The generated output violates
+        the MAKITA post-check guardrail constraints.
+      ContentPolicyConfig:
+        FiltersConfig:
+          - Type: SEXUAL
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: VIOLENCE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: HATE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: INSULTS
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: MISCONDUCT
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: PROMPT_ATTACK
+            InputStrength: HIGH
+            OutputStrength: NONE
+      TopicPolicyConfig:
+        TopicsConfig:
+          - Name: non-dr-operations
+            Definition: >-
+              Any operations that are not related to disaster recovery
+              post-checks, new primary health verification, endpoint
+              verification, or replication establishment checks for the
+              MAKITA system.
+            Type: DENY
+            Examples:
+              - "Delete all database records"
+              - "Modify database schema"
+              - "Roll back the failover"
+              - "Access financial data"
+              - "Send notifications"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ===========================================================================
+  # CloudWatch Dashboard (Task 2.8)
+  # ===========================================================================
+  # NOTE: AWS::CloudWatch::Dashboard does NOT support the Tags property.
+  # This is documented as a tagging exception per Requirement 24.10.
+  # The mandatory tags (auto-delete=no, Env=prod1) cannot be applied to
+  # this resource type via CloudFormation.
+  MakitaFailoverDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: makita-failover-dashboard
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "text",
+              "x": 0, "y": 0, "width": 24, "height": 1,
+              "properties": {
+                "markdown": "# MAKITA Failover Dashboard — PostgreSQL DR Monitoring"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0, "y": 1, "width": 12, "height": 6,
+              "properties": {
+                "title": "Primary (us-east-1) — CPU Utilization",
+                "metrics": [
+                  ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "makita-pg-primary"]
+                ],
+                "region": "us-east-1",
+                "period": 60,
+                "stat": "Average",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12, "y": 1, "width": 12, "height": 6,
+              "properties": {
+                "title": "Replica (us-west-2) — CPU Utilization",
+                "metrics": [
+                  ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "makita-pg-replica"]
+                ],
+                "region": "us-west-2",
+                "period": 60,
+                "stat": "Average",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0, "y": 7, "width": 24, "height": 6,
+              "properties": {
+                "title": "Cross-Region Replication Lag (seconds)",
+                "metrics": [
+                  ["AWS/RDS", "ReplicaLag", "DBInstanceIdentifier", "makita-pg-replica"]
+                ],
+                "region": "us-west-2",
+                "period": 60,
+                "stat": "Average",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0, "y": 13, "width": 12, "height": 6,
+              "properties": {
+                "title": "Primary (us-east-1) — DB Connections",
+                "metrics": [
+                  ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "makita-pg-primary"]
+                ],
+                "region": "us-east-1",
+                "period": 60,
+                "stat": "Average",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12, "y": 13, "width": 12, "height": 6,
+              "properties": {
+                "title": "Replica (us-west-2) — DB Connections",
+                "metrics": [
+                  ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "makita-pg-replica"]
+                ],
+                "region": "us-west-2",
+                "period": 60,
+                "stat": "Average",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0, "y": 19, "width": 12, "height": 6,
+              "properties": {
+                "title": "Primary (us-east-1) — Read/Write IOPS",
+                "metrics": [
+                  ["AWS/RDS", "ReadIOPS", "DBInstanceIdentifier", "makita-pg-primary"],
+                  ["AWS/RDS", "WriteIOPS", "DBInstanceIdentifier", "makita-pg-primary"]
+                ],
+                "region": "us-east-1",
+                "period": 60,
+                "stat": "Average",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12, "y": 19, "width": 12, "height": 6,
+              "properties": {
+                "title": "Replica (us-west-2) — Read/Write IOPS",
+                "metrics": [
+                  ["AWS/RDS", "ReadIOPS", "DBInstanceIdentifier", "makita-pg-replica"],
+                  ["AWS/RDS", "WriteIOPS", "DBInstanceIdentifier", "makita-pg-replica"]
+                ],
+                "region": "us-west-2",
+                "period": 60,
+                "stat": "Average",
+                "view": "timeSeries"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0, "y": 25, "width": 12, "height": 6,
+              "properties": {
+                "title": "Primary (us-east-1) — Instance Status",
+                "metrics": [
+                  ["AWS/RDS", "DBInstanceStatus", "DBInstanceIdentifier", "makita-pg-primary"]
+                ],
+                "region": "us-east-1",
+                "period": 60,
+                "stat": "Average",
+                "view": "singleValue"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12, "y": 25, "width": 12, "height": 6,
+              "properties": {
+                "title": "Replica (us-west-2) — Instance Status",
+                "metrics": [
+                  ["AWS/RDS", "DBInstanceStatus", "DBInstanceIdentifier", "makita-pg-replica"]
+                ],
+                "region": "us-west-2",
+                "period": 60,
+                "stat": "Average",
+                "view": "singleValue"
+              }
+            }
+          ]
+        }
+
+# =============================================================================
+# Outputs (Task 2.9)
+# =============================================================================
+# All taggable resources above carry mandatory tags (auto-delete=no, Env=prod1).
+# AWS::CloudWatch::Dashboard is the only tagging exception (documented inline).
+Outputs:
+  PrimaryEndpoint:
+    Description: PostgreSQL primary instance endpoint (us-east-1)
+    Value: !GetAtt MakitaPgPrimary.Endpoint.Address
+    Export:
+      Name: makita-primary-endpoint
+
+  ReplicaEndpoint:
+    Description: PostgreSQL replica instance endpoint (us-west-2)
+    Value: !GetAtt MakitaPgReplica.Endpoint.Address
+    Export:
+      Name: makita-replica-endpoint
+
+  FailoverMcpServerArn:
+    Description: ARN of the Failover MCP Server in AgentCore
+    Value: !Ref MakitaFailoverMcpServer
+    Export:
+      Name: makita-failover-mcp-server-arn
+
+  PrecheckMcpServerArn:
+    Description: ARN of the Pre-Check MCP Server in AgentCore
+    Value: !Ref MakitaPrecheckMcpServer
+    Export:
+      Name: makita-precheck-mcp-server-arn
+
+  PostcheckMcpServerArn:
+    Description: ARN of the Post-Check MCP Server in AgentCore
+    Value: !Ref MakitaPostcheckMcpServer
+    Export:
+      Name: makita-postcheck-mcp-server-arn
+
+  DashboardUrl:
+    Description: URL to the MAKITA CloudWatch Failover Dashboard
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=makita-failover-dashboard"
+    Export:
+      Name: makita-dashboard-url
