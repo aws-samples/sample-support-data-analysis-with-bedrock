@@ -104,6 +104,9 @@ makita/
 ├── infrastructure/
 │   ├── makita-stack.yaml          # Primary stack (us-east-1)
 │   └── makita-replica-stack.yaml  # Replica stack (us-west-2)
+├── scripts/
+│   ├── deploy.sh                  # Automated deployment script
+│   └── teardown.sh                # Automated teardown script
 ├── mcp-servers/
 │   ├── failover/                  # Failover MCP Server (Strands SDK)
 │   │   ├── models.py
@@ -163,9 +166,33 @@ makita/
    pytest tests/ -v
    ```
 
+4. Deploy the infrastructure:
+
+   ```bash
+   ./scripts/deploy.sh
+   ```
+
+   This script deploys both CloudFormation stacks in order (primary to us-east-1, replica to us-west-2) and wires them together. See [CloudFormation Deployment](#cloudformation-deployment) for details.
+
 ## CloudFormation Deployment
 
 All MAKITA infrastructure is defined in two CloudFormation templates: a primary stack deployed to us-east-1 and a replica stack deployed to us-west-2.
+
+### Automated Deployment (recommended)
+
+```bash
+./scripts/deploy.sh
+```
+
+The script handles all four steps automatically:
+1. Deploys `makita-stack` to us-east-1 (primary RDS, SSM, IAM, AgentCore, Guardrails, Dashboard)
+2. Retrieves the primary instance ARN from stack outputs
+3. Deploys `makita-replica-stack` to us-west-2 (cross-region read replica)
+4. Updates `makita-stack` with the replica endpoint so Parameter Store stays in sync
+
+On completion it prints the primary endpoint, replica endpoint, and dashboard URL.
+
+### Manual Deployment (step-by-step)
 
 ### Step 1 — Deploy the Primary Stack (us-east-1)
 
@@ -180,10 +207,10 @@ aws cloudformation deploy \
 ### Step 2 — Get the Primary Instance ARN
 
 ```bash
-PRIMARY_ARN=$(aws rds describe-db-instances \
-  --db-instance-identifier makita-pg-primary \
+PRIMARY_ARN=$(aws cloudformation describe-stacks \
+  --stack-name makita-stack \
   --region us-east-1 \
-  --query "DBInstances[0].DBInstanceArn" \
+  --query "Stacks[0].Outputs[?OutputKey=='PrimaryInstanceArn'].OutputValue" \
   --output text)
 ```
 
@@ -247,6 +274,12 @@ The single stack creates all resources with the `makita-` prefix and mandatory t
 | Secrets Manager | `makita-db-master-secret` | `makita-stack` / us-east-1 |
 
 ### Tear Down
+
+```bash
+./scripts/teardown.sh
+```
+
+Or manually:
 
 ```bash
 # Delete replica stack first (us-west-2)

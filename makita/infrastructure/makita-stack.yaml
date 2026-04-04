@@ -1,8 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   MAKITA (Machine Augmented Key Infrastructure Technology Automation) -
-  Single CloudFormation stack for multi-region PostgreSQL disaster recovery
-  with MCP servers, AgentCore governance, and Bedrock Guardrails.
+  Primary region CloudFormation stack (us-east-1) for multi-region PostgreSQL
+  disaster recovery with MCP servers, AgentCore governance, and Bedrock
+  Guardrails. Deploy makita-replica-stack.yaml to us-west-2 for the replica.
 
 # =============================================================================
 # Parameters
@@ -1071,6 +1072,18 @@ Outputs:
     Value: !GetAtt MakitaPgPrimary.Endpoint.Address
     Export:
       Name: makita-primary-endpoint
+
+  PrimaryInstanceArn:
+    Description: ARN of the PostgreSQL primary instance (needed by replica stack)
+    Value: !GetAtt MakitaPgPrimary.DBInstanceArn
+    Export:
+      Name: makita-primary-instance-arn
+
+  DbMasterSecretArn:
+    Description: ARN of the Secrets Manager secret containing DB master credentials
+    Value: !Ref MakitaDbMasterSecret
+    Export:
+      Name: makita-db-master-secret-arn
 
   ReplicaEndpoint:
     Description: PostgreSQL replica instance endpoint (us-west-2)
