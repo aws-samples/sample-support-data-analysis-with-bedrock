@@ -103,7 +103,8 @@ graph TB
 makita/
 ├── infrastructure/
 │   ├── makita-stack.yaml          # Primary stack (us-east-1)
-│   └── makita-replica-stack.yaml  # Replica stack (us-west-2)
+│   ├── makita-replica-stack.yaml  # Replica stack (us-west-2)
+│   └── makita-agentcore-stack.yaml # AgentCore stack (optional, us-east-1)
 ├── scripts/
 │   ├── deploy.sh                  # Automated deployment script
 │   └── teardown.sh                # Automated teardown script
@@ -268,8 +269,7 @@ The single stack creates all resources with the `makita-` prefix and mandatory t
 | Parameter Store | `/makita/db/*`, `/makita/mcp/*`, `/makita/dashboard/*` | `makita-stack` / us-east-1 |
 | MCP Servers | `makita-failover-mcp`, `makita-precheck-mcp`, `makita-postcheck-mcp` | `makita-stack` / us-east-1 |
 | Stub Servers | `makita-aws-support-stub`, `makita-servicenow-stub` | `makita-stack` / us-east-1 |
-| AgentCore Governance | Policies, identities, and Bedrock Guardrails per MCP server | `makita-stack` / us-east-1 |
-| CloudWatch | `makita-failover-dashboard` | `makita-stack` / us-east-1 |
+| AgentCore Governance | Policies, identities, and Bedrock Guardrails per MCP server | `makita-agentcore-stack` / us-east-1 |
 | IAM | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | `makita-stack` / us-east-1 |
 | Secrets Manager | `makita-db-master-secret` | `makita-stack` / us-east-1 |
 
@@ -368,39 +368,6 @@ DevOps Agent executes the following ordered phases:
 5. **Ticket Updates** — Both tickets are updated at each phase transition with contextual details
 
 If any pre-check fails, the failover halts. If the failover execution fails, post-checks are skipped. Each step is displayed in the DevOps Agent chat as it happens.
-
-## Monitoring via CloudWatch Dashboard
-
-The `makita-failover-dashboard` CloudWatch dashboard visualizes the PostgreSQL cluster failover across both regions.
-
-### Access the Dashboard
-
-```bash
-# Get the dashboard URL from stack outputs
-aws cloudformation describe-stacks \
-  --stack-name makita-stack \
-  --region us-east-1 \
-  --query "Stacks[0].Outputs[?OutputKey=='DashboardUrl'].OutputValue" \
-  --output text
-```
-
-Or navigate directly to:
-```
-https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=makita-failover-dashboard
-```
-
-### Dashboard Widgets
-
-| Widget | Description |
-|---|---|
-| Primary (us-east-1) — CPU | CPU utilization of `makita-pg-primary` |
-| Replica (us-west-2) — CPU | CPU utilization of `makita-pg-replica` |
-| Replication Lag | Replication lag from `makita-pg-replica` |
-| DB Connections | Active connections for both instances |
-| Read/Write IOPS | I/O operations for both instances |
-| Instance Status | Availability status for both regions |
-
-During a failover, the dashboard reflects the change in primary and replica roles and shows replication status between regions.
 
 ## Reviewing Event Logs and Ticket Records
 

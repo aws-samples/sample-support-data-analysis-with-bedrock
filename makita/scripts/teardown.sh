@@ -14,6 +14,22 @@ REPLICA_STACK="makita-replica-stack"
 echo "=== MAKITA Teardown ==="
 echo ""
 
+# --- Step 0: Delete AgentCore stack if it exists ---
+AGENTCORE_STACK="makita-agentcore-stack"
+echo "[0/2] Checking for AgentCore stack..."
+if aws cloudformation describe-stacks --stack-name "${AGENTCORE_STACK}" --region "${PRIMARY_REGION}" >/dev/null 2>&1; then
+  echo "       Deleting AgentCore stack in ${PRIMARY_REGION}..."
+  aws cloudformation delete-stack \
+    --stack-name "${AGENTCORE_STACK}" \
+    --region "${PRIMARY_REGION}"
+  aws cloudformation wait stack-delete-complete \
+    --stack-name "${AGENTCORE_STACK}" \
+    --region "${PRIMARY_REGION}"
+  echo "       AgentCore stack deleted."
+else
+  echo "       No AgentCore stack found, skipping."
+fi
+
 # --- Step 1: Delete replica stack ---
 echo "[1/2] Deleting replica stack in ${DR_REGION}..."
 aws cloudformation delete-stack \

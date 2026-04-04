@@ -2,92 +2,215 @@
 set -euo pipefail
 
 # MAKITA Deploy Script
-# Deploys both CloudFormation stacks in order:
-#   1. Primary stack (us-east-1) — RDS primary, SSM, IAM, AgentCore, Guardrails, Dashboard
-#   2. Replica stack (us-west-2) — Cross-region RDS read replica
-#   3. Updates primary stack with the replica endpoint
+#
+# Usage:
+#   ./scripts/deploy.sh              Deploy all stacks in order
+#   ./scripts/deploy.sh primary      Deploy primary stack only (us-east-1)
+#   ./scripts/deploy.sh replica      Deploy replica stack only (us-west-2)
+#   ./scripts/deploy.sh agentcore    Deploy AgentCore stack only (us-east-1)
+#   ./scripts/deploy.sh all          Deploy all stacks in order (same as no args)
 
 PRIMARY_REGION="us-east-1"
 DR_REGION="us-west-2"
 PRIMARY_STACK="makita-stack"
 REPLICA_STACK="makita-replica-stack"
+AGENTCORE_STACK="makita-agentcore-stack"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_DIR="${SCRIPT_DIR}/../infrastructure"
+TARGET="${1:-all}"
 
-echo "=== MAKITA Deployment ==="
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+cleanup_failed_stack() {
+  local stack_name="$1"
+  local region="$2"
+  local status
+  status=$(aws cloudformation describe-stacks \
+    --stack-name "${stack_name}" \
+    --region "${region}" \
+    --query "Stacks[0].StackStatus" \
+    --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+
+  if [[ "${status}" == *"FAILED"* ]] || [[ "${status}" == *"ROLLBACK"* ]]; then
+    echo "       Found ${stack_name} in ${status} state, cleaning up..."
+    for i in 1 2 3; do
+      aws cloudformation delete-stack \
+        --stack-name "${stack_name}" \
+        --region "${region}" 2>/dev/null || true
+      for _ in $(seq 1 30); do
+        local s
+        s=$(aws cloudformation describe-stacks \
+          --stack-name "${stack_name}" \
+          --region "${region}" \
+          --query "Stacks[0].StackStatus" \
+          --output text 2>/dev/null || echo "GONE")
+        if [ "${s}" = "GONE" ] || [ "${s}" = "DELETE_COMPLETE" ]; then
+          return 0
+        fi
+        if [ "${s}" = "DELETE_FAILED" ]; then
+          echo "       Delete failed (attempt ${i}), retrying..."
+          break
+        fi
+        sleep 10
+      done
+    done
+  fi
+}
+
+deploy_or_create_stack() {
+  local stack_name="$1"
+  local template="$2"
+  local region="$3"
+  shift 3
+  local extra_args=("$@")
+
+  local status
+  status=$(aws cloudformation describe-stacks \
+    --stack-name "${stack_name}" \
+    --region "${region}" \
+    --query "Stacks[0].StackStatus" \
+    --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+
+  if [ "${status}" = "DOES_NOT_EXIST" ]; then
+    aws cloudformation create-stack \
+      --template-body "file://${template}" \
+      --stack-name "${stack_name}" \
+      --region "${region}" \
+      --disable-rollback \
+      "${extra_args[@]}"
+    echo "       Waiting for ${stack_name} to complete..."
+    aws cloudformation wait stack-create-complete \
+      --stack-name "${stack_name}" \
+      --region "${region}"
+  else
+    aws cloudformation deploy \
+      --template-file "${template}" \
+      --stack-name "${stack_name}" \
+      --region "${region}" \
+      --no-fail-on-empty-changeset \
+      "${extra_args[@]}"
+    aws cloudformation wait stack-update-complete \
+      --stack-name "${stack_name}" \
+      --region "${region}" 2>/dev/null || true
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Stack deploy functions
+# ---------------------------------------------------------------------------
+
+deploy_primary() {
+  echo "[primary] Deploying ${PRIMARY_STACK} to ${PRIMARY_REGION}..."
+  cleanup_failed_stack "${PRIMARY_STACK}" "${PRIMARY_REGION}"
+  deploy_or_create_stack "${PRIMARY_STACK}" "${INFRA_DIR}/makita-stack.yaml" \
+    "${PRIMARY_REGION}" --capabilities CAPABILITY_NAMED_IAM
+  echo "[primary] Done."
+}
+
+deploy_replica() {
+  echo "[replica] Retrieving primary instance ARN..."
+  local primary_arn
+  primary_arn=$(aws cloudformation describe-stacks \
+    --stack-name "${PRIMARY_STACK}" \
+    --region "${PRIMARY_REGION}" \
+    --query "Stacks[0].Outputs[?OutputKey=='PrimaryInstanceArn'].OutputValue" \
+    --output text)
+
+  if [ -z "${primary_arn}" ] || [ "${primary_arn}" = "None" ]; then
+    echo "ERROR: Could not retrieve PrimaryInstanceArn. Deploy the primary stack first."
+    exit 1
+  fi
+  echo "         Primary ARN: ${primary_arn}"
+
+  echo "[replica] Deploying ${REPLICA_STACK} to ${DR_REGION}..."
+  cleanup_failed_stack "${REPLICA_STACK}" "${DR_REGION}"
+  deploy_or_create_stack "${REPLICA_STACK}" "${INFRA_DIR}/makita-replica-stack.yaml" \
+    "${DR_REGION}" --parameter-overrides "PrimaryInstanceArn=${primary_arn}"
+  echo "[replica] Done."
+
+  # Update primary stack with replica endpoint
+  echo "[replica] Updating primary stack with replica endpoint..."
+  local replica_endpoint
+  replica_endpoint=$(aws cloudformation describe-stacks \
+    --stack-name "${REPLICA_STACK}" \
+    --region "${DR_REGION}" \
+    --query "Stacks[0].Outputs[?OutputKey=='ReplicaEndpoint'].OutputValue" \
+    --output text)
+
+  if [ -z "${replica_endpoint}" ] || [ "${replica_endpoint}" = "None" ]; then
+    echo "ERROR: Could not retrieve ReplicaEndpoint from ${REPLICA_STACK}."
+    exit 1
+  fi
+
+  aws cloudformation deploy \
+    --template-file "${INFRA_DIR}/makita-stack.yaml" \
+    --stack-name "${PRIMARY_STACK}" \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --region "${PRIMARY_REGION}" \
+    --parameter-overrides "ReplicaEndpoint=${replica_endpoint}" \
+    --no-fail-on-empty-changeset
+  echo "         Replica endpoint: ${replica_endpoint}"
+}
+
+deploy_agentcore() {
+  echo "[agentcore] Deploying ${AGENTCORE_STACK} to ${PRIMARY_REGION}..."
+  cleanup_failed_stack "${AGENTCORE_STACK}" "${PRIMARY_REGION}"
+  deploy_or_create_stack "${AGENTCORE_STACK}" "${INFRA_DIR}/makita-agentcore-stack.yaml" \
+    "${PRIMARY_REGION}" --capabilities CAPABILITY_NAMED_IAM
+  echo "[agentcore] Done."
+}
+
+print_summary() {
+  echo ""
+  echo "=== Deployment Summary ==="
+  echo ""
+  local pe re
+  pe=$(aws cloudformation describe-stacks \
+    --stack-name "${PRIMARY_STACK}" --region "${PRIMARY_REGION}" \
+    --query "Stacks[0].Outputs[?OutputKey=='PrimaryEndpoint'].OutputValue" \
+    --output text 2>/dev/null || echo "N/A")
+  re=$(aws cloudformation describe-stacks \
+    --stack-name "${REPLICA_STACK}" --region "${DR_REGION}" \
+    --query "Stacks[0].Outputs[?OutputKey=='ReplicaEndpoint'].OutputValue" \
+    --output text 2>/dev/null || echo "N/A")
+  echo "Primary endpoint: ${pe}"
+  echo "Replica endpoint: ${re}"
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+echo "=== MAKITA Deployment (target: ${TARGET}) ==="
 echo ""
 
-# --- Step 1: Deploy primary stack ---
-echo "[1/4] Deploying primary stack to ${PRIMARY_REGION}..."
-aws cloudformation deploy \
-  --template-file "${INFRA_DIR}/makita-stack.yaml" \
-  --stack-name "${PRIMARY_STACK}" \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --region "${PRIMARY_REGION}" \
-  --no-fail-on-empty-changeset
-
-echo "       Waiting for primary stack to complete..."
-aws cloudformation wait stack-create-complete \
-  --stack-name "${PRIMARY_STACK}" \
-  --region "${PRIMARY_REGION}" 2>/dev/null || true
-
-# --- Step 2: Get primary instance ARN ---
-echo "[2/4] Retrieving primary instance ARN..."
-PRIMARY_ARN=$(aws cloudformation describe-stacks \
-  --stack-name "${PRIMARY_STACK}" \
-  --region "${PRIMARY_REGION}" \
-  --query "Stacks[0].Outputs[?OutputKey=='PrimaryInstanceArn'].OutputValue" \
-  --output text)
-
-if [ -z "${PRIMARY_ARN}" ] || [ "${PRIMARY_ARN}" = "None" ]; then
-  echo "ERROR: Could not retrieve PrimaryInstanceArn from ${PRIMARY_STACK}."
-  exit 1
-fi
-echo "       Primary ARN: ${PRIMARY_ARN}"
-
-# --- Step 3: Deploy replica stack ---
-echo "[3/4] Deploying replica stack to ${DR_REGION}..."
-aws cloudformation deploy \
-  --template-file "${INFRA_DIR}/makita-replica-stack.yaml" \
-  --stack-name "${REPLICA_STACK}" \
-  --region "${DR_REGION}" \
-  --parameter-overrides "PrimaryInstanceArn=${PRIMARY_ARN}" \
-  --no-fail-on-empty-changeset
-
-echo "       Waiting for replica stack to complete..."
-aws cloudformation wait stack-create-complete \
-  --stack-name "${REPLICA_STACK}" \
-  --region "${DR_REGION}" 2>/dev/null || true
-
-# --- Step 4: Update primary stack with replica endpoint ---
-echo "[4/4] Updating primary stack with replica endpoint..."
-REPLICA_ENDPOINT=$(aws cloudformation describe-stacks \
-  --stack-name "${REPLICA_STACK}" \
-  --region "${DR_REGION}" \
-  --query "Stacks[0].Outputs[?OutputKey=='ReplicaEndpoint'].OutputValue" \
-  --output text)
-
-if [ -z "${REPLICA_ENDPOINT}" ] || [ "${REPLICA_ENDPOINT}" = "None" ]; then
-  echo "ERROR: Could not retrieve ReplicaEndpoint from ${REPLICA_STACK}."
-  exit 1
-fi
-echo "       Replica endpoint: ${REPLICA_ENDPOINT}"
-
-aws cloudformation deploy \
-  --template-file "${INFRA_DIR}/makita-stack.yaml" \
-  --stack-name "${PRIMARY_STACK}" \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --region "${PRIMARY_REGION}" \
-  --parameter-overrides "ReplicaEndpoint=${REPLICA_ENDPOINT}" \
-  --no-fail-on-empty-changeset
-
-echo ""
-echo "=== Deployment complete ==="
-echo ""
-echo "Primary endpoint:  $(aws cloudformation describe-stacks \
-  --stack-name "${PRIMARY_STACK}" --region "${PRIMARY_REGION}" \
-  --query "Stacks[0].Outputs[?OutputKey=='PrimaryEndpoint'].OutputValue" --output text)"
-echo "Replica endpoint:  ${REPLICA_ENDPOINT}"
-echo "Dashboard URL:     $(aws cloudformation describe-stacks \
-  --stack-name "${PRIMARY_STACK}" --region "${PRIMARY_REGION}" \
-  --query "Stacks[0].Outputs[?OutputKey=='DashboardUrl'].OutputValue" --output text)"
+case "${TARGET}" in
+  primary)
+    deploy_primary
+    ;;
+  replica)
+    deploy_replica
+    ;;
+  agentcore)
+    deploy_agentcore
+    ;;
+  all)
+    deploy_primary
+    deploy_replica
+    if [ "${DEPLOY_AGENTCORE:-false}" = "true" ]; then
+      deploy_agentcore
+    fi
+    print_summary
+    ;;
+  *)
+    echo "Usage: $0 [primary|replica|agentcore|all]"
+    echo ""
+    echo "  primary     Deploy primary stack (us-east-1)"
+    echo "  replica     Deploy replica stack (us-west-2) + update primary"
+    echo "  agentcore   Deploy AgentCore stack (us-east-1)"
+    echo "  all         Deploy all stacks in order (default)"
+    exit 1
+    ;;
+esac
