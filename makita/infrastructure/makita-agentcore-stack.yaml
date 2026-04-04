@@ -6,9 +6,6 @@ Description: >-
 
 Resources:
 
-  # ===========================================================================
-  # Lambda Execution Role
-  # ===========================================================================
   MakitaAgentCoreLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -37,9 +34,6 @@ Resources:
         - Key: Env
           Value: prod1
 
-  # ===========================================================================
-  # Lambda Function — AgentCore Resource Manager
-  # ===========================================================================
   MakitaAgentCoreLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -55,279 +49,139 @@ Resources:
           Value: prod1
       Code:
         ZipFile: |
-          """
-          CloudFormation Custom Resource handler for MAKITA AgentCore resources.
-          Creates/deletes MCP Servers, Policies, and Identities via boto3.
-          """
-          import json
-          import boto3
-          import urllib3
-
+          import json, boto3, urllib3
           http = urllib3.PoolManager()
 
-          def send_response(event, context, status, data=None, reason=None):
-              body = json.dumps({
-                  "Status": status,
-                  "Reason": reason or f"See CloudWatch Log Stream: {context.log_stream_name}",
-                  "PhysicalResourceId": event.get("PhysicalResourceId", context.log_stream_name),
-                  "StackId": event["StackId"],
-                  "RequestId": event["RequestId"],
-                  "LogicalResourceId": event["LogicalResourceId"],
-                  "Data": data or {},
-              })
-              http.request("PUT", event["ResponseURL"], body=body,
-                           headers={"Content-Type": ""})
+          SERVERS = [
+            {"name": "makita-failover-mcp", "desc": "Failover MCP Server"},
+            {"name": "makita-precheck-mcp", "desc": "Pre-Check MCP Server"},
+            {"name": "makita-postcheck-mcp", "desc": "Post-Check MCP Server"},
+            {"name": "makita-aws-support-stub", "desc": "AWS Support Stub"},
+            {"name": "makita-servicenow-stub", "desc": "ServiceNow Stub"},
+          ]
 
-          def handler(event, context):
-              print(json.dumps(event))
-              request_type = event["RequestType"]
-              props = event["ResourceProperties"]
+          POLICY_NAMES = [
+            "makita-failover-policy",
+            "makita-precheck-policy",
+            "makita-postcheck-policy",
+          ]
 
+          def send_response(event, ctx, status, reason=None):
+            r = reason or ctx.log_stream_name
+            if len(r) > 256:
+              r = r[:256]
+            body = json.dumps({
+              "Status": status,
+              "Reason": r,
+              "PhysicalResourceId": event.get("PhysicalResourceId", ctx.log_stream_name),
+              "StackId": event["StackId"],
+              "RequestId": event["RequestId"],
+              "LogicalResourceId": event["LogicalResourceId"],
+              "Data": {},
+            })
+            http.request("PUT", event["ResponseURL"], body=body, headers={"Content-Type": ""})
+
+          def build_policy_doc(actions):
+            return json.dumps({"Version":"2012-10-17","Statement":[
+              {"Effect":"Allow","Action":actions,"Resource":"arn:aws:*:*:*:makita-*",
+               "Condition":{"StringEquals":{"aws:RequestedRegion":["us-east-1","us-west-2"],
+               "aws:PrincipalTag/Name":"makita-*"}}},
+              {"Effect":"Deny","Action":"*","Resource":"*",
+               "Condition":{"StringNotEquals":{"aws:ResourceTag/Env":"prod1"}}},
+              {"Effect":"Deny","Action":"*","Resource":"*",
+               "Condition":{"StringNotLike":{"aws:ResourceTag/Name":"makita-*"}}},
+              {"Effect":"Deny","Action":"*","Resource":"*",
+               "Condition":{"StringNotEquals":{"aws:RequestedRegion":["us-east-1","us-west-2"]}}},
+              {"Effect":"Deny","Action":"*","Resource":"*",
+               "Condition":{"StringNotLike":{"aws:PrincipalTag/Name":"makita-*"}}},
+            ]})
+
+          POLICIES = {
+            "makita-failover-policy": {
+              "desc": "Failover policy",
+              "actions": ["rds:PromoteReadReplica","rds:DescribeDBInstances",
+                          "rds:RebootDBInstance","ssm:PutParameter","ssm:GetParameter"],
+            },
+            "makita-precheck-policy": {
+              "desc": "Pre-check policy",
+              "actions": ["rds:DescribeDBInstances","rds:DescribeDBClusters","ssm:GetParameter"],
+            },
+            "makita-postcheck-policy": {
+              "desc": "Post-check policy",
+              "actions": ["rds:DescribeDBInstances","rds:DescribeDBClusters","ssm:GetParameter"],
+            },
+          }
+
+          IDENTITIES = [
+            {"name": "makita-failover-identity", "roleKey": "FailoverRoleArn"},
+            {"name": "makita-precheck-identity", "roleKey": "PrecheckRoleArn"},
+            {"name": "makita-postcheck-identity", "roleKey": "PostcheckRoleArn"},
+          ]
+
+          def handler(event, ctx):
+            print(json.dumps(event))
+            rt = event["RequestType"]
+            props = event["ResourceProperties"]
+            try:
+              if rt in ("Create", "Update"):
+                create(props)
+              elif rt == "Delete":
+                delete(props)
+              send_response(event, ctx, "SUCCESS")
+            except Exception as e:
+              print(f"Error: {e}")
+              send_response(event, ctx, "FAILED", str(e))
+
+          def create(props):
+            c = boto3.client("bedrock-agentcore-control")
+            for s in SERVERS:
               try:
-                  if request_type == "Create":
-                      result = create_resources(props)
-                      send_response(event, context, "SUCCESS", result)
-                  elif request_type == "Update":
-                      result = create_resources(props)
-                      send_response(event, context, "SUCCESS", result)
-                  elif request_type == "Delete":
-                      delete_resources(props)
-                      send_response(event, context, "SUCCESS")
+                c.create_mcp_server(serverName=s["name"], description=s["desc"])
+                print(f"Created server: {s['name']}")
               except Exception as e:
-                  print(f"Error: {e}")
-                  send_response(event, context, "FAILED", reason=str(e))
+                print(f"Server {s['name']}: {e}")
+            for name, cfg in POLICIES.items():
+              try:
+                c.create_policy(policyName=name, description=cfg["desc"],
+                                policyDocument=build_policy_doc(cfg["actions"]))
+                print(f"Created policy: {name}")
+              except Exception as e:
+                print(f"Policy {name}: {e}")
+            for ident in IDENTITIES:
+              role = props.get(ident["roleKey"], "")
+              if role:
+                try:
+                  c.create_identity(identityName=ident["name"], roleArn=role)
+                  print(f"Created identity: {ident['name']}")
+                except Exception as e:
+                  print(f"Identity {ident['name']}: {e}")
 
-          def create_resources(props):
-              """Create AgentCore MCP servers, policies, and identities."""
-              client = boto3.client("agentcore")
-              results = {}
+          def delete(props):
+            c = boto3.client("bedrock-agentcore-control")
+            for ident in IDENTITIES:
+              try:
+                c.delete_identity(identityName=ident["name"])
+              except Exception as e:
+                print(f"Delete identity {ident['name']}: {e}")
+            for name in POLICIES:
+              try:
+                c.delete_policy(policyName=name)
+              except Exception as e:
+                print(f"Delete policy {name}: {e}")
+            for s in SERVERS:
+              try:
+                c.delete_mcp_server(serverName=s["name"])
+              except Exception as e:
+                print(f"Delete server {s['name']}: {e}")
 
-              # --- MCP Servers ---
-              servers = props.get("McpServers", [])
-              for srv in servers:
-                  try:
-                      resp = client.create_mcp_server(
-                          serverName=srv["ServerName"],
-                          description=srv.get("Description", ""),
-                      )
-                      arn = resp.get("serverArn", resp.get("arn", ""))
-                      results[srv["ServerName"]] = arn
-                      print(f"Created MCP server: {srv['ServerName']} -> {arn}")
-                  except client.exceptions.ConflictException:
-                      print(f"MCP server already exists: {srv['ServerName']}")
-                  except Exception as e:
-                      print(f"Error creating MCP server {srv['ServerName']}: {e}")
-
-              # --- Policies ---
-              policies = props.get("Policies", [])
-              for pol in policies:
-                  try:
-                      client.create_policy(
-                          policyName=pol["PolicyName"],
-                          description=pol.get("Description", ""),
-                          policyDocument=json.dumps(pol["PolicyDocument"]),
-                      )
-                      print(f"Created policy: {pol['PolicyName']}")
-                  except client.exceptions.ConflictException:
-                      print(f"Policy already exists: {pol['PolicyName']}")
-                  except Exception as e:
-                      print(f"Error creating policy {pol['PolicyName']}: {e}")
-
-              # --- Identities ---
-              identities = props.get("Identities", [])
-              for ident in identities:
-                  try:
-                      client.create_identity(
-                          identityName=ident["IdentityName"],
-                          roleArn=ident["RoleArn"],
-                      )
-                      print(f"Created identity: {ident['IdentityName']}")
-                  except client.exceptions.ConflictException:
-                      print(f"Identity already exists: {ident['IdentityName']}")
-                  except Exception as e:
-                      print(f"Error creating identity {ident['IdentityName']}: {e}")
-
-              return results
-
-          def delete_resources(props):
-              """Delete AgentCore MCP servers, policies, and identities."""
-              client = boto3.client("agentcore")
-
-              # Delete in reverse order: identities, policies, servers
-              for ident in props.get("Identities", []):
-                  try:
-                      client.delete_identity(identityName=ident["IdentityName"])
-                      print(f"Deleted identity: {ident['IdentityName']}")
-                  except Exception as e:
-                      print(f"Error deleting identity {ident['IdentityName']}: {e}")
-
-              for pol in props.get("Policies", []):
-                  try:
-                      client.delete_policy(policyName=pol["PolicyName"])
-                      print(f"Deleted policy: {pol['PolicyName']}")
-                  except Exception as e:
-                      print(f"Error deleting policy {pol['PolicyName']}: {e}")
-
-              for srv in props.get("McpServers", []):
-                  try:
-                      client.delete_mcp_server(serverName=srv["ServerName"])
-                      print(f"Deleted MCP server: {srv['ServerName']}")
-                  except Exception as e:
-                      print(f"Error deleting MCP server {srv['ServerName']}: {e}")
-
-  # ===========================================================================
-  # Custom Resource — Triggers the Lambda to create AgentCore resources
-  # ===========================================================================
   MakitaAgentCoreResources:
     Type: Custom::AgentCoreResources
     Properties:
       ServiceToken: !GetAtt MakitaAgentCoreLambda.Arn
-      McpServers:
-        - ServerName: makita-failover-mcp
-          Description: >-
-            MAKITA Failover MCP Server — executes PostgreSQL replica promotion
-            and Parameter Store endpoint updates during disaster recovery.
-        - ServerName: makita-precheck-mcp
-          Description: >-
-            MAKITA Pre-Check MCP Server — verifies replication health, primary
-            status, and replica readiness before failover execution.
-        - ServerName: makita-postcheck-mcp
-          Description: >-
-            MAKITA Post-Check MCP Server — verifies new primary health, endpoint
-            updates, and replication establishment after failover completion.
-        - ServerName: makita-aws-support-stub
-          Description: MAKITA AWS Support Stub Server — simulates the AWS Support API.
-        - ServerName: makita-servicenow-stub
-          Description: MAKITA ServiceNow Stub Server — simulates the ServiceNow API.
-      Policies:
-        - PolicyName: makita-failover-policy
-          Description: Restricts Failover MCP Server to makita-* resources with Env=prod1.
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - rds:PromoteReadReplica
-                  - rds:DescribeDBInstances
-                  - rds:RebootDBInstance
-                  - ssm:PutParameter
-                  - ssm:GetParameter
-                Resource: "arn:aws:*:*:*:makita-*"
-                Condition:
-                  StringEquals:
-                    "aws:RequestedRegion": [us-east-1, us-west-2]
-                    "aws:PrincipalTag/Name": "makita-*"
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotEquals:
-                    "aws:ResourceTag/Env": "prod1"
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotLike:
-                    "aws:ResourceTag/Name": "makita-*"
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotEquals:
-                    "aws:RequestedRegion": [us-east-1, us-west-2]
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotLike:
-                    "aws:PrincipalTag/Name": "makita-*"
-        - PolicyName: makita-precheck-policy
-          Description: Restricts Pre-Check MCP Server to read-only on makita-* resources with Env=prod1.
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - rds:DescribeDBInstances
-                  - rds:DescribeDBClusters
-                  - ssm:GetParameter
-                Resource: "arn:aws:*:*:*:makita-*"
-                Condition:
-                  StringEquals:
-                    "aws:RequestedRegion": [us-east-1, us-west-2]
-                    "aws:PrincipalTag/Name": "makita-*"
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotEquals:
-                    "aws:ResourceTag/Env": "prod1"
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotLike:
-                    "aws:ResourceTag/Name": "makita-*"
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotEquals:
-                    "aws:RequestedRegion": [us-east-1, us-west-2]
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotLike:
-                    "aws:PrincipalTag/Name": "makita-*"
-        - PolicyName: makita-postcheck-policy
-          Description: Restricts Post-Check MCP Server to read-only on makita-* resources with Env=prod1.
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - rds:DescribeDBInstances
-                  - rds:DescribeDBClusters
-                  - ssm:GetParameter
-                Resource: "arn:aws:*:*:*:makita-*"
-                Condition:
-                  StringEquals:
-                    "aws:RequestedRegion": [us-east-1, us-west-2]
-                    "aws:PrincipalTag/Name": "makita-*"
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotEquals:
-                    "aws:ResourceTag/Env": "prod1"
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotLike:
-                    "aws:ResourceTag/Name": "makita-*"
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotEquals:
-                    "aws:RequestedRegion": [us-east-1, us-west-2]
-              - Effect: Deny
-                Action: "*"
-                Resource: "*"
-                Condition:
-                  StringNotLike:
-                    "aws:PrincipalTag/Name": "makita-*"
-      Identities:
-        - IdentityName: makita-failover-identity
-          RoleArn: !ImportValue makita-failover-role-arn
-        - IdentityName: makita-precheck-identity
-          RoleArn: !ImportValue makita-precheck-role-arn
-        - IdentityName: makita-postcheck-identity
-          RoleArn: !ImportValue makita-postcheck-role-arn
+      FailoverRoleArn: !ImportValue makita-failover-role-arn
+      PrecheckRoleArn: !ImportValue makita-precheck-role-arn
+      PostcheckRoleArn: !ImportValue makita-postcheck-role-arn
 
 Outputs:
   AgentCoreResourceStatus:
-    Description: Status of AgentCore resource creation
     Value: "Created via Custom::AgentCoreResources Lambda"
