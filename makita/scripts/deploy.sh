@@ -64,7 +64,9 @@ deploy_or_create_stack() {
   local template="$2"
   local region="$3"
   shift 3
-  local extra_args=("$@")
+  # Remaining args are passed as-is to both create-stack and deploy.
+  # For create-stack, convert --parameter-overrides to --parameters format.
+  local deploy_args=("$@")
 
   local status
   status=$(aws cloudformation describe-stacks \
@@ -74,12 +76,32 @@ deploy_or_create_stack() {
     --output text 2>/dev/null || echo "DOES_NOT_EXIST")
 
   if [ "${status}" = "DOES_NOT_EXIST" ]; then
+    # Build create-stack args, converting --parameter-overrides to --parameters
+    local create_args=()
+    local i=0
+    while [ $i -lt ${#deploy_args[@]} ]; do
+      if [ "${deploy_args[$i]}" = "--parameter-overrides" ]; then
+        i=$((i + 1))
+        local params=()
+        while [ $i -lt ${#deploy_args[@]} ] && [[ "${deploy_args[$i]}" != --* ]]; do
+          local key="${deploy_args[$i]%%=*}"
+          local val="${deploy_args[$i]#*=}"
+          params+=("ParameterKey=${key},ParameterValue=${val}")
+          i=$((i + 1))
+        done
+        create_args+=(--parameters "${params[@]}")
+      else
+        create_args+=("${deploy_args[$i]}")
+        i=$((i + 1))
+      fi
+    done
+
     aws cloudformation create-stack \
       --template-body "file://${template}" \
       --stack-name "${stack_name}" \
       --region "${region}" \
       --disable-rollback \
-      "${extra_args[@]}"
+      "${create_args[@]}"
     echo "       Waiting for ${stack_name} to complete..."
     aws cloudformation wait stack-create-complete \
       --stack-name "${stack_name}" \
@@ -90,7 +112,7 @@ deploy_or_create_stack() {
       --stack-name "${stack_name}" \
       --region "${region}" \
       --no-fail-on-empty-changeset \
-      "${extra_args[@]}"
+      "${deploy_args[@]}"
     aws cloudformation wait stack-update-complete \
       --stack-name "${stack_name}" \
       --region "${region}" 2>/dev/null || true

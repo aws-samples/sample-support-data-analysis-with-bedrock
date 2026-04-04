@@ -98,6 +98,30 @@ Resources:
           Value: prod1
 
   # ---------------------------------------------------------------------------
+  # KMS Key — For encrypting the cross-region replica
+  # ---------------------------------------------------------------------------
+  MakitaDrKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for MAKITA PostgreSQL replica encryption in us-west-2
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnableRootAccountAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+      Tags:
+        - Key: Name
+          Value: makita-dr-kms-key
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ---------------------------------------------------------------------------
   # PostgreSQL Read Replica — Cross-region from us-east-1 primary
   # ---------------------------------------------------------------------------
   MakitaPgReplica:
@@ -107,6 +131,8 @@ Resources:
       SourceDBInstanceIdentifier: !Ref PrimaryInstanceArn
       DBInstanceClass: db.t3.medium
       StorageType: gp3
+      StorageEncrypted: true
+      KmsKeyId: !GetAtt MakitaDrKmsKey.Arn
       PubliclyAccessible: false
       CopyTagsToSnapshot: true
       DeletionProtection: false
