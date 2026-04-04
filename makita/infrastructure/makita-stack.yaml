@@ -15,18 +15,36 @@ Parameters:
     MinLength: 1
     MaxLength: 63
 
-  DBMasterUserPassword:
+  ReplicaEndpoint:
     Type: String
-    NoEcho: true
-    Default: REDACTED_PASSWORD
-    Description: Master password for the PostgreSQL primary instance
-    MinLength: 8
-    MaxLength: 128
+    Default: pending-replica-deployment
+    Description: >-
+      Endpoint address of the cross-region read replica in us-west-2.
+      Set this after deploying makita-replica-stack.yaml to us-west-2.
 
 # =============================================================================
 # Resources
 # =============================================================================
 Resources:
+
+  # ---------------------------------------------------------------------------
+  # Secrets Manager — Auto-generated master password for PostgreSQL
+  # ---------------------------------------------------------------------------
+  MakitaDbMasterSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: makita-db-master-secret
+      Description: Auto-generated master credentials for the MAKITA PostgreSQL primary instance
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"username": "${DBMasterUsername}"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludeCharacters: '"@/\'
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
 
   # ---------------------------------------------------------------------------
   # VPC and Networking — Primary Region (us-east-1)
@@ -137,8 +155,8 @@ Resources:
       AllocatedStorage: 20
       MaxAllocatedStorage: 100
       StorageType: gp3
-      MasterUsername: !Ref DBMasterUsername
-      MasterUserPassword: !Ref DBMasterUserPassword
+      MasterUsername: !Sub '{{resolve:secretsmanager:makita-db-master-secret:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:makita-db-master-secret:SecretString:password}}'
       DBName: makitadb
       Port: 5432
       PubliclyAccessible: false
@@ -159,34 +177,22 @@ Resources:
           Value: prod1
 
   # ---------------------------------------------------------------------------
+  # Secrets Manager — Attach secret to the RDS primary instance
+  # ---------------------------------------------------------------------------
+  MakitaDbSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref MakitaDbMasterSecret
+      TargetId: !Ref MakitaPgPrimary
+      TargetType: AWS::RDS::DBInstance
+
+  # ---------------------------------------------------------------------------
   # PostgreSQL Cluster — Read Replica (us-west-2, cross-region replication)
   # ---------------------------------------------------------------------------
-  # NOTE: In a production deployment, the cross-region read replica in us-west-2
-  # would be provisioned via a StackSet or a separate stack in us-west-2.
-  # For this reference architecture, the replica is defined in the same template
-  # using SourceDBInstanceIdentifier with the primary's ARN to represent the
-  # cross-region replication relationship (Requirement 3.2, 3.3, 3.5).
-  # When deployed, the replica replicates data from the primary instance,
-  # enabling disaster recovery failover from us-east-1 to us-west-2.
-  MakitaPgReplica:
-    Type: AWS::RDS::DBInstance
-    Properties:
-      DBInstanceIdentifier: makita-pg-replica
-      SourceDBInstanceIdentifier: !GetAtt MakitaPgPrimary.DBInstanceArn
-      DBInstanceClass: db.t3.medium
-      StorageType: gp3
-      PubliclyAccessible: false
-      CopyTagsToSnapshot: true
-      DeletionProtection: false
-      # Cross-region replica inherits engine, storage encryption, and other
-      # settings from the source primary instance
-      Tags:
-        - Key: Name
-          Value: makita-pg-replica
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
+  # The cross-region read replica is provisioned by a separate stack
+  # (makita-replica-stack.yaml) deployed to us-west-2. After deploying
+  # the replica stack, pass its endpoint as the ReplicaEndpoint parameter
+  # to this stack so that Parameter Store is kept in sync.
 
   # ---------------------------------------------------------------------------
   # Parameter Store — Centralized Configuration (/makita/ prefix)
@@ -208,7 +214,7 @@ Resources:
       Name: /makita/db/replica-endpoint
       Type: String
       Description: Current replica PostgreSQL endpoint
-      Value: !GetAtt MakitaPgReplica.Endpoint.Address
+      Value: !Ref ReplicaEndpoint
       Tags:
         auto-delete: "no"
         Env: prod1
@@ -276,7 +282,7 @@ Resources:
       Name: /makita/mcp/failover-server-arn
       Type: String
       Description: ARN of the Failover MCP Server in AgentCore
-      Value: arn:aws:agentcore:us-east-1:ACCOUNT_ID:mcp-server/makita-failover-mcp
+      Value: !Sub "arn:aws:agentcore:us-east-1:${AWS::AccountId}:mcp-server/makita-failover-mcp"
       Tags:
         auto-delete: "no"
         Env: prod1
@@ -287,7 +293,7 @@ Resources:
       Name: /makita/mcp/precheck-server-arn
       Type: String
       Description: ARN of the Pre-Check MCP Server in AgentCore
-      Value: arn:aws:agentcore:us-east-1:ACCOUNT_ID:mcp-server/makita-precheck-mcp
+      Value: !Sub "arn:aws:agentcore:us-east-1:${AWS::AccountId}:mcp-server/makita-precheck-mcp"
       Tags:
         auto-delete: "no"
         Env: prod1
@@ -298,7 +304,7 @@ Resources:
       Name: /makita/mcp/postcheck-server-arn
       Type: String
       Description: ARN of the Post-Check MCP Server in AgentCore
-      Value: arn:aws:agentcore:us-east-1:ACCOUNT_ID:mcp-server/makita-postcheck-mcp
+      Value: !Sub "arn:aws:agentcore:us-east-1:${AWS::AccountId}:mcp-server/makita-postcheck-mcp"
       Tags:
         auto-delete: "no"
         Env: prod1
@@ -1068,7 +1074,7 @@ Outputs:
 
   ReplicaEndpoint:
     Description: PostgreSQL replica instance endpoint (us-west-2)
-    Value: !GetAtt MakitaPgReplica.Endpoint.Address
+    Value: !Ref ReplicaEndpoint
     Export:
       Name: makita-replica-endpoint
 

@@ -1,9 +1,8 @@
 """
-PostgreSQL cluster tests for the MAKITA CloudFormation template.
+PostgreSQL cluster tests for the MAKITA CloudFormation templates.
 
-Validates the PostgreSQL cluster configuration in infrastructure/makita-stack.yaml
-by parsing the YAML directly and asserting on primary instance, replica instance,
-and replication health configuration.
+Validates the primary instance in makita-stack.yaml (us-east-1) and the
+replica instance in makita-replica-stack.yaml (us-west-2).
 
 Validates: Requirement 23.3
 """
@@ -13,7 +12,8 @@ import pytest
 from pathlib import Path
 
 
-TEMPLATE_PATH = Path(__file__).parent.parent / "infrastructure" / "makita-stack.yaml"
+PRIMARY_TEMPLATE_PATH = Path(__file__).parent.parent / "infrastructure" / "makita-stack.yaml"
+REPLICA_TEMPLATE_PATH = Path(__file__).parent.parent / "infrastructure" / "makita-replica-stack.yaml"
 
 
 # ---------------------------------------------------------------------------
@@ -24,7 +24,6 @@ class _CfnLoader(yaml.SafeLoader):
 
 
 def _cfn_tag_constructor(loader, tag_suffix, node):
-    """Generic constructor for any CloudFormation !Tag."""
     if isinstance(node, yaml.ScalarNode):
         return loader.construct_scalar(node)
     elif isinstance(node, yaml.SequenceNode):
@@ -38,74 +37,69 @@ _CfnLoader.add_multi_constructor("!", _cfn_tag_constructor)
 
 
 @pytest.fixture(scope="module")
-def template():
-    """Load and parse the CloudFormation template."""
-    with open(TEMPLATE_PATH, "r") as f:
+def primary_template():
+    with open(PRIMARY_TEMPLATE_PATH, "r") as f:
         return yaml.load(f, Loader=_CfnLoader)
 
 
 @pytest.fixture(scope="module")
-def resources(template):
-    """Extract the Resources section from the template."""
-    return template.get("Resources", {})
+def primary_resources(primary_template):
+    return primary_template.get("Resources", {})
 
 
 @pytest.fixture(scope="module")
-def primary_instance(resources):
-    """Extract the primary PostgreSQL instance resource."""
-    return resources["MakitaPgPrimary"]
+def primary_instance(primary_resources):
+    return primary_resources["MakitaPgPrimary"]
 
 
 @pytest.fixture(scope="module")
-def replica_instance(resources):
-    """Extract the replica PostgreSQL instance resource."""
-    return resources["MakitaPgReplica"]
+def replica_template():
+    with open(REPLICA_TEMPLATE_PATH, "r") as f:
+        return yaml.load(f, Loader=_CfnLoader)
+
+
+@pytest.fixture(scope="module")
+def replica_resources(replica_template):
+    return replica_template.get("Resources", {})
+
+
+@pytest.fixture(scope="module")
+def replica_instance(replica_resources):
+    return replica_resources["MakitaPgReplica"]
 
 
 # =========================================================================
-# Requirement 23.3 — Primary instance in us-east-1
+# Primary instance (us-east-1) — makita-stack.yaml
 # =========================================================================
 
 class TestPrimaryInstance:
-    """Validate the PostgreSQL primary instance configuration.
-
-    Validates: Requirement 23.3
-    """
 
     def test_primary_resource_type(self, primary_instance):
         assert primary_instance["Type"] == "AWS::RDS::DBInstance"
 
     def test_primary_db_instance_identifier(self, primary_instance):
-        props = primary_instance["Properties"]
-        assert props["DBInstanceIdentifier"] == "makita-pg-primary"
+        assert primary_instance["Properties"]["DBInstanceIdentifier"] == "makita-pg-primary"
 
     def test_primary_engine_is_postgres(self, primary_instance):
-        props = primary_instance["Properties"]
-        assert props["Engine"] == "postgres"
+        assert primary_instance["Properties"]["Engine"] == "postgres"
 
     def test_primary_has_db_name(self, primary_instance):
-        props = primary_instance["Properties"]
-        assert props.get("DBName") == "makitadb"
+        assert primary_instance["Properties"].get("DBName") == "makitadb"
 
     def test_primary_port(self, primary_instance):
-        props = primary_instance["Properties"]
-        assert props.get("Port") == 5432
+        assert primary_instance["Properties"].get("Port") == 5432
 
     def test_primary_is_not_publicly_accessible(self, primary_instance):
-        props = primary_instance["Properties"]
-        assert props.get("PubliclyAccessible") is False
+        assert primary_instance["Properties"].get("PubliclyAccessible") is False
 
     def test_primary_has_backup_retention(self, primary_instance):
-        props = primary_instance["Properties"]
-        assert props.get("BackupRetentionPeriod", 0) > 0
+        assert primary_instance["Properties"].get("BackupRetentionPeriod", 0) > 0
 
     def test_primary_storage_encrypted(self, primary_instance):
-        props = primary_instance["Properties"]
-        assert props.get("StorageEncrypted") is True
+        assert primary_instance["Properties"].get("StorageEncrypted") is True
 
-    def test_primary_region_parameter_confirms_us_east_1(self, resources):
-        """The /makita/db/primary-region parameter confirms us-east-1."""
-        for name, res in resources.items():
+    def test_primary_region_parameter_confirms_us_east_1(self, primary_resources):
+        for name, res in primary_resources.items():
             if res["Type"] == "AWS::SSM::Parameter":
                 if res["Properties"]["Name"] == "/makita/db/primary-region":
                     assert res["Properties"]["Value"] == "us-east-1"
@@ -114,34 +108,31 @@ class TestPrimaryInstance:
 
 
 # =========================================================================
-# Requirement 23.3 — Replica instance in us-west-2
+# Replica instance (us-west-2) — makita-replica-stack.yaml
 # =========================================================================
 
 class TestReplicaInstance:
-    """Validate the PostgreSQL replica instance configuration.
 
-    Validates: Requirement 23.3
-    """
+    def test_replica_template_exists(self):
+        assert REPLICA_TEMPLATE_PATH.exists()
 
     def test_replica_resource_type(self, replica_instance):
         assert replica_instance["Type"] == "AWS::RDS::DBInstance"
 
     def test_replica_db_instance_identifier(self, replica_instance):
-        props = replica_instance["Properties"]
-        assert props["DBInstanceIdentifier"] == "makita-pg-replica"
+        assert replica_instance["Properties"]["DBInstanceIdentifier"] == "makita-pg-replica"
 
     def test_replica_has_source_db_instance_identifier(self, replica_instance):
-        """Replica must reference the primary via SourceDBInstanceIdentifier."""
-        props = replica_instance["Properties"]
-        assert "SourceDBInstanceIdentifier" in props
+        assert "SourceDBInstanceIdentifier" in replica_instance["Properties"]
 
     def test_replica_is_not_publicly_accessible(self, replica_instance):
-        props = replica_instance["Properties"]
-        assert props.get("PubliclyAccessible") is False
+        assert replica_instance["Properties"].get("PubliclyAccessible") is False
 
-    def test_dr_region_parameter_confirms_us_west_2(self, resources):
-        """The /makita/db/dr-region parameter confirms us-west-2."""
-        for name, res in resources.items():
+    def test_replica_does_not_define_engine(self, replica_instance):
+        assert "Engine" not in replica_instance["Properties"]
+
+    def test_dr_region_parameter_confirms_us_west_2(self, primary_resources):
+        for name, res in primary_resources.items():
             if res["Type"] == "AWS::SSM::Parameter":
                 if res["Properties"]["Name"] == "/makita/db/dr-region":
                     assert res["Properties"]["Value"] == "us-west-2"
@@ -150,65 +141,55 @@ class TestReplicaInstance:
 
 
 # =========================================================================
-# Requirement 23.3 — Replication health configuration
+# Replication configuration across both stacks
 # =========================================================================
 
 class TestReplicationHealth:
-    """Validate replication configuration between primary and replica.
 
-    Validates: Requirement 23.3
-    """
+    def test_replica_source_is_parameterized(self, replica_template):
+        """Replica stack should accept PrimaryInstanceArn as a parameter."""
+        params = replica_template.get("Parameters", {})
+        assert "PrimaryInstanceArn" in params
 
-    def test_replica_source_references_primary_arn(self, replica_instance):
-        """SourceDBInstanceIdentifier should reference the primary's ARN
-        (via !GetAtt MakitaPgPrimary.DBInstanceArn)."""
-        props = replica_instance["Properties"]
-        source = props["SourceDBInstanceIdentifier"]
-        # The CfnLoader resolves !GetAtt to a string "MakitaPgPrimary.DBInstanceArn"
-        assert source is not None
-        assert "MakitaPgPrimary" in str(source)
-
-    def test_replication_status_parameter_is_active(self, resources):
-        """The /makita/db/replication-status parameter should be 'active'."""
-        for name, res in resources.items():
+    def test_replication_status_parameter_is_active(self, primary_resources):
+        for name, res in primary_resources.items():
             if res["Type"] == "AWS::SSM::Parameter":
                 if res["Properties"]["Name"] == "/makita/db/replication-status":
                     assert res["Properties"]["Value"] == "active"
                     return
         pytest.fail("SSM parameter /makita/db/replication-status not found")
 
-    def test_primary_endpoint_stored_in_parameter_store(self, resources):
-        """A parameter for the primary endpoint must exist."""
-        found = False
-        for name, res in resources.items():
-            if res["Type"] == "AWS::SSM::Parameter":
-                if res["Properties"]["Name"] == "/makita/db/primary-endpoint":
-                    found = True
-                    break
+    def test_primary_endpoint_stored_in_parameter_store(self, primary_resources):
+        found = any(
+            res["Type"] == "AWS::SSM::Parameter"
+            and res["Properties"]["Name"] == "/makita/db/primary-endpoint"
+            for res in primary_resources.values()
+        )
         assert found, "SSM parameter /makita/db/primary-endpoint not found"
 
-    def test_replica_endpoint_stored_in_parameter_store(self, resources):
-        """A parameter for the replica endpoint must exist."""
-        found = False
-        for name, res in resources.items():
-            if res["Type"] == "AWS::SSM::Parameter":
-                if res["Properties"]["Name"] == "/makita/db/replica-endpoint":
-                    found = True
-                    break
+    def test_replica_endpoint_stored_in_parameter_store(self, primary_resources):
+        found = any(
+            res["Type"] == "AWS::SSM::Parameter"
+            and res["Properties"]["Name"] == "/makita/db/replica-endpoint"
+            for res in primary_resources.values()
+        )
         assert found, "SSM parameter /makita/db/replica-endpoint not found"
 
-    def test_two_rds_instances_exist(self, resources):
-        """There should be exactly 2 RDS DB instances (primary + replica)."""
-        rds_instances = [
-            k for k, v in resources.items()
-            if v["Type"] == "AWS::RDS::DBInstance"
-        ]
-        assert len(rds_instances) == 2
+    def test_primary_stack_has_one_rds_instance(self, primary_resources):
+        rds = [k for k, v in primary_resources.items() if v["Type"] == "AWS::RDS::DBInstance"]
+        assert len(rds) == 1
 
-    def test_replica_does_not_define_engine(self, replica_instance):
-        """Cross-region replica inherits engine from source — Engine should
-        not be explicitly set on the replica."""
-        props = replica_instance["Properties"]
-        assert "Engine" not in props, (
-            "Replica should not explicitly set Engine; it inherits from the primary"
-        )
+    def test_replica_stack_has_one_rds_instance(self, replica_resources):
+        rds = [k for k, v in replica_resources.items() if v["Type"] == "AWS::RDS::DBInstance"]
+        assert len(rds) == 1
+
+    def test_replica_stack_has_networking(self, replica_resources):
+        """Replica stack should have its own VPC and subnet group."""
+        types = {v["Type"] for v in replica_resources.values()}
+        assert "AWS::EC2::VPC" in types
+        assert "AWS::RDS::DBSubnetGroup" in types
+        assert "AWS::EC2::SecurityGroup" in types
+
+    def test_replica_stack_outputs_endpoint(self, replica_template):
+        outputs = replica_template.get("Outputs", {})
+        assert "ReplicaEndpoint" in outputs
