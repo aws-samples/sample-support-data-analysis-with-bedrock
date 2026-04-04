@@ -102,7 +102,8 @@ graph TB
 ```
 makita/
 ├── infrastructure/
-│   └── makita-stack.yaml          # Single CloudFormation template
+│   ├── makita-stack.yaml          # Primary stack (us-east-1)
+│   └── makita-replica-stack.yaml  # Replica stack (us-west-2)
 ├── mcp-servers/
 │   ├── failover/                  # Failover MCP Server (Strands SDK)
 │   │   ├── models.py
@@ -164,28 +165,65 @@ makita/
 
 ## CloudFormation Deployment
 
-All MAKITA infrastructure is defined in a single CloudFormation template at `infrastructure/makita-stack.yaml`. This template provisions every resource as one atomic unit.
+All MAKITA infrastructure is defined in two CloudFormation templates: a primary stack deployed to us-east-1 and a replica stack deployed to us-west-2.
 
-### Deploy the Stack
+### Step 1 — Deploy the Primary Stack (us-east-1)
 
 ```bash
 aws cloudformation deploy \
   --template-file infrastructure/makita-stack.yaml \
   --stack-name makita-stack \
   --capabilities CAPABILITY_NAMED_IAM \
+  --region us-east-1
+```
+
+### Step 2 — Get the Primary Instance ARN
+
+```bash
+PRIMARY_ARN=$(aws rds describe-db-instances \
+  --db-instance-identifier makita-pg-primary \
   --region us-east-1 \
-  --parameter-overrides \
-    DBMasterUsername=makitaadmin \
-    DBMasterUserPassword=<your-secure-password>
+  --query "DBInstances[0].DBInstanceArn" \
+  --output text)
+```
+
+### Step 3 — Deploy the Replica Stack (us-west-2)
+
+```bash
+aws cloudformation deploy \
+  --template-file infrastructure/makita-replica-stack.yaml \
+  --stack-name makita-replica-stack \
+  --region us-west-2 \
+  --parameter-overrides PrimaryInstanceArn=$PRIMARY_ARN
+```
+
+### Step 4 — Update the Primary Stack with the Replica Endpoint
+
+```bash
+REPLICA_ENDPOINT=$(aws cloudformation describe-stacks \
+  --stack-name makita-replica-stack \
+  --region us-west-2 \
+  --query "Stacks[0].Outputs[?OutputKey=='ReplicaEndpoint'].OutputValue" \
+  --output text)
+
+aws cloudformation deploy \
+  --template-file infrastructure/makita-stack.yaml \
+  --stack-name makita-stack \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region us-east-1 \
+  --parameter-overrides ReplicaEndpoint=$REPLICA_ENDPOINT
 ```
 
 ### Verify Deployment
 
 ```bash
-# Check stack status
+# Check primary stack status
 aws cloudformation describe-stacks --stack-name makita-stack --region us-east-1
 
-# Verify outputs (primary endpoint, replica endpoint, dashboard URL)
+# Check replica stack status
+aws cloudformation describe-stacks --stack-name makita-replica-stack --region us-west-2
+
+# Verify outputs
 aws cloudformation describe-stacks \
   --stack-name makita-stack \
   --region us-east-1 \
@@ -196,19 +234,26 @@ aws cloudformation describe-stacks \
 
 The single stack creates all resources with the `makita-` prefix and mandatory tags (`auto-delete=no`, `Env=prod1`):
 
-| Resource Group | Resources |
-|---|---|
-| PostgreSQL Cluster | `makita-pg-primary` (us-east-1), `makita-pg-replica` (us-west-2) |
-| Parameter Store | `/makita/db/*`, `/makita/mcp/*`, `/makita/dashboard/*` |
-| MCP Servers | `makita-failover-mcp`, `makita-precheck-mcp`, `makita-postcheck-mcp` |
-| Stub Servers | `makita-aws-support-stub`, `makita-servicenow-stub` |
-| AgentCore Governance | Policies, identities, and Bedrock Guardrails per MCP server |
-| CloudWatch | `makita-failover-dashboard` |
-| IAM | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` |
+| Resource Group | Resources | Stack / Region |
+|---|---|---|
+| PostgreSQL Primary | `makita-pg-primary` | `makita-stack` / us-east-1 |
+| PostgreSQL Replica | `makita-pg-replica` | `makita-replica-stack` / us-west-2 |
+| Parameter Store | `/makita/db/*`, `/makita/mcp/*`, `/makita/dashboard/*` | `makita-stack` / us-east-1 |
+| MCP Servers | `makita-failover-mcp`, `makita-precheck-mcp`, `makita-postcheck-mcp` | `makita-stack` / us-east-1 |
+| Stub Servers | `makita-aws-support-stub`, `makita-servicenow-stub` | `makita-stack` / us-east-1 |
+| AgentCore Governance | Policies, identities, and Bedrock Guardrails per MCP server | `makita-stack` / us-east-1 |
+| CloudWatch | `makita-failover-dashboard` | `makita-stack` / us-east-1 |
+| IAM | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | `makita-stack` / us-east-1 |
+| Secrets Manager | `makita-db-master-secret` | `makita-stack` / us-east-1 |
 
 ### Tear Down
 
 ```bash
+# Delete replica stack first (us-west-2)
+aws cloudformation delete-stack --stack-name makita-replica-stack --region us-west-2
+aws cloudformation wait stack-delete-complete --stack-name makita-replica-stack --region us-west-2
+
+# Then delete primary stack (us-east-1)
 aws cloudformation delete-stack --stack-name makita-stack --region us-east-1
 ```
 

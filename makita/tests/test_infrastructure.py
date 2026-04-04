@@ -66,6 +66,7 @@ def outputs(template):
 TAGGING_EXCEPTION_TYPES = {
     "AWS::CloudWatch::Dashboard",
     "AWS::EC2::VPCGatewayAttachment",
+    "AWS::SecretsManager::SecretTargetAttachment",
 }
 
 # Resource types where tags use map syntax (Key: Value) instead of list-of-dicts
@@ -355,7 +356,7 @@ class TestMandatoryResourceTags:
             k: v for k, v in resources.items()
             if v["Type"] == "AWS::RDS::DBInstance"
         }
-        assert len(rds_resources) >= 2, "Expected at least 2 RDS instances"
+        assert len(rds_resources) >= 1, "Expected at least 1 RDS instance"
         for logical_id, res in rds_resources.items():
             tags = _extract_tags(res["Properties"], res["Type"])
             for key, val in MANDATORY_TAGS.items():

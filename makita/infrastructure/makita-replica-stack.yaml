@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  MAKITA Replica Stack — Cross-region PostgreSQL read replica in us-west-2.
+  Deploy this stack to us-west-2 after deploying makita-stack.yaml to us-east-1.
+
+# =============================================================================
+# Parameters
+# =============================================================================
+Parameters:
+  PrimaryInstanceArn:
+    Type: String
+    Description: >-
+      ARN of the primary PostgreSQL instance (makita-pg-primary) in us-east-1.
+      Get this from the makita-stack outputs or from the RDS console.
+
+# =============================================================================
+# Resources
+# =============================================================================
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # VPC and Networking — DR Region (us-west-2)
+  # ---------------------------------------------------------------------------
+  MakitaDrVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: makita-dr-vpc
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaDrSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MakitaDrVpc
+      CidrBlock: 10.1.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: makita-dr-subnet-a
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaDrSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MakitaDrVpc
+      CidrBlock: 10.1.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: makita-dr-subnet-b
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaDrDbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: makita-dr-db-subnet-group
+      DBSubnetGroupDescription: Subnet group for MAKITA PostgreSQL replica in us-west-2
+      SubnetIds:
+        - !Ref MakitaDrSubnetA
+        - !Ref MakitaDrSubnetB
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  MakitaDrDbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: makita-dr-db-sg
+      GroupDescription: Security group for MAKITA PostgreSQL replica in us-west-2
+      VpcId: !Ref MakitaDrVpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 10.1.0.0/16
+          Description: Allow PostgreSQL access from within the DR VPC
+      Tags:
+        - Key: Name
+          Value: makita-dr-db-sg
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Read Replica — Cross-region from us-east-1 primary
+  # ---------------------------------------------------------------------------
+  MakitaPgReplica:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: makita-pg-replica
+      SourceDBInstanceIdentifier: !Ref PrimaryInstanceArn
+      DBInstanceClass: db.t3.medium
+      StorageType: gp3
+      PubliclyAccessible: false
+      CopyTagsToSnapshot: true
+      DeletionProtection: false
+      DBSubnetGroupName: !Ref MakitaDrDbSubnetGroup
+      VPCSecurityGroups:
+        - !GetAtt MakitaDrDbSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: makita-pg-replica
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+# =============================================================================
+# Outputs
+# =============================================================================
+Outputs:
+  ReplicaEndpoint:
+    Description: PostgreSQL replica instance endpoint (us-west-2)
+    Value: !GetAtt MakitaPgReplica.Endpoint.Address
+    Export:
+      Name: makita-replica-endpoint
+
+  ReplicaInstanceArn:
+    Description: ARN of the PostgreSQL replica instance
+    Value: !GetAtt MakitaPgReplica.DBInstanceArn
+    Export:
+      Name: makita-replica-instance-arn
