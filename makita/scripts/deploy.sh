@@ -177,10 +177,37 @@ deploy_replica() {
 }
 
 deploy_agentcore() {
+  echo "[agentcore] Building boto3 Lambda layer..."
+  local layer_output
+  layer_output=$(bash "${SCRIPT_DIR}/build-boto3-layer.sh" 2>&1)
+  echo "${layer_output}"
+  local layer_arn
+  layer_arn=$(echo "${layer_output}" | grep "^LAYER_ARN=" | cut -d= -f2)
+
+  echo "[agentcore] Packaging MCP server code..."
+  local pkg_output
+  pkg_output=$(bash "${SCRIPT_DIR}/package-mcp.sh" 2>&1)
+  echo "${pkg_output}"
+  local bucket
+  local key
+  bucket=$(echo "${pkg_output}" | grep "^BUCKET=" | cut -d= -f2)
+  key=$(echo "${pkg_output}" | grep "^KEY=" | cut -d= -f2)
+
+  if [ -z "${bucket}" ]; then
+    echo "ERROR: Could not determine artifact bucket from packaging script."
+    exit 1
+  fi
+
+  local extra_params="ArtifactBucket=${bucket} ArtifactKey=${key}"
+  if [ -n "${layer_arn}" ]; then
+    extra_params="${extra_params} Boto3LayerArn=${layer_arn}"
+  fi
+
   echo "[agentcore] Deploying ${AGENTCORE_STACK} to ${PRIMARY_REGION}..."
   cleanup_failed_stack "${AGENTCORE_STACK}" "${PRIMARY_REGION}"
   deploy_or_create_stack "${AGENTCORE_STACK}" "${INFRA_DIR}/makita-agentcore-stack.yaml" \
-    "${PRIMARY_REGION}" --capabilities CAPABILITY_NAMED_IAM
+    "${PRIMARY_REGION}" --capabilities CAPABILITY_NAMED_IAM \
+    --parameter-overrides ${extra_params}
   echo "[agentcore] Done."
 }
 
