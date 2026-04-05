@@ -204,11 +204,93 @@ Resources:
                 wait_ready(c, c.get_gateway, "gatewayIdentifier", gw_id,
                            None, None, "status", "READY")
 
-            # 2. Create Gateway Targets — mcpServer type not available yet
-            # Targets require Lambda functions with toolSchema definitions.
-            # Skipping until MCP servers are deployed as Lambda functions.
+            # 2. Create Gateway Targets with Lambda target type + inline tool schemas
             if gw_id:
-              print(f"Gateway {gw_id} ready. Targets need Lambda-backed MCP servers (future task).")
+              target_defs = {
+                "makita-failover-target": {
+                  "desc": "Failover MCP Server tools",
+                  "tools": [
+                    {"name": "execute_failover", "description": "Promotes DR replica to primary",
+                     "inputSchema": {"type": "object", "properties": {
+                       "primary_region": {"type": "string", "description": "Current primary region"},
+                       "dr_region": {"type": "string", "description": "DR region"},
+                       "cluster_name": {"type": "string", "description": "Cluster name"}},
+                       "required": ["primary_region", "dr_region", "cluster_name"]}},
+                    {"name": "health_check", "description": "Returns cluster health status",
+                     "inputSchema": {"type": "object", "properties": {
+                       "cluster_name": {"type": "string", "description": "Cluster name"}},
+                       "required": ["cluster_name"]}},
+                  ]},
+                "makita-precheck-target": {
+                  "desc": "Pre-Check MCP Server tools",
+                  "tools": [
+                    {"name": "verify_replication_health", "description": "Checks replication lag and state",
+                     "inputSchema": {"type": "object", "properties": {
+                       "cluster_name": {"type": "string"}}, "required": ["cluster_name"]}},
+                    {"name": "verify_primary_status", "description": "Verifies primary instance status",
+                     "inputSchema": {"type": "object", "properties": {
+                       "cluster_name": {"type": "string"}, "primary_region": {"type": "string"}},
+                       "required": ["cluster_name", "primary_region"]}},
+                    {"name": "verify_replica_readiness", "description": "Verifies replica readiness",
+                     "inputSchema": {"type": "object", "properties": {
+                       "cluster_name": {"type": "string"}, "dr_region": {"type": "string"}},
+                       "required": ["cluster_name", "dr_region"]}},
+                  ]},
+                "makita-postcheck-target": {
+                  "desc": "Post-Check MCP Server tools",
+                  "tools": [
+                    {"name": "verify_new_primary_health", "description": "Verifies promoted instance health",
+                     "inputSchema": {"type": "object", "properties": {
+                       "cluster_name": {"type": "string"}, "dr_region": {"type": "string"}},
+                       "required": ["cluster_name", "dr_region"]}},
+                    {"name": "verify_endpoints", "description": "Verifies Parameter Store endpoints",
+                     "inputSchema": {"type": "object", "properties": {
+                       "cluster_name": {"type": "string"}}, "required": ["cluster_name"]}},
+                    {"name": "verify_replication_established", "description": "Verifies replication from new primary",
+                     "inputSchema": {"type": "object", "properties": {
+                       "cluster_name": {"type": "string"}}, "required": ["cluster_name"]}},
+                  ]},
+                "makita-aws-support-target": {
+                  "desc": "AWS Support Stub tools",
+                  "tools": [
+                    {"name": "create_support_case", "description": "Creates AWS Support case",
+                     "inputSchema": {"type": "object", "properties": {
+                       "subject": {"type": "string"}, "description": {"type": "string"},
+                       "severity": {"type": "string"}}, "required": ["subject", "description", "severity"]}},
+                    {"name": "update_support_case", "description": "Updates AWS Support case",
+                     "inputSchema": {"type": "object", "properties": {
+                       "case_id": {"type": "string"}, "status": {"type": "string"},
+                       "update_description": {"type": "string"}}, "required": ["case_id", "status", "update_description"]}},
+                  ]},
+                "makita-servicenow-target": {
+                  "desc": "ServiceNow Stub tools",
+                  "tools": [
+                    {"name": "create_ticket", "description": "Creates ServiceNow ticket",
+                     "inputSchema": {"type": "object", "properties": {
+                       "short_description": {"type": "string"}, "description": {"type": "string"},
+                       "priority": {"type": "string"}, "category": {"type": "string"}},
+                       "required": ["short_description", "description", "priority", "category"]}},
+                    {"name": "update_ticket", "description": "Updates ServiceNow ticket",
+                     "inputSchema": {"type": "object", "properties": {
+                       "ticket_id": {"type": "string"}, "status": {"type": "string"},
+                       "work_notes": {"type": "string"}}, "required": ["ticket_id", "status", "work_notes"]}},
+                  ]},
+              }
+              # Use the agentcore manager Lambda ARN as a placeholder for all targets
+              lambda_arn = props.get("ServiceToken", "")
+              for tname, tdef in target_defs.items():
+                safe_call(c.create_gateway_target, f"Target {tname}",
+                  gatewayIdentifier=gw_id,
+                  name=tname,
+                  description=tdef["desc"],
+                  targetConfiguration={"mcp": {"lambda": {
+                    "lambdaArn": lambda_arn,
+                    "toolSchema": {"inlinePayload": tdef["tools"]},
+                  }}},
+                  credentialProviderConfigurations=[{
+                    "credentialProviderType": "GATEWAY_IAM_ROLE",
+                  }],
+                )
 
             # 3. Create Workload Identities (name only — no roleArn on this API version)
             for ident in IDENTITIES:
@@ -284,6 +366,14 @@ Resources:
             except Exception as e:
               print(f"Delete gateway: {e}")
 
+  MakitaGatewayLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MakitaAgentCoreLambda
+      Action: lambda:InvokeFunction
+      Principal: bedrock-agentcore.amazonaws.com
+      SourceAccount: !Ref "AWS::AccountId"
+
   MakitaAgentCoreResources:
     Type: Custom::AgentCoreResources
     Properties:
@@ -293,7 +383,7 @@ Resources:
       PostcheckRoleArn: !ImportValue makita-postcheck-role-arn
       ArtifactBucket: !Ref ArtifactBucket
       ArtifactKey: !Ref ArtifactKey
-      ForceUpdate: "v17-permit-all-actions"
+      ForceUpdate: "v23-lambda-permission"
 
 Outputs:
   AgentCoreResourceStatus:

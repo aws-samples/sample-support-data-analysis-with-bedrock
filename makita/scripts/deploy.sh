@@ -33,7 +33,7 @@ cleanup_failed_stack() {
     --query "Stacks[0].StackStatus" \
     --output text 2>/dev/null || echo "DOES_NOT_EXIST")
 
-  if [[ "${status}" == *"FAILED"* ]] || [[ "${status}" == *"ROLLBACK"* ]]; then
+  if [[ "${status}" == "CREATE_FAILED" ]] || [[ "${status}" == "ROLLBACK_COMPLETE" ]] || [[ "${status}" == "ROLLBACK_FAILED" ]]; then
     echo "       Found ${stack_name} in ${status} state, cleaning up..."
     for i in 1 2 3; do
       aws cloudformation delete-stack \

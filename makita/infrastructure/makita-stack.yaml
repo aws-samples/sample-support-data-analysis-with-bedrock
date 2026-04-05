@@ -325,7 +325,9 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service: lambda.amazonaws.com
+              Service:
+                - lambda.amazonaws.com
+                - bedrock-agentcore.amazonaws.com
             Action: sts:AssumeRole
       Policies:
         - PolicyName: makita-failover-rds-policy
@@ -345,6 +347,11 @@ Resources:
                   - ssm:GetParameter
                 Resource:
                   - !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/makita/*"
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:makita-*"
       Tags:
         - Key: auto-delete
           Value: "no"
