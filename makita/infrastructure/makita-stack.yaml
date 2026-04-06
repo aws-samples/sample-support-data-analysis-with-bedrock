@@ -46,6 +46,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   # ---------------------------------------------------------------------------
   # VPC and Networking — Primary Region (us-east-1)
@@ -63,6 +65,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaInternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -74,6 +78,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaVpcGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -94,6 +100,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaSubnetB:
     Type: AWS::EC2::Subnet
@@ -108,6 +116,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaDbSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -122,6 +132,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaDbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -142,6 +154,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   # ---------------------------------------------------------------------------
   # PostgreSQL Cluster — Primary Instance (us-east-1)
@@ -176,6 +190,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   # ---------------------------------------------------------------------------
   # Secrets Manager — Attach secret to the RDS primary instance
@@ -208,6 +224,7 @@ Resources:
       Tags:
         auto-delete: "no"
         Env: prod1
+        proj: makita
 
   MakitaParamReplicaEndpoint:
     Type: AWS::SSM::Parameter
@@ -219,6 +236,7 @@ Resources:
       Tags:
         auto-delete: "no"
         Env: prod1
+        proj: makita
 
   MakitaParamPrimaryRegion:
     Type: AWS::SSM::Parameter
@@ -230,6 +248,7 @@ Resources:
       Tags:
         auto-delete: "no"
         Env: prod1
+        proj: makita
 
   MakitaParamDrRegion:
     Type: AWS::SSM::Parameter
@@ -241,6 +260,7 @@ Resources:
       Tags:
         auto-delete: "no"
         Env: prod1
+        proj: makita
 
   MakitaParamClusterName:
     Type: AWS::SSM::Parameter
@@ -252,6 +272,7 @@ Resources:
       Tags:
         auto-delete: "no"
         Env: prod1
+        proj: makita
 
   MakitaParamReplicationStatus:
     Type: AWS::SSM::Parameter
@@ -263,6 +284,7 @@ Resources:
       Tags:
         auto-delete: "no"
         Env: prod1
+        proj: makita
 
   MakitaParamPort:
     Type: AWS::SSM::Parameter
@@ -274,6 +296,7 @@ Resources:
       Tags:
         auto-delete: "no"
         Env: prod1
+        proj: makita
 
   # MCP Server ARN parameters — placeholder values until AgentCore
   # MCP Server resources are defined in task 2.4
@@ -287,6 +310,7 @@ Resources:
       Tags:
         auto-delete: "no"
         Env: prod1
+        proj: makita
 
   MakitaParamPrecheckServerArn:
     Type: AWS::SSM::Parameter
@@ -298,6 +322,7 @@ Resources:
       Tags:
         auto-delete: "no"
         Env: prod1
+        proj: makita
 
   MakitaParamPostcheckServerArn:
     Type: AWS::SSM::Parameter
@@ -309,6 +334,7 @@ Resources:
       Tags:
         auto-delete: "no"
         Env: prod1
+        proj: makita
 
   # ---------------------------------------------------------------------------
   # IAM Roles — Dedicated roles for each MCP Server
@@ -357,6 +383,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   # Pre-Check MCP Server role: read-only permissions for RDS describe
   # and SSM get operations to verify cluster state before failover.
@@ -393,6 +421,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   # Post-Check MCP Server role: read-only permissions for RDS describe
   # and SSM get operations to verify cluster state after failover.
@@ -429,6 +459,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   # ===========================================================================
   # AgentCore Resources (MCP Servers, Policies, Identities)
@@ -498,6 +530,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaPrecheckGuardrail:
     Type: AWS::Bedrock::Guardrail
@@ -552,6 +586,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaPostcheckGuardrail:
     Type: AWS::Bedrock::Guardrail
@@ -607,6 +643,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   # ===========================================================================
   # CloudWatch Dashboard — removed from stack
