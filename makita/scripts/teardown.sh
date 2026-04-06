@@ -14,9 +14,14 @@ REPLICA_STACK="makita-replica-stack"
 echo "=== MAKITA Teardown ==="
 echo ""
 
-# --- Step 0: Delete AgentCore stack if it exists ---
+# --- Step 0: Delete AgentCore resources ---
+echo "[0/2] Tearing down AgentCore resources..."
+if [ -f ".venv/bin/python" ]; then
+  .venv/bin/python scripts/deploy_agentcore.py --teardown 2>/dev/null || true
+fi
+
+# Also delete the CloudFormation stack if it exists
 AGENTCORE_STACK="makita-agentcore-stack"
-echo "[0/2] Checking for AgentCore stack..."
 if aws cloudformation describe-stacks --stack-name "${AGENTCORE_STACK}" --region "${PRIMARY_REGION}" >/dev/null 2>&1; then
   echo "       Deleting AgentCore stack in ${PRIMARY_REGION}..."
   aws cloudformation delete-stack \
