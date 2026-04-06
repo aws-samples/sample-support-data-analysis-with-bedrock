@@ -8,6 +8,8 @@ set -euo pipefail
 #   ./scripts/deploy.sh primary      Deploy primary stack only (us-east-1)
 #   ./scripts/deploy.sh replica      Deploy replica stack only (us-west-2)
 #   ./scripts/deploy.sh agentcore    Deploy AgentCore via Python script (us-east-1)
+#   ./scripts/deploy.sh devops-agent Deploy DevOps Agent Space (us-east-1)
+#   ./scripts/deploy.sh kiro-agent   Deploy Kiro agent config for AgentCore Gateway
 #   ./scripts/deploy.sh all          Deploy all stacks in order (same as no args)
 
 PRIMARY_REGION="us-east-1"
@@ -183,6 +185,18 @@ deploy_agentcore() {
   echo "[agentcore] Done."
 }
 
+deploy_devops_agent() {
+  echo "[devops-agent] Deploying DevOps Agent Space via Python script..."
+  .venv/bin/python scripts/deploy_devops_agent.py
+  echo "[devops-agent] Done."
+}
+
+deploy_kiro_agent() {
+  echo "[kiro-agent] Deploying Kiro agent config via Python script..."
+  .venv/bin/python scripts/deploy_kiro_agent.py
+  echo "[kiro-agent] Done."
+}
+
 print_summary() {
   echo ""
   echo "=== Deployment Summary ==="
@@ -217,19 +231,28 @@ case "${TARGET}" in
   agentcore)
     deploy_agentcore
     ;;
+  devops-agent)
+    deploy_devops_agent
+    ;;
+  kiro-agent)
+    deploy_kiro_agent
+    ;;
   all)
     deploy_primary
     deploy_replica
     deploy_agentcore
+    deploy_devops_agent
     print_summary
     ;;
   *)
-    echo "Usage: $0 [primary|replica|agentcore|all]"
+    echo "Usage: $0 [primary|replica|agentcore|devops-agent|kiro-agent|all]"
     echo ""
-    echo "  primary     Deploy primary stack (us-east-1)"
-    echo "  replica     Deploy replica stack (us-west-2) + update primary"
-    echo "  agentcore   Deploy AgentCore Runtimes + Gateway (us-east-1)"
-    echo "  all         Deploy all (default)"
+    echo "  primary       Deploy primary stack (us-east-1)"
+    echo "  replica       Deploy replica stack (us-west-2) + update primary"
+    echo "  agentcore     Deploy AgentCore Runtimes + Gateway (us-east-1)"
+    echo "  devops-agent  Deploy DevOps Agent Space (us-east-1)"
+    echo "  kiro-agent    Deploy Kiro agent config for AgentCore Gateway"
+    echo "  all           Deploy all (default)"
     exit 1
     ;;
 esac
