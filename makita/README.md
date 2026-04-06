@@ -107,6 +107,7 @@ makita/
 ├── scripts/
 │   ├── deploy.sh                  # Automated deployment script
 │   ├── deploy_agentcore.py        # AgentCore Runtime + Gateway deployment
+│   ├── deploy_devops_agent.py     # DevOps Agent Space deployment
 │   └── teardown.sh                # Automated teardown script
 ├── mcp-servers/
 │   ├── failover/                  # Failover MCP Server (Strands SDK)
