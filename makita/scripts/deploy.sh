@@ -7,14 +7,13 @@ set -euo pipefail
 #   ./scripts/deploy.sh              Deploy all stacks in order
 #   ./scripts/deploy.sh primary      Deploy primary stack only (us-east-1)
 #   ./scripts/deploy.sh replica      Deploy replica stack only (us-west-2)
-#   ./scripts/deploy.sh agentcore    Deploy AgentCore stack only (us-east-1)
+#   ./scripts/deploy.sh agentcore    Deploy AgentCore via Python script (us-east-1)
 #   ./scripts/deploy.sh all          Deploy all stacks in order (same as no args)
 
 PRIMARY_REGION="us-east-1"
 DR_REGION="us-west-2"
 PRIMARY_STACK="makita-stack"
 REPLICA_STACK="makita-replica-stack"
-AGENTCORE_STACK="makita-agentcore-stack"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_DIR="${SCRIPT_DIR}/../infrastructure"
 TARGET="${1:-all}"
@@ -101,6 +100,7 @@ deploy_or_create_stack() {
       --stack-name "${stack_name}" \
       --region "${region}" \
       --disable-rollback \
+      --tags Key=proj,Value=makita Key=auto-delete,Value=no Key=Env,Value=prod1 \
       "${create_args[@]}"
     echo "       Waiting for ${stack_name} to complete..."
     aws cloudformation wait stack-create-complete \
@@ -112,6 +112,7 @@ deploy_or_create_stack() {
       --stack-name "${stack_name}" \
       --region "${region}" \
       --no-fail-on-empty-changeset \
+      --tags proj=makita auto-delete=no Env=prod1 \
       "${deploy_args[@]}"
     aws cloudformation wait stack-update-complete \
       --stack-name "${stack_name}" \
@@ -219,9 +220,7 @@ case "${TARGET}" in
   all)
     deploy_primary
     deploy_replica
-    if [ "${DEPLOY_AGENTCORE:-false}" = "true" ]; then
-      deploy_agentcore
-    fi
+    deploy_agentcore
     print_summary
     ;;
   *)
@@ -229,8 +228,8 @@ case "${TARGET}" in
     echo ""
     echo "  primary     Deploy primary stack (us-east-1)"
     echo "  replica     Deploy replica stack (us-west-2) + update primary"
-    echo "  agentcore   Deploy AgentCore stack (us-east-1)"
-    echo "  all         Deploy all stacks in order (default)"
+    echo "  agentcore   Deploy AgentCore Runtimes + Gateway (us-east-1)"
+    echo "  all         Deploy all (default)"
     exit 1
     ;;
 esac

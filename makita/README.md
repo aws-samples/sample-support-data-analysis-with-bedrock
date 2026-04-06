@@ -103,8 +103,7 @@ graph TB
 makita/
 ├── infrastructure/
 │   ├── makita-stack.yaml          # Primary stack (us-east-1)
-│   ├── makita-replica-stack.yaml  # Replica stack (us-west-2)
-│   └── makita-agentcore-stack.yaml # AgentCore stack (optional, us-east-1)
+│   └── makita-replica-stack.yaml  # Replica stack (us-west-2)
 ├── scripts/
 │   ├── deploy.sh                  # Automated deployment script
 │   ├── deploy_agentcore.py        # AgentCore Runtime + Gateway deployment

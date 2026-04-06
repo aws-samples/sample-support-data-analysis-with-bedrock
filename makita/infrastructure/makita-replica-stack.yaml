@@ -34,6 +34,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaDrSubnetA:
     Type: AWS::EC2::Subnet
@@ -48,6 +50,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaDrSubnetB:
     Type: AWS::EC2::Subnet
@@ -62,6 +66,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaDrDbSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -76,6 +82,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   MakitaDrDbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -96,6 +104,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   # ---------------------------------------------------------------------------
   # KMS Key — For encrypting the cross-region replica
@@ -120,6 +130,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
   # ---------------------------------------------------------------------------
   # PostgreSQL Read Replica — Cross-region from us-east-1 primary
@@ -146,6 +158,8 @@ Resources:
           Value: "no"
         - Key: Env
           Value: prod1
+        - Key: proj
+          Value: makita
 
 # =============================================================================
 # Outputs
