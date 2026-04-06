@@ -107,6 +107,7 @@ makita/
 │   └── makita-agentcore-stack.yaml # AgentCore stack (optional, us-east-1)
 ├── scripts/
 │   ├── deploy.sh                  # Automated deployment script
+│   ├── deploy_agentcore.py        # AgentCore Runtime + Gateway deployment
 │   └── teardown.sh                # Automated teardown script
 ├── mcp-servers/
 │   ├── failover/                  # Failover MCP Server (Strands SDK)
