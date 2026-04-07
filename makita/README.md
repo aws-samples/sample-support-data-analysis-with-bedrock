@@ -1,5 +1,7 @@
 # MAKITA — Machine Augmented Key Infrastructure Technology Automation
 
+##Please note that this is a work in progress, and not ready for usage.##
+
 MAKITA is a technical reference architecture demonstrating AI-assisted disaster recovery using **Amazon DevOps Agent** and **Amazon AgentCore**. The system provisions a multi-region PostgreSQL cluster across us-east-1 (primary) and us-west-2 (DR) via a single AWS CloudFormation stack and orchestrates automated failover through MCP servers built with the **Strands Agents SDK**.
 
 ## Key Technologies
@@ -153,6 +155,11 @@ makita/
    git clone <repository-url>
    cd makita
    ```
+
+  WIP to get the working branch. Use this command until this work is merged with main.
+  ```bash
+  git clone -b makita https://github.com/aws-samples/sample-support-data-analysis-with-bedrock.git
+  ```
 
 2. Create a virtual environment and install dependencies:
 
