@@ -2,16 +2,16 @@
 
 ## Overview
 
-MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technical reference architecture demonstrating AI-assisted disaster recovery using Amazon DevOps Agent and Amazon AgentCore. The system provisions a multi-region PostgreSQL cluster (us-east-1 primary, us-west-2 DR) via a single CloudFormation stack and orchestrates automated failover through MCP servers built with the Strands SDK.
+MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technical reference architecture demonstrating AI-assisted disaster recovery using Amazon DevOps Agent and Amazon AgentCore. The system provisions a multi-region PostgreSQL cluster (us-east-1 primary, us-west-2 DR) via two CloudFormation stacks and orchestrates automated failover through MCP servers built with the Strands SDK.
 
 The architecture follows a separation-of-concerns model with three dedicated MCP servers:
 - **Failover MCP Server** — executes the actual PostgreSQL promotion and endpoint updates
 - **Pre-Check MCP Server** — validates cluster health before failover
 - **Post-Check MCP Server** — verifies cluster state after failover
 
-Two stub MCP servers simulate external ticketing systems (AWS Support and ServiceNow) for tracking DR operations. All servers are hosted in AgentCore, governed by AgentCore Policies/Identities and Bedrock Guardrails, and driven by DevOps Agent through natural language interactions.
+Two stub MCP servers simulate external ticketing systems (AWS Support and ServiceNow) for tracking DR operations. All five servers are hosted as individual AgentCore Runtimes behind the `makita-mcp-gateway` AgentCore Gateway, governed by Cedar policies and Bedrock Guardrails, and driven by DevOps Agent through natural language interactions.
 
-All infrastructure is defined in a single CloudFormation template, all configuration lives in Parameter Store under `/makita/`, and all resources use the `makita-` naming prefix. Every AWS resource carries mandatory tags (`auto-delete=no`, `Env=prod1`) for lifecycle management and environment identification. AgentCore Policies enforce that MCP servers only operate on resources tagged with `Env=prod1`, providing an additional layer of environment isolation beyond the `makita-` prefix constraint.
+Infrastructure is defined in two CloudFormation templates under `infrastructure/workloads/postgresql/`: `makita-postgresql-stack.yaml` (us-east-1) and `makita-postgresql-replica-stack.yaml` (us-west-2). AgentCore resources (Runtimes, Gateway, Cedar policies, Guardrails) are deployed via `scripts/deploy_agentcore.py`. The DevOps Agent Space is deployed via `scripts/deploy_devops_agent.py`. A Kiro agent configuration is deployed via `scripts/deploy_kiro_agent.py`. All configuration lives in Parameter Store under `/makita/`, and all resources use the `makita-` naming prefix. Every AWS resource carries mandatory tags (`auto-delete=no`, `Env=prod1`) for lifecycle management and environment identification. Cedar policies enforce that MCP servers only operate on resources tagged with `Env=prod1`, providing an additional layer of environment isolation beyond the `makita-` prefix constraint.
 
 A standalone architectural diagram (Mermaid syntax) is maintained as a separate artifact for independent review of the system architecture.
 
@@ -26,25 +26,23 @@ graph TB
     end
 
     subgraph "Amazon DevOps Agent"
-        DA[DevOps Agent]
+        DA[DevOps Agent Space<br/>makita-agentspace]
     end
 
     subgraph "Amazon AgentCore"
+        GW[AgentCore Gateway<br/>makita-mcp-gateway]
+
         subgraph "Governance Layer"
             BG_F[Bedrock Guardrails<br/>Failover]
             BG_Pre[Bedrock Guardrails<br/>Pre-Check]
             BG_Post[Bedrock Guardrails<br/>Post-Check]
-            AP[AgentCore Policies]
-            AI[AgentCore Identities]
+            CP[Cedar Policies]
         end
 
-        subgraph "MCP Servers"
+        subgraph "AgentCore Runtimes"
             PreMCP[Pre-Check<br/>MCP Server]
             FailMCP[Failover<br/>MCP Server]
             PostMCP[Post-Check<br/>MCP Server]
-        end
-
-        subgraph "Stub Servers"
             AWSS[AWS Support<br/>Stub Server]
             SNS[ServiceNow<br/>Stub Server]
         end
@@ -57,11 +55,6 @@ graph TB
 
     subgraph "us-west-2 (DR Region)"
         PG_Replica[PostgreSQL<br/>Replica Instance]
-        PS2[Parameter Store<br/>/makita/*]
-    end
-
-    subgraph "Monitoring"
-        CWD[CloudWatch Dashboard<br/>makita-failover-dashboard]
     end
 
     subgraph "Event Logging"
@@ -69,22 +62,17 @@ graph TB
     end
 
     User --> DA
-    DA --> PreMCP
-    DA --> FailMCP
-    DA --> PostMCP
-    DA --> AWSS
-    DA --> SNS
-    DA --> ELF
+    DA --> GW
+    GW --> PreMCP
+    GW --> FailMCP
+    GW --> PostMCP
+    GW --> AWSS
+    GW --> SNS
 
+    CP -.->|restricts| GW
     BG_F -.->|governs| FailMCP
     BG_Pre -.->|governs| PreMCP
     BG_Post -.->|governs| PostMCP
-    AP -.->|restricts| PreMCP
-    AP -.->|restricts| FailMCP
-    AP -.->|restricts| PostMCP
-    AI -.->|identity| PreMCP
-    AI -.->|identity| FailMCP
-    AI -.->|identity| PostMCP
 
     PreMCP --> PG_Primary
     PreMCP --> PG_Replica
@@ -93,10 +81,9 @@ graph TB
     FailMCP --> PS1
     PostMCP --> PG_Replica
     PostMCP --> PS1
+    DA --> ELF
 
     PG_Primary -->|replication| PG_Replica
-    PG_Primary --> CWD
-    PG_Replica --> CWD
 ```
 
 ### Failover Sequence Flow
@@ -180,22 +167,27 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-### 1. CloudFormation Template (`makita-stack.yaml`)
+### 1. CloudFormation Templates (`infrastructure/workloads/postgresql/`)
 
-A single CloudFormation template that provisions all MAKITA resources as one atomic unit. Uses `AWS::CloudFormation::StackSet` or cross-region resource providers where needed for us-west-2 resources.
+Two CloudFormation templates provision the PostgreSQL infrastructure and supporting AWS resources. AgentCore resources are deployed separately via Python scripts.
+
+(Updated: originally described as a single `makita-stack.yaml`; implementation uses `makita-postgresql-stack.yaml` (us-east-1) and `makita-postgresql-replica-stack.yaml` (us-west-2) under `infrastructure/workloads/postgresql/`. AgentCore MCP server registrations, policies, identities, and the CloudWatch Dashboard are no longer in the CFN stacks. A `makita-db-master-secret` Secrets Manager secret is provisioned for the DB password.)
 
 **Key Resource Groups:**
 
-| Resource Group | Resources | Region(s) |
-|---|---|---|
-| PostgreSQL Cluster | `makita-pg-primary` (RDS), `makita-pg-replica` (RDS Read Replica) | us-east-1, us-west-2 |
-| Parameter Store | `/makita/db/primary-endpoint`, `/makita/db/replica-endpoint`, `/makita/db/primary-region`, `/makita/db/dr-region`, `/makita/db/replication-status` | us-east-1 |
-| MCP Servers | `makita-failover-mcp`, `makita-precheck-mcp`, `makita-postcheck-mcp` | us-east-1 |
-| Stub Servers | `makita-aws-support-stub`, `makita-servicenow-stub` | us-east-1 |
-| AgentCore | `makita-failover-policy`, `makita-precheck-policy`, `makita-postcheck-policy`, `makita-failover-identity`, `makita-precheck-identity`, `makita-postcheck-identity` | us-east-1 |
-| Bedrock Guardrails | `makita-failover-guardrail`, `makita-precheck-guardrail`, `makita-postcheck-guardrail` | us-east-1 |
-| CloudWatch | `makita-failover-dashboard` | us-east-1 |
-| IAM | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | us-east-1 |
+| Resource Group | Resources | Deployed By | Region(s) |
+|---|---|---|---|
+| PostgreSQL Primary | `makita-pg-primary` (RDS), Secrets Manager secret | `makita-postgresql-stack` (CFN) | us-east-1 |
+| PostgreSQL Replica | `makita-pg-replica` (RDS Read Replica) | `makita-postgresql-replica-stack` (CFN) | us-west-2 |
+| Parameter Store | `/makita/db/primary-endpoint`, `/makita/db/replica-endpoint`, `/makita/db/primary-region`, `/makita/db/dr-region`, `/makita/db/replication-status` | `makita-postgresql-stack` (CFN) | us-east-1 |
+| IAM Roles | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | `makita-postgresql-stack` (CFN) | us-east-1 |
+| Secrets Manager | `makita-db-master-secret` | `makita-postgresql-stack` (CFN) | us-east-1 |
+| Bedrock Guardrails (CFN) | `makita-postgresql-failover-guardrail`, `makita-postgresql-precheck-guardrail`, `makita-postgresql-postcheck-guardrail` | `makita-postgresql-stack` (CFN) | us-east-1 |
+| AgentCore Runtimes | `makita_postgresql_failover_mcp`, `makita_postgresql_precheck_mcp`, `makita_postgresql_postcheck_mcp`, `makita_aws_support_stub`, `makita_servicenow_stub` | `deploy_agentcore.py` | us-east-1 |
+| AgentCore Gateway | `makita-mcp-gateway` with Cedar policies per target | `deploy_agentcore.py` | us-east-1 |
+| Bedrock Guardrails (JSON) | Per-runtime guardrails from `policies/guardrails/` | `deploy_agentcore.py` | us-east-1 |
+| DevOps Agent Space | `makita-agentspace` with operator role and web app | `deploy_devops_agent.py` | us-east-1 |
+| Kiro Agent Config | `.kiro/agents/makita-ops.json`, gateway proxy | `deploy_kiro_agent.py` | us-east-1 |
 
 **Naming Convention:** All resource names, logical IDs, and tags use the `makita-` prefix. Parameter Store paths use `/makita/` prefix.
 
@@ -211,7 +203,7 @@ Tags:
 
 These tags are applied to all resource types: RDS instances, IAM roles, SSM parameters, AgentCore MCP servers/policies/identities, Bedrock Guardrails, and the CloudWatch Dashboard. Resources that do not support CloudFormation tagging (e.g., `AWS::CloudWatch::Dashboard` body content) are documented as exceptions via inline comments in the template.
 
-### 2. Failover MCP Server (`makita-failover-mcp`)
+### 2. Failover MCP Server (`makita-postgresql-failover-mcp`)
 
 Built with the Strands SDK. Hosted in AgentCore. Executes the core failover operation.
 
@@ -264,7 +256,7 @@ def health_check(
 }
 ```
 
-### 3. Pre-Check MCP Server (`makita-precheck-mcp`)
+### 3. Pre-Check MCP Server (`makita-postgresql-precheck-mcp`)
 
 Built with the Strands SDK. Hosted in AgentCore. Performs all pre-failover verifications.
 
@@ -316,7 +308,7 @@ def verify_replica_readiness(
 }
 ```
 
-### 4. Post-Check MCP Server (`makita-postcheck-mcp`)
+### 4. Post-Check MCP Server (`makita-postgresql-postcheck-mcp`)
 
 Built with the Strands SDK. Hosted in AgentCore. Performs all post-failover verifications.
 
@@ -443,35 +435,49 @@ def update_ticket(
 
 ### 7. AgentCore Governance
 
-#### AgentCore Policies
+#### AgentCore Gateway
 
-Three policies, one per MCP server, each enforcing:
+The `makita-mcp-gateway` AgentCore Gateway provides a unified MCP entry point for all MAKITA tools. DevOps Agent and Kiro agent connect through the gateway to reach individual MCP server runtimes. Each gateway target has an associated Cedar policy restricting allowed tool actions.
 
-| Constraint | Failover MCP | Pre-Check MCP | Post-Check MCP |
-|---|---|---|---|
-| Resource prefix | `makita-*` | `makita-*` | `makita-*` |
-| Resource tag | `Env=prod1` | `Env=prod1` | `Env=prod1` |
-| Allowed regions | us-east-1 → us-west-2 | us-east-1, us-west-2 | us-east-1, us-west-2 |
-| Principal prefix | `makita-*` | `makita-*` | `makita-*` |
-| Allowed actions | failover operations | pre-check read operations | post-check read operations |
+(Updated: originally described as AgentCore Policies defined in CloudFormation; implementation uses an AgentCore Gateway with Cedar policies per gateway target, deployed via `deploy_agentcore.py`.)
+
+#### Cedar Policies
+
+Five Cedar policies, one per MCP server (including stub servers), stored as standalone files in `policies/agentcore/`:
+
+| Policy File | Server | Constraints |
+|---|---|---|
+| `postgresql-failover.cedar` | Failover MCP | `makita-*` resources, `Env=prod1` tag, us-east-1 → us-west-2, `makita-*` principals, failover operations |
+| `postgresql-precheck.cedar` | Pre-Check MCP | `makita-*` resources, `Env=prod1` tag, us-east-1/us-west-2, `makita-*` principals, pre-check read operations |
+| `postgresql-postcheck.cedar` | Post-Check MCP | `makita-*` resources, `Env=prod1` tag, us-east-1/us-west-2, `makita-*` principals, post-check read operations |
+| `aws-support-stub.cedar` | AWS Support Stub | Stub server tool restrictions |
+| `servicenow-stub.cedar` | ServiceNow Stub | Stub server tool restrictions |
+
+(Updated: originally described 3 policies for workload servers only; implementation includes Cedar policies for all 5 servers including stub servers.)
 
 The `Env=prod1` tag constraint is enforced in addition to the `makita-*` resource prefix, region, and principal constraints. If an MCP server attempts to operate on a resource that does not carry the `Env=prod1` tag, the policy denies the operation regardless of whether the resource name matches the `makita-*` prefix. This provides defense-in-depth: the prefix constraint ensures naming isolation, while the tag constraint ensures environment isolation.
 
-#### AgentCore Identities
+#### AgentCore Workload Identities
 
-Three identities, one per MCP server, each mapping to a dedicated IAM role:
+Three workload identities, one per workload MCP server, each mapping to a dedicated IAM role:
 
 - `makita-failover-identity` → `makita-failover-role`
 - `makita-precheck-identity` → `makita-precheck-role`
 - `makita-postcheck-identity` → `makita-postcheck-role`
 
+(Updated: uses `create_workload_identity` via `deploy_agentcore.py`, not CloudFormation `AWS::AgentCore::Identity` resources.)
+
 #### Bedrock Guardrails
 
-Three guardrails, one per MCP server:
+Five guardrails, one per MCP server (including stub servers):
 
-- `makita-failover-guardrail` — restricts to DR failover actions on PostgreSQL, blocks prompt injection
-- `makita-precheck-guardrail` — restricts to pre-check read actions on PostgreSQL, blocks prompt injection
-- `makita-postcheck-guardrail` — restricts to post-check read actions on PostgreSQL, blocks prompt injection
+- `makita-postgresql-failover-guardrail` — restricts to DR failover actions on PostgreSQL, blocks prompt injection
+- `makita-postgresql-precheck-guardrail` — restricts to pre-check read actions on PostgreSQL, blocks prompt injection
+- `makita-postgresql-postcheck-guardrail` — restricts to post-check read actions on PostgreSQL, blocks prompt injection
+- `aws-support-stub-guardrail` — restricts to support case operations, blocks prompt injection
+- `servicenow-stub-guardrail` — restricts to ticket operations, blocks prompt injection
+
+(Updated: originally described 3 guardrails for workload servers only; implementation includes guardrails for all 5 servers. Guardrail names use `makita-postgresql-*` prefix for workload servers. Guardrail configs are externalized as standalone JSON files in `policies/guardrails/` and deployed via `deploy_agentcore.py` in addition to CloudFormation definitions.)
 
 Each guardrail evaluates requests before the MCP server processes them and includes:
 - Content filtering for malicious prompts
@@ -505,18 +511,13 @@ DevOps Agent writes markdown event log files for each support case and ServiceNo
 - **2024-01-01T12:06:30Z** — Failover complete
 ```
 
-### 9. CloudWatch Dashboard (`makita-failover-dashboard`)
+### 9. CloudWatch Dashboard
 
-Provisioned via CloudFormation. Displays:
-
-- **Primary Region (us-east-1):** CPU utilization, DB connections, read/write IOPS, instance status
-- **DR Region (us-west-2):** CPU utilization, DB connections, read/write IOPS, instance status
-- **Cross-Region:** Replication lag, replication status, failover event annotations
-- **Health:** Instance availability status for both regions
+(Updated: the `makita-failover-dashboard` was removed from the CloudFormation stack during implementation. This component is not currently provisioned. The original design called for a dashboard displaying CPU utilization, DB connections, read/write IOPS, replication lag, and instance status for both regions.)
 
 ### 10. DevOps Agent Chat Integration
 
-DevOps Agent displays each step of the failover sequence in the chat as it happens. The agent connects to all five MCP servers and orchestrates the failover sequence:
+DevOps Agent displays each step of the failover sequence in the chat as it happens. The agent connects to all five MCP servers through the `makita-mcp-gateway` AgentCore Gateway and orchestrates the failover sequence:
 
 1. Create AWS Support case and ServiceNow ticket
 2. Execute Pre-Checks (via Pre-Check MCP Server)
@@ -537,22 +538,25 @@ A standalone Mermaid-syntax architectural diagram maintained as a separate artif
 | Component | Details |
 |---|---|
 | PostgreSQL Cluster | Primary instance (us-east-1) and replica instance (us-west-2) with replication relationship |
-| CloudWatch Dashboard | `makita-failover-dashboard` |
-| MCP Servers | Failover, Pre-Check, Post-Check |
-| Stub Servers | AWS Support Stub, ServiceNow Stub |
-| AgentCore Governance | Policies, Identities, Guardrails |
-| DevOps Agent | With connections to all MCP and stub servers |
+| AgentCore Gateway | `makita-mcp-gateway` — unified MCP entry point |
+| MCP Servers | Failover, Pre-Check, Post-Check (as AgentCore Runtimes) |
+| Stub Servers | AWS Support Stub, ServiceNow Stub (as AgentCore Runtimes) |
+| AgentCore Governance | Cedar Policies, Bedrock Guardrails |
+| DevOps Agent | DevOps Agent Space (`makita-agentspace`) with connections through gateway to all MCP/stub servers |
 | Parameter Store | `/makita/*` parameters |
 | Data Flows | Relationships between all components |
+
+(Updated: removed CloudWatch Dashboard, added AgentCore Gateway, replaced AgentCore Policies/Identities with Cedar Policies, shows DevOps Agent connecting through gateway rather than directly to MCP servers.)
 
 **Diagram Content:**
 
 The diagram uses Mermaid `graph TB` syntax and includes:
-- Subgraphs for each logical grouping (DevOps Agent, AgentCore with governance and servers, primary region, DR region, monitoring)
+- Subgraphs for each logical grouping (DevOps Agent, AgentCore with gateway, governance, and runtimes, primary region, DR region, event logging)
 - Directed edges showing data flow and control flow
+- AgentCore Gateway as the single entry point from DevOps Agent to all MCP servers
 - Replication relationship between primary and replica PostgreSQL instances
-- Governance relationships (guardrails → MCP servers, policies → MCP servers, identities → MCP servers)
-- DevOps Agent connections to all five MCP/stub servers
+- Governance relationships (Cedar policies → gateway, guardrails → MCP servers)
+- DevOps Agent connections through the gateway to all five MCP/stub servers
 
 This diagram mirrors the High-Level Architecture Diagram in the design document but is maintained as a standalone artifact for independent review per Requirement 26.
 
@@ -575,34 +579,37 @@ All parameters stored under the `/makita/` prefix:
 | `/makita/mcp/failover-server-arn` | String | ARN of the Failover MCP Server in AgentCore |
 | `/makita/mcp/precheck-server-arn` | String | ARN of the Pre-Check MCP Server in AgentCore |
 | `/makita/mcp/postcheck-server-arn` | String | ARN of the Post-Check MCP Server in AgentCore |
-| `/makita/dashboard/name` | String | CloudWatch dashboard name |
 
 ### CloudFormation Resource Structure
 
+(Updated: the original single-stack YAML has been replaced by two stacks. The primary stack (`makita-postgresql-stack.yaml`) is in `infrastructure/workloads/postgresql/` and contains PostgreSQL primary, Parameter Store, IAM roles, Secrets Manager, and Bedrock Guardrails. The replica stack (`makita-postgresql-replica-stack.yaml`) is in the same directory and contains the cross-region read replica. AgentCore MCP server registrations, policies, identities, and the CloudWatch Dashboard have been removed from the CFN stacks. AgentCore resources are deployed via `deploy_agentcore.py`.)
+
 ```yaml
+# infrastructure/workloads/postgresql/makita-postgresql-stack.yaml (us-east-1)
 AWSTemplateFormatVersion: '2010-09-09'
-Description: MAKITA - Single stack for multi-region PostgreSQL DR with MCP servers
+Description: MAKITA - Primary PostgreSQL stack with IAM, SSM, Secrets Manager, and Guardrails
 
 Resources:
-  # --- PostgreSQL Cluster ---
-  MakitaPgPrimary:
-    Type: AWS::RDS::DBInstance
+  # --- Secrets Manager ---
+  MakitaDbMasterSecret:
+    Type: AWS::SecretsManager::Secret
     Properties:
-      DBInstanceIdentifier: makita-pg-primary
-      Engine: postgres
-      # ... primary config for us-east-1
+      Name: makita-db-master-secret
+      # ... generates random password for PostgreSQL master user
       Tags:
         - Key: auto-delete
           Value: "no"
         - Key: Env
           Value: prod1
 
-  MakitaPgReplica:
+  # --- PostgreSQL Primary ---
+  MakitaPgPrimary:
     Type: AWS::RDS::DBInstance
     Properties:
-      DBInstanceIdentifier: makita-pg-replica
-      SourceDBInstanceIdentifier: !Ref MakitaPgPrimary
-      # ... replica config, cross-region to us-west-2
+      DBInstanceIdentifier: makita-pg-primary
+      Engine: postgres
+      MasterUserSecret: !Ref MakitaDbMasterSecret
+      # ... primary config for us-east-1
       Tags:
         - Key: auto-delete
           Value: "no"
@@ -620,15 +627,7 @@ Resources:
         auto-delete: "no"
         Env: prod1
 
-  MakitaParamReplicaEndpoint:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Name: /makita/db/replica-endpoint
-      Type: String
-      Value: !GetAtt MakitaPgReplica.Endpoint.Address
-      Tags:
-        auto-delete: "no"
-        Env: prod1
+  # ... additional /makita/ parameters ...
 
   # --- IAM Roles ---
   MakitaFailoverRole:
@@ -646,7 +645,6 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName: makita-precheck-role
-      # ... read-only permissions for RDS describe, SSM get
       Tags:
         - Key: auto-delete
           Value: "no"
@@ -657,136 +655,6 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName: makita-postcheck-role
-      # ... read-only permissions for RDS describe, SSM get
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  # --- AgentCore MCP Server Registrations ---
-  MakitaFailoverMcpServer:
-    Type: AWS::AgentCore::McpServer
-    Properties:
-      ServerName: makita-failover-mcp
-      # ... Strands SDK configuration
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  MakitaPrecheckMcpServer:
-    Type: AWS::AgentCore::McpServer
-    Properties:
-      ServerName: makita-precheck-mcp
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  MakitaPostcheckMcpServer:
-    Type: AWS::AgentCore::McpServer
-    Properties:
-      ServerName: makita-postcheck-mcp
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  MakitaAwsSupportStub:
-    Type: AWS::AgentCore::McpServer
-    Properties:
-      ServerName: makita-aws-support-stub
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  MakitaServicenowStub:
-    Type: AWS::AgentCore::McpServer
-    Properties:
-      ServerName: makita-servicenow-stub
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  # --- AgentCore Policies ---
-  MakitaFailoverPolicy:
-    Type: AWS::AgentCore::Policy
-    Properties:
-      PolicyName: makita-failover-policy
-      # Resource constraint: makita-*
-      # Resource tag constraint: Env=prod1
-      # Region constraint: us-east-1, us-west-2
-      # Principal constraint: makita-*
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  MakitaPrecheckPolicy:
-    Type: AWS::AgentCore::Policy
-    Properties:
-      PolicyName: makita-precheck-policy
-      # Resource constraint: makita-*
-      # Resource tag constraint: Env=prod1
-      # Region constraint: us-east-1, us-west-2
-      # Principal constraint: makita-*
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  MakitaPostcheckPolicy:
-    Type: AWS::AgentCore::Policy
-    Properties:
-      PolicyName: makita-postcheck-policy
-      # Resource constraint: makita-*
-      # Resource tag constraint: Env=prod1
-      # Region constraint: us-east-1, us-west-2
-      # Principal constraint: makita-*
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  # --- AgentCore Identities ---
-  MakitaFailoverIdentity:
-    Type: AWS::AgentCore::Identity
-    Properties:
-      IdentityName: makita-failover-identity
-      RoleArn: !GetAtt MakitaFailoverRole.Arn
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  MakitaPrecheckIdentity:
-    Type: AWS::AgentCore::Identity
-    Properties:
-      IdentityName: makita-precheck-identity
-      RoleArn: !GetAtt MakitaPrecheckRole.Arn
-      Tags:
-        - Key: auto-delete
-          Value: "no"
-        - Key: Env
-          Value: prod1
-
-  MakitaPostcheckIdentity:
-    Type: AWS::AgentCore::Identity
-    Properties:
-      IdentityName: makita-postcheck-identity
-      RoleArn: !GetAtt MakitaPostcheckRole.Arn
       Tags:
         - Key: auto-delete
           Value: "no"
@@ -797,10 +665,9 @@ Resources:
   MakitaFailoverGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
-      Name: makita-failover-guardrail
+      Name: makita-postgresql-failover-guardrail
       BlockedInputMessaging: "Operation blocked by guardrail policy"
       BlockedOutputsMessaging: "Response blocked by guardrail policy"
-      # Content policy, topic policy, prompt injection detection
       Tags:
         - Key: auto-delete
           Value: "no"
@@ -810,7 +677,7 @@ Resources:
   MakitaPrecheckGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
-      Name: makita-precheck-guardrail
+      Name: makita-postgresql-precheck-guardrail
       Tags:
         - Key: auto-delete
           Value: "no"
@@ -820,59 +687,50 @@ Resources:
   MakitaPostcheckGuardrail:
     Type: AWS::Bedrock::Guardrail
     Properties:
-      Name: makita-postcheck-guardrail
+      Name: makita-postgresql-postcheck-guardrail
       Tags:
         - Key: auto-delete
           Value: "no"
         - Key: Env
           Value: prod1
 
-  # --- CloudWatch Dashboard ---
-  # NOTE: AWS::CloudWatch::Dashboard does not support the Tags property.
-  # This is documented as a tagging exception per Requirement 24.10.
-  MakitaFailoverDashboard:
-    Type: AWS::CloudWatch::Dashboard
-    Properties:
-      DashboardName: makita-failover-dashboard
-      DashboardBody: !Sub |
-        {
-          "widgets": [
-            {
-              "type": "metric",
-              "properties": {
-                "title": "Primary (us-east-1) - CPU",
-                "metrics": [["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "makita-pg-primary"]],
-                "region": "us-east-1"
-              }
-            },
-            {
-              "type": "metric",
-              "properties": {
-                "title": "Replica (us-west-2) - CPU",
-                "metrics": [["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "makita-pg-replica"]],
-                "region": "us-west-2"
-              }
-            },
-            {
-              "type": "metric",
-              "properties": {
-                "title": "Replication Lag",
-                "metrics": [["AWS/RDS", "ReplicaLag", "DBInstanceIdentifier", "makita-pg-replica"]],
-                "region": "us-west-2"
-              }
-            }
-          ]
-        }
+  # NOTE: CloudWatch Dashboard (makita-failover-dashboard) was removed from this stack.
+  # NOTE: AgentCore MCP server registrations, policies, and identities are deployed
+  #       via deploy_agentcore.py, not in this CloudFormation template.
 
 Outputs:
   PrimaryEndpoint:
     Value: !GetAtt MakitaPgPrimary.Endpoint.Address
+  PrimaryInstanceArn:
+    Value: !GetAtt MakitaPgPrimary.DBInstanceArn
+```
+
+```yaml
+# infrastructure/workloads/postgresql/makita-postgresql-replica-stack.yaml (us-west-2)
+AWSTemplateFormatVersion: '2010-09-09'
+Description: MAKITA - Cross-region PostgreSQL read replica
+
+Parameters:
+  PrimaryInstanceArn:
+    Type: String
+    Description: ARN of the primary RDS instance in us-east-1
+
+Resources:
+  MakitaPgReplica:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: makita-pg-replica
+      SourceDBInstanceIdentifier: !Ref PrimaryInstanceArn
+      # ... replica config for us-west-2
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+
+Outputs:
   ReplicaEndpoint:
     Value: !GetAtt MakitaPgReplica.Endpoint.Address
-  FailoverMcpServerArn:
-    Value: !Ref MakitaFailoverMcpServer
-  DashboardUrl:
-    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=makita-failover-dashboard"
 ```
 
 ### MCP Server Internal Data Models
@@ -949,7 +807,7 @@ class TicketUpdateContext:
     status: str             # e.g., "failover initiated", "replication verified"
     resource_names: list[str]   # e.g., ["makita-pg-primary", "makita-pg-replica"]
     parameter_paths: list[str]  # e.g., ["/makita/db/primary-endpoint"]
-    agentcore_resources: list[str]  # e.g., ["makita-failover-mcp"]
+    agentcore_resources: list[str]  # e.g., ["makita_postgresql_failover_mcp"]
     primary_region: str     # "us-east-1"
     dr_region: str          # "us-west-2"
     endpoints: dict[str, str]   # {"primary": "...", "replica": "..."}
@@ -1046,7 +904,9 @@ class TicketUpdateContext:
 
 ### Property 14: Architectural diagram component completeness
 
-*For any* required component in the MAKITA architecture (PostgreSQL primary, PostgreSQL replica, replication relationship, CloudWatch Dashboard, Failover MCP Server, Pre-Check MCP Server, Post-Check MCP Server, AgentCore Policies, AgentCore Identities, Bedrock Guardrails, AWS Support Stub Server, ServiceNow Stub Server, DevOps Agent, Parameter Store), the standalone architectural diagram source must contain a reference to that component.
+*For any* required component in the MAKITA architecture (PostgreSQL primary, PostgreSQL replica, replication relationship, AgentCore Gateway, Failover MCP Server, Pre-Check MCP Server, Post-Check MCP Server, Cedar Policies, Bedrock Guardrails, AWS Support Stub Server, ServiceNow Stub Server, DevOps Agent, Parameter Store), the standalone architectural diagram source must contain a reference to that component.
+
+(Updated: removed CloudWatch Dashboard from required components; added AgentCore Gateway and Cedar Policies; replaced AgentCore Policies/Identities with Cedar Policies.)
 
 **Validates: Requirements 26.3, 26.4, 26.5, 26.6, 26.7, 26.8, 26.9, 26.10, 26.11**
 

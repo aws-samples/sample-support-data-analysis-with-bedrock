@@ -14,7 +14,7 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 - **DR_Region**: The AWS region us-west-2, hosting the secondary/disaster recovery PostgreSQL cluster.
 - **PostgreSQL_Cluster**: The multi-region PostgreSQL database cluster composed of a primary instance in us-east-1 and a replica instance in us-west-2.
 - **Parameter_Store**: AWS Systems Manager Parameter Store — the centralized store for all MAKITA configuration values.
-- **CloudFormation_Templates**: A single AWS CloudFormation template that defines and provisions all MAKITA infrastructure resources within one consolidated CloudFormation stack.
+- **CloudFormation_Templates**: AWS CloudFormation templates and Python deployment scripts that define and provision all MAKITA infrastructure resources. CloudFormation stacks handle PostgreSQL and supporting AWS resources; Python scripts (`deploy_agentcore.py`, `deploy_devops_agent.py`, `deploy_kiro_agent.py`) handle AgentCore and DevOps Agent resources.
 - **Failover**: The process of promoting the DR_Region PostgreSQL replica to primary and redirecting traffic away from the failed Primary_Region.
 - **AgentCore_Policies**: Amazon AgentCore policies — access control policies applied to the AgentCore-hosted MCP_Server that restrict which actions the MCP_Server can perform, including target resource constraints, region constraints, and principal constraints.
 - **AgentCore_Identities**: Amazon AgentCore identities — the identity configurations assigned to the MCP_Server within AgentCore that determine the IAM role and permissions used during failover operations.
@@ -35,21 +35,27 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 - **Mandatory_Resource_Tags**: A set of AWS resource tags that must be applied to every AWS resource created by the CloudFormation_Templates. The mandatory tags are: `auto-delete` with value `no`, and `Env` with value `prod1`.
 - **Env_Tag**: The AWS resource tag with key `Env` and value `prod1`, used to identify resources belonging to the MAKITA production environment. AgentCore_Policies use the Env_Tag to enforce that MCP servers only operate on resources tagged with `Env=prod1`.
 - **Architectural_Diagram**: A standalone Mermaid-syntax diagram artifact that visualizes the MAKITA system architecture, including all major components, their relationships, and data flows across the Primary_Region and DR_Region.
+- **AgentCore_Gateway**: An Amazon AgentCore Gateway (`makita-mcp-gateway`) that provides a unified MCP entry point for all MAKITA tools. DevOps Agent and Kiro agent connect through the gateway to reach individual MCP server runtimes. Each gateway target has an associated Cedar policy.
+- **Cedar_Policies**: Cedar authorization policies attached to AgentCore Gateway targets that restrict which tool actions each MCP server can perform. Stored as standalone files in `policies/agentcore/`.
+- **Guardrail_Configs**: Standalone JSON configuration files in `policies/guardrails/` that define Bedrock Guardrail settings for each MCP server. Deployed via `deploy_agentcore.py` alongside the AgentCore Runtimes.
+- **DevOps_Agent_Space**: The Amazon DevOps Agent Space (`makita-agentspace`) created via `deploy_devops_agent.py`, including an operator IAM role, web app, and log group.
+- **Kiro_Agent_Config**: The Kiro agent configuration (`.kiro/agents/makita-ops.json`) and gateway proxy (`mcp-servers/agentcore_gateway_proxy.py`) deployed via `deploy_kiro_agent.py` to enable Kiro IDE-based DR operations through the AgentCore Gateway.
+- **Secrets_Manager_Secret**: An AWS Secrets Manager secret (`makita-db-master-secret`) provisioned in the CloudFormation stack to store the PostgreSQL master password securely.
 
 ## Requirements
 
-### Requirement 1: Infrastructure Provisioning via a Single CloudFormation Stack
+### Requirement 1: Infrastructure Provisioning via CloudFormation Stacks and Deployment Scripts
 
-**User Story:** As a DevOps engineer, I want all infrastructure to be provisioned through a single CloudFormation stack, so that the environment is reproducible, version-controlled, and managed as one atomic unit.
+**User Story:** As a DevOps engineer, I want all infrastructure to be provisioned through CloudFormation stacks and automated deployment scripts, so that the environment is reproducible, version-controlled, and managed consistently.
 
 #### Acceptance Criteria
 
-1. THE CloudFormation_Templates SHALL provision all AWS resources required by MAKITA within a single CloudFormation stack.
-2. THE CloudFormation_Templates SHALL contain all resources for both the Primary_Region (us-east-1) and the DR_Region (us-west-2) within the single CloudFormation stack.
-3. THE CloudFormation_Templates SHALL include the PostgreSQL_Cluster resources (primary instance and replica instance), all MCP_Server resources (Failover MCP_Server, Pre_Check_MCP_Server, Post_Check_MCP_Server), the AWS_Support_Stub_Server, the ServiceNow_Stub_Server, all AgentCore resources (AgentCore_Policies and AgentCore_Identities), all Bedrock_Guardrails, the CloudWatch_Dashboard, and all Parameter_Store parameters within the single CloudFormation stack.
-4. WHEN the single CloudFormation stack is deployed, THE CloudFormation_Templates SHALL prefix all resource names with "makita-".
-5. IF the single CloudFormation stack deployment fails, THEN THE CloudFormation_Templates SHALL roll back all resources created during the failed deployment.
-6. THE CloudFormation_Templates SHALL not require deployment of any additional CloudFormation stacks to provision MAKITA infrastructure.
+1. THE CloudFormation_Templates SHALL provision PostgreSQL and supporting AWS resources across two CloudFormation stacks: `makita-postgresql-stack` (us-east-1) for the primary instance, IAM roles, Parameter Store, Secrets Manager, and Bedrock Guardrails; and `makita-postgresql-replica-stack` (us-west-2) for the cross-region read replica. (Updated: originally specified a single stack; implementation uses two stacks under `infrastructure/workloads/postgresql/` plus Python deployment scripts for AgentCore and DevOps Agent resources.)
+2. THE CloudFormation_Templates SHALL contain resources for the Primary_Region (us-east-1) in `makita-postgresql-stack` and resources for the DR_Region (us-west-2) in `makita-postgresql-replica-stack`. (Updated: resources are split across two region-specific stacks rather than a single stack.)
+3. THE CloudFormation_Templates SHALL include the PostgreSQL_Cluster resources, IAM roles, Parameter_Store parameters, Secrets_Manager_Secret, and Bedrock_Guardrails. AgentCore resources (Runtimes, Gateway, Cedar_Policies, Guardrail_Configs) are deployed via `scripts/deploy_agentcore.py`. DevOps_Agent_Space is deployed via `scripts/deploy_devops_agent.py`. Kiro_Agent_Config is deployed via `scripts/deploy_kiro_agent.py`. (Updated: MCP server registrations, AgentCore policies/identities, and the CloudWatch Dashboard are no longer in the CFN stacks.)
+4. WHEN the CloudFormation stacks are deployed, THE CloudFormation_Templates SHALL prefix all resource names with "makita-".
+5. IF a CloudFormation stack deployment fails, THEN THE CloudFormation_Templates SHALL roll back all resources created during the failed deployment.
+6. THE deployment scripts (`deploy.sh`) SHALL orchestrate deployment of both CloudFormation stacks and all Python deployment scripts in the correct order. (Updated: originally stated no additional stacks required; implementation uses `deploy.sh` with targets `postgresql`, `postgresql-dr`, `agentcore`, `devops-agent`, `kiro-agent`.)
 
 ### Requirement 2: Configuration Management via Parameter Store
 
@@ -73,6 +79,7 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 3. WHILE the Primary_Region is healthy, THE PostgreSQL_Cluster SHALL replicate data from the primary instance to the replica instance.
 4. THE CloudFormation_Templates SHALL store the primary and replica endpoint addresses in Parameter_Store.
 5. WHEN the PostgreSQL_Cluster is provisioned, THE CloudFormation_Templates SHALL configure the replica instance for cross-region replication from the primary instance.
+6. THE CloudFormation_Templates SHALL provision an `AWS::SecretsManager::Secret` (`makita-db-master-secret`) to store the PostgreSQL master password securely. (Updated: Secrets Manager usage was not in the original spec but is present in the implementation.)
 
 ### Requirement 4: MCP Server Implementation
 
@@ -92,10 +99,10 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE MCP_Server SHALL be deployed to and hosted in AgentCore.
-2. THE CloudFormation_Templates SHALL define the AgentCore resources required to host the MCP_Server.
-3. WHEN the MCP_Server is deployed to AgentCore, THE CloudFormation_Templates SHALL configure DevOps_Agent to connect to the MCP_Server.
-4. WHILE the MCP_Server is running in AgentCore, THE MCP_Server SHALL be accessible to DevOps_Agent for tool invocations.
+1. THE MCP_Server SHALL be deployed to and hosted in AgentCore as an AgentCore Runtime, accessible behind the AgentCore_Gateway (`makita-mcp-gateway`). (Updated: each MCP server is a separate AgentCore Runtime behind the gateway, deployed via `deploy_agentcore.py`.)
+2. THE deployment scripts SHALL create the AgentCore resources required to host the MCP_Server, including Runtime, Runtime Endpoint, Gateway, and Gateway Targets. (Updated: originally specified CloudFormation; implementation uses `deploy_agentcore.py` Python script.)
+3. WHEN the MCP_Server is deployed to AgentCore, THE deployment scripts SHALL configure DevOps_Agent to connect to the MCP_Server through the AgentCore_Gateway.
+4. WHILE the MCP_Server is running in AgentCore, THE MCP_Server SHALL be accessible to DevOps_Agent for tool invocations through the AgentCore_Gateway.
 
 ### Requirement 6: PostgreSQL Cluster Failover Execution
 
@@ -136,13 +143,13 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the MCP_Server to performing failover operations only on PostgreSQL_Cluster instances whose names begin with "makita-".
-2. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the MCP_Server to performing failover operations only from the Primary_Region (us-east-1) to the DR_Region (us-west-2).
-3. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the IAM role used by the MCP_Server during failover to a principal whose name begins with "makita-".
-4. THE CloudFormation_Templates SHALL define AgentCore_Identities that assign the authorized IAM role to the MCP_Server within AgentCore.
-5. IF the MCP_Server attempts a failover operation on a resource that does not begin with "makita-", THEN THE AgentCore_Policies SHALL deny the operation.
-6. IF the MCP_Server attempts a failover operation targeting a region other than the DR_Region (us-west-2), THEN THE AgentCore_Policies SHALL deny the operation.
-7. IF the MCP_Server attempts a failover operation using a principal that does not begin with "makita-", THEN THE AgentCore_Policies SHALL deny the operation.
+1. THE Cedar_Policies SHALL restrict the MCP_Server to performing failover operations only on PostgreSQL_Cluster instances whose names begin with "makita-". (Updated: governance is enforced via Cedar policies in `policies/agentcore/` attached to AgentCore Gateway targets, not via CloudFormation-defined AgentCore_Policies.)
+2. THE Cedar_Policies SHALL restrict the MCP_Server to performing failover operations only from the Primary_Region (us-east-1) to the DR_Region (us-west-2).
+3. THE Cedar_Policies SHALL restrict the IAM role used by the MCP_Server during failover to a principal whose name begins with "makita-".
+4. THE deployment scripts SHALL create AgentCore Workload Identities that assign the authorized IAM role to the MCP_Server within AgentCore. (Updated: uses `create_workload_identity` via `deploy_agentcore.py`.)
+5. IF the MCP_Server attempts a failover operation on a resource that does not begin with "makita-", THEN THE Cedar_Policies SHALL deny the operation.
+6. IF the MCP_Server attempts a failover operation targeting a region other than the DR_Region (us-west-2), THEN THE Cedar_Policies SHALL deny the operation.
+7. IF the MCP_Server attempts a failover operation using a principal that does not begin with "makita-", THEN THE Cedar_Policies SHALL deny the operation.
 
 ### Requirement 10: Bedrock Guardrails for MCP Server Governance
 
@@ -150,7 +157,7 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE CloudFormation_Templates SHALL define Bedrock_Guardrails that govern the actions of the MCP_Server.
+1. THE CloudFormation_Templates and Guardrail_Configs SHALL define Bedrock_Guardrails that govern the actions of the MCP_Server. Guardrails for the three workload servers are defined in the CloudFormation stack; guardrails for all five servers (including stub servers) are also defined as standalone JSON files in `policies/guardrails/` and deployed via `deploy_agentcore.py`. (Updated: guardrail configs are externalized to JSON files in addition to CloudFormation definitions; stub servers also have guardrails.)
 2. WHEN DevOps_Agent invokes a tool on the MCP_Server, THE Bedrock_Guardrails SHALL evaluate the request before the MCP_Server executes the operation.
 3. IF a tool invocation violates a Bedrock_Guardrails policy, THEN THE MCP_Server SHALL deny the operation and return a structured error response to DevOps_Agent describing the policy violation.
 4. THE Bedrock_Guardrails SHALL be configured to restrict MCP_Server operations to disaster recovery actions on the PostgreSQL_Cluster.
@@ -243,12 +250,12 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE CloudFormation_Templates SHALL provision a CloudWatch_Dashboard that visualizes the PostgreSQL_Cluster failover process across the Primary_Region (us-east-1) and the DR_Region (us-west-2).
-2. WHEN the CloudWatch_Dashboard is provisioned, THE CloudFormation_Templates SHALL prefix the dashboard name with "makita-".
-3. THE CloudWatch_Dashboard SHALL display metrics from both the Primary_Region (us-east-1) and the DR_Region (us-west-2) for the PostgreSQL_Cluster.
-4. WHEN a failover is initiated, THE CloudWatch_Dashboard SHALL reflect the change in primary and replica roles of the PostgreSQL_Cluster instances.
-5. THE CloudWatch_Dashboard SHALL display the replication status between the Primary_Region and the DR_Region for the PostgreSQL_Cluster.
-6. THE CloudWatch_Dashboard SHALL display the health and availability status of the PostgreSQL_Cluster instances in both the Primary_Region and the DR_Region.
+1. THE CloudFormation_Templates SHALL provision a CloudWatch_Dashboard that visualizes the PostgreSQL_Cluster failover process across the Primary_Region (us-east-1) and the DR_Region (us-west-2). (Updated: the `makita-failover-dashboard` was removed from the CloudFormation stack during implementation. This requirement is not currently provisioned.)
+2. WHEN the CloudWatch_Dashboard is provisioned, THE CloudFormation_Templates SHALL prefix the dashboard name with "makita-". (Updated: dashboard not currently provisioned.)
+3. THE CloudWatch_Dashboard SHALL display metrics from both the Primary_Region (us-east-1) and the DR_Region (us-west-2) for the PostgreSQL_Cluster. (Updated: dashboard not currently provisioned.)
+4. WHEN a failover is initiated, THE CloudWatch_Dashboard SHALL reflect the change in primary and replica roles of the PostgreSQL_Cluster instances. (Updated: dashboard not currently provisioned.)
+5. THE CloudWatch_Dashboard SHALL display the replication status between the Primary_Region and the DR_Region for the PostgreSQL_Cluster. (Updated: dashboard not currently provisioned.)
+6. THE CloudWatch_Dashboard SHALL display the health and availability status of the PostgreSQL_Cluster instances in both the Primary_Region and the DR_Region. (Updated: dashboard not currently provisioned.)
 
 ### Requirement 17: Failover Sequence Orchestration
 
@@ -287,7 +294,7 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 7. THE Pre_Check_MCP_Server SHALL return the result of each tool invocation to DevOps_Agent, including verification status and any error details.
 8. IF the Pre_Check_MCP_Server encounters an error during a tool invocation, THEN THE Pre_Check_MCP_Server SHALL return a structured error response to DevOps_Agent describing the failure.
 9. THE DevOps_Agent SHALL connect to the Pre_Check_MCP_Server during the Pre_Checks phase of the Failover_Sequence.
-10. THE CloudFormation_Templates SHALL define the AgentCore resources required to host the Pre_Check_MCP_Server.
+10. THE deployment scripts SHALL create the AgentCore Runtime and Gateway Target required to host the Pre_Check_MCP_Server (`makita_postgresql_precheck_mcp`). (Updated: originally specified CloudFormation; implementation uses `deploy_agentcore.py`.)
 
 ### Requirement 19: Post-Check MCP Server
 
@@ -304,7 +311,7 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 7. THE Post_Check_MCP_Server SHALL return the result of each tool invocation to DevOps_Agent, including verification status and any error details.
 8. IF the Post_Check_MCP_Server encounters an error during a tool invocation, THEN THE Post_Check_MCP_Server SHALL return a structured error response to DevOps_Agent describing the failure.
 9. THE DevOps_Agent SHALL connect to the Post_Check_MCP_Server during the Post_Checks phase of the Failover_Sequence.
-10. THE CloudFormation_Templates SHALL define the AgentCore resources required to host the Post_Check_MCP_Server.
+10. THE deployment scripts SHALL create the AgentCore Runtime and Gateway Target required to host the Post_Check_MCP_Server (`makita_postgresql_postcheck_mcp`). (Updated: originally specified CloudFormation; implementation uses `deploy_agentcore.py`.)
 
 ### Requirement 20: AgentCore Policies and Identities for Pre-Check and Post-Check MCP Servers
 
@@ -312,20 +319,20 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the Pre_Check_MCP_Server to performing pre-check operations only on PostgreSQL_Cluster instances whose names begin with "makita-".
-2. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the Post_Check_MCP_Server to performing post-check operations only on PostgreSQL_Cluster instances whose names begin with "makita-".
-3. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the Pre_Check_MCP_Server to performing pre-check operations only from the Primary_Region (us-east-1) to the DR_Region (us-west-2).
-4. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the Post_Check_MCP_Server to performing post-check operations only from the Primary_Region (us-east-1) to the DR_Region (us-west-2).
-5. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the IAM role used by the Pre_Check_MCP_Server to a principal whose name begins with "makita-".
-6. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the IAM role used by the Post_Check_MCP_Server to a principal whose name begins with "makita-".
-7. THE CloudFormation_Templates SHALL define AgentCore_Identities that assign the authorized IAM role to the Pre_Check_MCP_Server within AgentCore.
-8. THE CloudFormation_Templates SHALL define AgentCore_Identities that assign the authorized IAM role to the Post_Check_MCP_Server within AgentCore.
-9. IF the Pre_Check_MCP_Server attempts an operation on a resource that does not begin with "makita-", THEN THE AgentCore_Policies SHALL deny the operation.
-10. IF the Post_Check_MCP_Server attempts an operation on a resource that does not begin with "makita-", THEN THE AgentCore_Policies SHALL deny the operation.
-11. IF the Pre_Check_MCP_Server attempts an operation targeting a region other than the Primary_Region (us-east-1) or the DR_Region (us-west-2), THEN THE AgentCore_Policies SHALL deny the operation.
-12. IF the Post_Check_MCP_Server attempts an operation targeting a region other than the Primary_Region (us-east-1) or the DR_Region (us-west-2), THEN THE AgentCore_Policies SHALL deny the operation.
-13. IF the Pre_Check_MCP_Server attempts an operation using a principal that does not begin with "makita-", THEN THE AgentCore_Policies SHALL deny the operation.
-14. IF the Post_Check_MCP_Server attempts an operation using a principal that does not begin with "makita-", THEN THE AgentCore_Policies SHALL deny the operation.
+1. THE Cedar_Policies SHALL restrict the Pre_Check_MCP_Server to performing pre-check operations only on PostgreSQL_Cluster instances whose names begin with "makita-". (Updated: governance is enforced via Cedar policies in `policies/agentcore/postgresql-precheck.cedar` attached to the gateway target.)
+2. THE Cedar_Policies SHALL restrict the Post_Check_MCP_Server to performing post-check operations only on PostgreSQL_Cluster instances whose names begin with "makita-". (Updated: governance is enforced via Cedar policies in `policies/agentcore/postgresql-postcheck.cedar`.)
+3. THE Cedar_Policies SHALL restrict the Pre_Check_MCP_Server to performing pre-check operations only from the Primary_Region (us-east-1) to the DR_Region (us-west-2).
+4. THE Cedar_Policies SHALL restrict the Post_Check_MCP_Server to performing post-check operations only from the Primary_Region (us-east-1) to the DR_Region (us-west-2).
+5. THE Cedar_Policies SHALL restrict the IAM role used by the Pre_Check_MCP_Server to a principal whose name begins with "makita-".
+6. THE Cedar_Policies SHALL restrict the IAM role used by the Post_Check_MCP_Server to a principal whose name begins with "makita-".
+7. THE deployment scripts SHALL create AgentCore Workload Identities that assign the authorized IAM role to the Pre_Check_MCP_Server within AgentCore. (Updated: uses `create_workload_identity` via `deploy_agentcore.py`.)
+8. THE deployment scripts SHALL create AgentCore Workload Identities that assign the authorized IAM role to the Post_Check_MCP_Server within AgentCore. (Updated: uses `create_workload_identity` via `deploy_agentcore.py`.)
+9. IF the Pre_Check_MCP_Server attempts an operation on a resource that does not begin with "makita-", THEN THE Cedar_Policies SHALL deny the operation.
+10. IF the Post_Check_MCP_Server attempts an operation on a resource that does not begin with "makita-", THEN THE Cedar_Policies SHALL deny the operation.
+11. IF the Pre_Check_MCP_Server attempts an operation targeting a region other than the Primary_Region (us-east-1) or the DR_Region (us-west-2), THEN THE Cedar_Policies SHALL deny the operation.
+12. IF the Post_Check_MCP_Server attempts an operation targeting a region other than the Primary_Region (us-east-1) or the DR_Region (us-west-2), THEN THE Cedar_Policies SHALL deny the operation.
+13. IF the Pre_Check_MCP_Server attempts an operation using a principal that does not begin with "makita-", THEN THE Cedar_Policies SHALL deny the operation.
+14. IF the Post_Check_MCP_Server attempts an operation using a principal that does not begin with "makita-", THEN THE Cedar_Policies SHALL deny the operation.
 
 ### Requirement 21: Bedrock Guardrails for Pre-Check and Post-Check MCP Servers
 
@@ -333,8 +340,8 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE CloudFormation_Templates SHALL define Bedrock_Guardrails that govern the actions of the Pre_Check_MCP_Server.
-2. THE CloudFormation_Templates SHALL define Bedrock_Guardrails that govern the actions of the Post_Check_MCP_Server.
+1. THE CloudFormation_Templates and Guardrail_Configs SHALL define Bedrock_Guardrails that govern the actions of the Pre_Check_MCP_Server. (Updated: guardrails are also defined as standalone JSON in `policies/guardrails/postgresql-precheck-guardrail.json`.)
+2. THE CloudFormation_Templates and Guardrail_Configs SHALL define Bedrock_Guardrails that govern the actions of the Post_Check_MCP_Server. (Updated: guardrails are also defined as standalone JSON in `policies/guardrails/postgresql-postcheck-guardrail.json`.)
 3. WHEN DevOps_Agent invokes a tool on the Pre_Check_MCP_Server, THE Bedrock_Guardrails SHALL evaluate the request before the Pre_Check_MCP_Server executes the operation.
 4. WHEN DevOps_Agent invokes a tool on the Post_Check_MCP_Server, THE Bedrock_Guardrails SHALL evaluate the request before the Post_Check_MCP_Server executes the operation.
 5. IF a tool invocation on the Pre_Check_MCP_Server violates a Bedrock_Guardrails policy, THEN THE Pre_Check_MCP_Server SHALL deny the operation and return a structured error response to DevOps_Agent describing the policy violation.
@@ -353,9 +360,9 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 #### Acceptance Criteria
 
 1. THE README_File SHALL begin with a summary of the MAKITA project, including the project purpose, the technologies used, and the disaster recovery scenario addressed.
-2. THE README_File SHALL include an architectural diagram using Mermaid or ASCII art that shows the overall system architecture, including DevOps_Agent, AgentCore, the MCP_Server, the Pre_Check_MCP_Server, the Post_Check_MCP_Server, the AWS_Support_Stub_Server, the ServiceNow_Stub_Server, the PostgreSQL_Cluster across the Primary_Region and the DR_Region, Parameter_Store, the CloudWatch_Dashboard, Bedrock_Guardrails, AgentCore_Policies, and AgentCore_Identities.
+2. THE README_File SHALL include an architectural diagram using Mermaid or ASCII art that shows the overall system architecture, including DevOps_Agent, AgentCore Gateway, the MCP_Server, the Pre_Check_MCP_Server, the Post_Check_MCP_Server, the AWS_Support_Stub_Server, the ServiceNow_Stub_Server, the PostgreSQL_Cluster across the Primary_Region and the DR_Region, Parameter_Store, Bedrock_Guardrails, and Cedar_Policies. (Updated: removed CloudWatch_Dashboard, AgentCore_Policies, AgentCore_Identities; added AgentCore Gateway and Cedar_Policies.)
 3. THE README_File SHALL include a Getting Started guide that lists prerequisites, setup instructions, and deployment steps required to run the MAKITA project.
-4. THE README_File SHALL include instructions for deploying the single CloudFormation stack defined by the CloudFormation_Templates.
+4. THE README_File SHALL include instructions for deploying the CloudFormation stacks and running the deployment scripts. (Updated: originally referenced a single CloudFormation stack; implementation uses two stacks plus Python deployment scripts.)
 5. THE README_File SHALL include instructions for configuring the MCP_Server, the Pre_Check_MCP_Server, and the Post_Check_MCP_Server.
 6. THE README_File SHALL include instructions for initiating a failover through DevOps_Agent.
 7. THE README_File SHALL include instructions for monitoring the failover process via the CloudWatch_Dashboard.
@@ -389,16 +396,16 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE CloudFormation_Templates SHALL apply the tag `auto-delete` with value `no` to every AWS resource created within the single CloudFormation stack.
-2. THE CloudFormation_Templates SHALL apply the tag `Env` with value `prod1` to every AWS resource created within the single CloudFormation stack.
+1. THE CloudFormation_Templates SHALL apply the tag `auto-delete` with value `no` to every AWS resource created within the CloudFormation stacks. (Updated: applies to both `makita-postgresql-stack` and `makita-postgresql-replica-stack`.)
+2. THE CloudFormation_Templates SHALL apply the tag `Env` with value `prod1` to every AWS resource created within the CloudFormation stacks.
 3. THE CloudFormation_Templates SHALL apply the Mandatory_Resource_Tags to all PostgreSQL_Cluster resources (primary instance and replica instance).
-4. THE CloudFormation_Templates SHALL apply the Mandatory_Resource_Tags to all IAM roles defined within the single CloudFormation stack.
-5. THE CloudFormation_Templates SHALL apply the Mandatory_Resource_Tags to all Parameter_Store parameters defined within the single CloudFormation stack.
-6. THE CloudFormation_Templates SHALL apply the Mandatory_Resource_Tags to all AgentCore resources (AgentCore_Policies and AgentCore_Identities) defined within the single CloudFormation stack.
-7. THE CloudFormation_Templates SHALL apply the Mandatory_Resource_Tags to all Bedrock_Guardrails defined within the single CloudFormation stack.
-8. THE CloudFormation_Templates SHALL apply the Mandatory_Resource_Tags to the CloudWatch_Dashboard defined within the single CloudFormation stack.
-9. THE CloudFormation_Templates SHALL apply the Mandatory_Resource_Tags to all MCP_Server resources (Failover MCP_Server, Pre_Check_MCP_Server, Post_Check_MCP_Server), the AWS_Support_Stub_Server, and the ServiceNow_Stub_Server defined within the single CloudFormation stack.
-10. IF an AWS resource within the single CloudFormation stack does not support tagging, THEN THE CloudFormation_Templates SHALL document the resource type as a tagging exception in a comment within the template.
+4. THE CloudFormation_Templates SHALL apply the Mandatory_Resource_Tags to all IAM roles defined within the CloudFormation stacks.
+5. THE CloudFormation_Templates SHALL apply the Mandatory_Resource_Tags to all Parameter_Store parameters defined within the CloudFormation stacks.
+6. THE deployment scripts SHALL apply the Mandatory_Resource_Tags to all AgentCore resources (Runtimes, Gateway, Gateway Targets) created via `deploy_agentcore.py`. (Updated: AgentCore resources are deployed via Python script, not CloudFormation.)
+7. THE CloudFormation_Templates SHALL apply the Mandatory_Resource_Tags to all Bedrock_Guardrails defined within the CloudFormation stacks.
+8. THE CloudWatch_Dashboard is not currently provisioned. (Updated: the `makita-failover-dashboard` was removed from the CloudFormation stack.)
+9. THE deployment scripts SHALL apply the Mandatory_Resource_Tags to all AgentCore Runtime resources for the MCP servers (Failover, Pre-Check, Post-Check, AWS Support Stub, ServiceNow Stub) created via `deploy_agentcore.py`. (Updated: MCP server registrations are deployed via Python script, not CloudFormation.)
+10. IF an AWS resource does not support tagging, THEN THE CloudFormation_Templates SHALL document the resource type as a tagging exception in a comment within the template.
 
 ### Requirement 25: AgentCore Policy Enforcement Based on Env Tag
 
@@ -406,12 +413,12 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the MCP_Server (Failover) to performing operations only on AWS resources that have the tag `Env` with value `prod1`.
-2. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the Pre_Check_MCP_Server to performing operations only on AWS resources that have the tag `Env` with value `prod1`.
-3. THE CloudFormation_Templates SHALL define AgentCore_Policies that restrict the Post_Check_MCP_Server to performing operations only on AWS resources that have the tag `Env` with value `prod1`.
-4. IF the MCP_Server attempts to operate on an AWS resource that does not have the tag `Env` with value `prod1`, THEN THE AgentCore_Policies SHALL deny the operation.
-5. IF the Pre_Check_MCP_Server attempts to operate on an AWS resource that does not have the tag `Env` with value `prod1`, THEN THE AgentCore_Policies SHALL deny the operation.
-6. IF the Post_Check_MCP_Server attempts to operate on an AWS resource that does not have the tag `Env` with value `prod1`, THEN THE AgentCore_Policies SHALL deny the operation.
+1. THE Cedar_Policies SHALL restrict the MCP_Server (Failover) to performing operations only on AWS resources that have the tag `Env` with value `prod1`. (Updated: enforcement is via Cedar policies attached to AgentCore Gateway targets.)
+2. THE Cedar_Policies SHALL restrict the Pre_Check_MCP_Server to performing operations only on AWS resources that have the tag `Env` with value `prod1`.
+3. THE Cedar_Policies SHALL restrict the Post_Check_MCP_Server to performing operations only on AWS resources that have the tag `Env` with value `prod1`.
+4. IF the MCP_Server attempts to operate on an AWS resource that does not have the tag `Env` with value `prod1`, THEN THE Cedar_Policies SHALL deny the operation.
+5. IF the Pre_Check_MCP_Server attempts to operate on an AWS resource that does not have the tag `Env` with value `prod1`, THEN THE Cedar_Policies SHALL deny the operation.
+6. IF the Post_Check_MCP_Server attempts to operate on an AWS resource that does not have the tag `Env` with value `prod1`, THEN THE Cedar_Policies SHALL deny the operation.
 
 ### Requirement 26: Architectural Diagram
 
@@ -422,12 +429,12 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 1. THE Architectural_Diagram SHALL be created as a standalone artifact separate from the README_File.
 2. THE Architectural_Diagram SHALL be authored using Mermaid syntax for easy rendering and version control.
 3. THE Architectural_Diagram SHALL include the PostgreSQL_Cluster primary instance in the Primary_Region (us-east-1) and the PostgreSQL_Cluster replica instance in the DR_Region (us-west-2), with the replication relationship between the primary and replica shown.
-4. THE Architectural_Diagram SHALL include the CloudWatch_Dashboard component.
-5. THE Architectural_Diagram SHALL include the MCP_Server (Failover), the Pre_Check_MCP_Server, and the Post_Check_MCP_Server.
-6. THE Architectural_Diagram SHALL include the AgentCore components: AgentCore_Policies, AgentCore_Identities, and Bedrock_Guardrails.
+4. THE Architectural_Diagram SHALL include the AgentCore_Gateway (`makita-mcp-gateway`) component. (Updated: CloudWatch_Dashboard was removed; AgentCore Gateway was added.)
+5. THE Architectural_Diagram SHALL include the MCP_Server (Failover), the Pre_Check_MCP_Server, and the Post_Check_MCP_Server as AgentCore Runtimes.
+6. THE Architectural_Diagram SHALL include the AgentCore governance components: Cedar_Policies and Bedrock_Guardrails. (Updated: replaced AgentCore_Policies and AgentCore_Identities with Cedar_Policies.)
 7. THE Architectural_Diagram SHALL include the AWS_Support_Stub_Server.
 8. THE Architectural_Diagram SHALL include the ServiceNow_Stub_Server.
-9. THE Architectural_Diagram SHALL include DevOps_Agent and show the connections from DevOps_Agent to the MCP_Server (Failover), the Pre_Check_MCP_Server, the Post_Check_MCP_Server, the AWS_Support_Stub_Server, and the ServiceNow_Stub_Server.
+9. THE Architectural_Diagram SHALL include DevOps_Agent and show the connections from DevOps_Agent through the AgentCore_Gateway to the MCP_Server (Failover), the Pre_Check_MCP_Server, the Post_Check_MCP_Server, the AWS_Support_Stub_Server, and the ServiceNow_Stub_Server. (Updated: connections go through the gateway, not directly to MCP servers.)
 10. THE Architectural_Diagram SHALL include Parameter_Store.
 11. THE Architectural_Diagram SHALL show the relationships and data flows between all included components.
 
@@ -437,13 +444,13 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE makita-agentcore-stack SHALL create an AgentCore Runtime named `makita-mcp-runtime` to host the MAKITA MCP server code.
-2. THE AgentCore Runtime SHALL use the `codeConfiguration` artifact type with Python 3.11 runtime and the MCP server code packaged as an S3 code artifact.
-3. THE AgentCore Runtime SHALL use the `makita-failover-role` IAM role for execution permissions.
-4. THE AgentCore Runtime SHALL use PUBLIC network mode for accessibility.
-5. THE AgentCore Runtime SHALL use the MCP server protocol (`serverProtocol: MCP`).
-6. THE makita-agentcore-stack SHALL create an AgentCore Runtime Endpoint named `makita-mcp-runtime-endpoint` for the Runtime.
-7. THE AgentCore Runtime Endpoint SHALL reference the `makita-mcp-runtime` Runtime.
+1. THE `deploy_agentcore.py` script SHALL create 5 separate AgentCore Runtimes (one per MCP server) with underscored names: `makita_postgresql_failover_mcp`, `makita_postgresql_precheck_mcp`, `makita_postgresql_postcheck_mcp`, `makita_aws_support_stub`, `makita_servicenow_stub`. (Updated: originally specified a single `makita-mcp-runtime` in a CFN stack; implementation uses 5 separate runtimes with underscored names deployed via Python script.)
+2. EACH AgentCore Runtime SHALL use the `codeConfiguration` artifact type with Python 3.11 runtime and the MCP server code packaged as an S3 code artifact.
+3. EACH AgentCore Runtime SHALL use the `makita-failover-role` IAM role for execution permissions.
+4. EACH AgentCore Runtime SHALL use PUBLIC network mode for accessibility.
+5. EACH AgentCore Runtime SHALL use the MCP server protocol (`serverProtocol: MCP`).
+6. THE `deploy_agentcore.py` script SHALL create an AgentCore Runtime Endpoint for each Runtime.
+7. EACH AgentCore Runtime Endpoint SHALL reference its corresponding Runtime.
 
 ### Requirement 28: AgentCore Gateway for MCP Tool Access
 
@@ -451,12 +458,12 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE makita-agentcore-stack SHALL create an AgentCore Gateway named `makita-mcp-gateway` with MCP protocol type.
+1. THE `deploy_agentcore.py` script SHALL create an AgentCore Gateway named `makita-mcp-gateway` with MCP protocol type. (Updated: originally specified a CFN stack; implementation uses `deploy_agentcore.py`.)
 2. THE AgentCore Gateway SHALL use IAM authorization (`authorizerType: AWS_IAM`).
 3. THE AgentCore Gateway SHALL use the `makita-failover-role` IAM role for gateway service permissions.
-4. THE makita-agentcore-stack SHALL create Gateway Targets for each MCP server: `makita-failover-target`, `makita-precheck-target`, `makita-postcheck-target`, `makita-aws-support-target`, `makita-servicenow-target`.
-5. EACH Gateway Target SHALL reference the corresponding MCP server endpoint hosted in the AgentCore Runtime.
-6. THE AgentCore Gateway SHALL be associated with the existing AgentCore Policies (`makita-failover-policy`, `makita-precheck-policy`, `makita-postcheck-policy`).
+4. THE `deploy_agentcore.py` script SHALL create Gateway Targets for each MCP server, each referencing the corresponding Runtime Endpoint.
+5. EACH Gateway Target SHALL have a Cedar policy from `policies/agentcore/` attached to restrict allowed tool actions. (Updated: Cedar policies are standalone files, not defined in CloudFormation.)
+6. EACH Gateway Target SHALL have a Bedrock Guardrail from `policies/guardrails/` associated for content safety. (Updated: guardrail configs are standalone JSON files.)
 
 ### Requirement 29: AgentCore Workload Identities
 
@@ -464,7 +471,7 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE makita-agentcore-stack SHALL create Workload Identities (replacing the previous Identity resources) for each MCP server: `makita-failover-identity`, `makita-precheck-identity`, `makita-postcheck-identity`.
+1. THE `deploy_agentcore.py` script SHALL create Workload Identities for each MCP server. (Updated: originally specified a CFN stack; implementation uses `deploy_agentcore.py`.)
 2. EACH Workload Identity SHALL be mapped to its corresponding IAM role exported from the primary stack.
 3. THE Workload Identities SHALL use the `bedrock-agentcore-control` API `create_workload_identity` method.
 
@@ -474,6 +481,6 @@ MAKITA (Machine Augmented Key Infrastructure Technology Automation) is a technic
 
 #### Acceptance Criteria
 
-1. THE deploy script SHALL package the MCP server code (from `mcp-servers/`) into a ZIP artifact.
-2. THE deploy script SHALL upload the ZIP artifact to an S3 bucket in us-east-1 before deploying the AgentCore stack.
-3. THE S3 bucket and key SHALL be passed as parameters to the AgentCore stack for the Runtime code configuration.
+1. THE `deploy_agentcore.py` script SHALL package each MCP server's code into a ZIP artifact and upload it to S3. (Updated: packaging is handled within `deploy_agentcore.py`, not a separate shell script.)
+2. THE deploy script SHALL upload the ZIP artifacts to an S3 bucket (`makita-artifacts-{account_id}`) in us-east-1 before creating the AgentCore Runtimes.
+3. THE S3 bucket and key SHALL be used by the Runtime code configuration for each AgentCore Runtime.
