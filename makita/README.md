@@ -1,18 +1,19 @@
 # MAKITA — Machine Augmented Key Infrastructure Technology Automation
 
-##Please note that this is a work in progress, and not ready for usage.##
+> [!CAUTION]
+> Please note that this is a work in progress, and not ready for usage.
 
 MAKITA is a technical reference architecture demonstrating AI-assisted disaster recovery using **Amazon DevOps Agent** and **Amazon AgentCore**. The system provisions a multi-region PostgreSQL cluster across us-east-1 (primary) and us-west-2 (DR) via a single AWS CloudFormation stack and orchestrates automated failover through MCP servers built with the **Strands Agents SDK**.
 
 ## Key Technologies
 
 - **Strands Agents SDK** — MCP server implementation framework
-- **Amazon AgentCore** — managed hosting for MCP servers with governance
+- **Amazon AgentCore** — managed hosting for MCP servers with Gateway and Cedar policies
+- **Amazon DevOps Agent** — AI-assisted operations via natural language
 - **Amazon Bedrock Guardrails** — safety and compliance controls for AI operations
-- **AWS CloudFormation** — infrastructure-as-code (single stack)
+- **AWS CloudFormation** — infrastructure-as-code
 - **Amazon RDS PostgreSQL** — multi-region database cluster
 - **AWS Systems Manager Parameter Store** — centralized configuration
-- **Amazon CloudWatch** — failover monitoring dashboard
 
 ## DR Scenario
 
@@ -27,25 +28,23 @@ graph TB
     end
 
     subgraph "Amazon DevOps Agent"
-        DA[DevOps Agent]
+        DA[DevOps Agent Space<br/>makita-agentspace]
     end
 
     subgraph "Amazon AgentCore"
+        GW[AgentCore Gateway<br/>makita-mcp-gateway]
+
         subgraph "Governance Layer"
             BG_F[Bedrock Guardrails<br/>Failover]
             BG_Pre[Bedrock Guardrails<br/>Pre-Check]
             BG_Post[Bedrock Guardrails<br/>Post-Check]
-            AP[AgentCore Policies]
-            AI[AgentCore Identities]
+            CP[Cedar Policies]
         end
 
-        subgraph "MCP Servers"
+        subgraph "AgentCore Runtimes"
             PreMCP[Pre-Check<br/>MCP Server]
             FailMCP[Failover<br/>MCP Server]
             PostMCP[Post-Check<br/>MCP Server]
-        end
-
-        subgraph "Stub Servers"
             AWSS[AWS Support<br/>Stub Server]
             SNS[ServiceNow<br/>Stub Server]
         end
@@ -60,31 +59,22 @@ graph TB
         PG_Replica[PostgreSQL<br/>Replica Instance]
     end
 
-    subgraph "Monitoring"
-        CWD[CloudWatch Dashboard<br/>makita-failover-dashboard]
-    end
-
     subgraph "Event Logging"
         ELF[Event Log Files<br/>Markdown .md]
     end
 
     User --> DA
-    DA --> PreMCP
-    DA --> FailMCP
-    DA --> PostMCP
-    DA --> AWSS
-    DA --> SNS
-    DA --> ELF
+    DA --> GW
+    GW --> PreMCP
+    GW --> FailMCP
+    GW --> PostMCP
+    GW --> AWSS
+    GW --> SNS
 
+    CP -.->|restricts| GW
     BG_F -.->|governs| FailMCP
     BG_Pre -.->|governs| PreMCP
     BG_Post -.->|governs| PostMCP
-    AP -.->|restricts| PreMCP
-    AP -.->|restricts| FailMCP
-    AP -.->|restricts| PostMCP
-    AI -.->|identity| PreMCP
-    AI -.->|identity| FailMCP
-    AI -.->|identity| PostMCP
 
     PreMCP --> PG_Primary
     PreMCP --> PG_Replica
@@ -93,10 +83,9 @@ graph TB
     FailMCP --> PS1
     PostMCP --> PG_Replica
     PostMCP --> PS1
+    DA --> ELF
 
     PG_Primary -->|replication| PG_Replica
-    PG_Primary --> CWD
-    PG_Replica --> CWD
 ```
 
 ## Project Structure
@@ -112,6 +101,7 @@ makita/
 │   ├── deploy.sh                  # Automated deployment script
 │   ├── deploy_agentcore.py        # AgentCore Runtime + Gateway deployment
 │   ├── deploy_devops_agent.py     # DevOps Agent Space deployment
+│   ├── deploy_kiro_agent.py       # Kiro agent config for AgentCore Gateway
 │   └── teardown.sh                # Automated teardown script
 ├── mcp-servers/
 │   ├── workloads/                  # Workload MCP servers
@@ -127,8 +117,9 @@ makita/
 │   │           └── server.py
 │   ├── aws-support-stub/          # AWS Support Stub Server
 │   │   └── server.py
-│   └── servicenow-stub/           # ServiceNow Stub Server
-│       └── server.py
+│   ├── servicenow-stub/           # ServiceNow Stub Server
+│   │   └── server.py
+│   └── agentcore_gateway_proxy.py # Gateway proxy for Kiro agent
 ├── policies/                      # AgentCore and Bedrock governance configs
 │   ├── agentcore/                 # Cedar policies for AgentCore Gateway targets
 │   │   ├── postgresql-failover.cedar
@@ -296,18 +287,20 @@ aws cloudformation describe-stacks \
 
 ### What Gets Provisioned
 
-The single stack creates all resources with the `makita-` prefix and mandatory tags (`auto-delete=no`, `Env=prod1`):
+Resources are deployed across CloudFormation stacks and AgentCore scripts, all with the `makita-` prefix and mandatory tags (`auto-delete=no`, `Env=prod1`):
 
-| Resource Group | Resources | Stack / Region |
+| Resource Group | Resources | Deployed By |
 |---|---|---|
-| PostgreSQL Primary | `makita-pg-primary` | `makita-postgresql-stack` / us-east-1 |
-| PostgreSQL Replica | `makita-pg-replica` | `makita-postgresql-replica-stack` / us-west-2 |
-| Parameter Store | `/makita/db/*`, `/makita/mcp/*`, `/makita/dashboard/*` | `makita-postgresql-stack` / us-east-1 |
-| MCP Servers | `makita-postgresql-failover-mcp`, `makita-postgresql-precheck-mcp`, `makita-postgresql-postcheck-mcp` | `makita-postgresql-stack` / us-east-1 |
-| Stub Servers | `makita-aws-support-stub`, `makita-servicenow-stub` | `makita-postgresql-stack` / us-east-1 |
-| AgentCore Governance | Policies, identities, and Bedrock Guardrails per MCP server | `makita-agentcore-stack` / us-east-1 |
-| IAM | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | `makita-postgresql-stack` / us-east-1 |
-| Secrets Manager | `makita-db-master-secret` | `makita-postgresql-stack` / us-east-1 |
+| PostgreSQL Primary | `makita-pg-primary` | `makita-postgresql-stack` (CFN) / us-east-1 |
+| PostgreSQL Replica | `makita-pg-replica` | `makita-postgresql-replica-stack` (CFN) / us-west-2 |
+| Parameter Store | `/makita/db/*` | `makita-postgresql-stack` (CFN) / us-east-1 |
+| IAM Roles | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | `makita-postgresql-stack` (CFN) / us-east-1 |
+| Secrets Manager | `makita-db-master-secret` | `makita-postgresql-stack` (CFN) / us-east-1 |
+| Bedrock Guardrails | `makita-failover-guardrail`, `makita-precheck-guardrail`, `makita-postcheck-guardrail` | `makita-postgresql-stack` (CFN) / us-east-1 |
+| AgentCore Runtimes | 5 runtimes (failover, precheck, postcheck, aws-support, servicenow) | `deploy_agentcore.py` / us-east-1 |
+| AgentCore Gateway | `makita-mcp-gateway` with Cedar policies per target | `deploy_agentcore.py` / us-east-1 |
+| Bedrock Guardrails | Per-runtime guardrails from `policies/guardrails/` | `deploy_agentcore.py` / us-east-1 |
+| DevOps Agent Space | `makita-agentspace` with operator role and web app | `deploy_devops_agent.py` / us-east-1 |
 
 ### Tear Down
 
@@ -328,7 +321,7 @@ aws cloudformation delete-stack --stack-name makita-postgresql-stack --region us
 
 ## MCP Server Configuration
 
-MAKITA uses three dedicated MCP servers, each hosted in Amazon AgentCore and governed by its own AgentCore Policy, Identity, and Bedrock Guardrail.
+MAKITA uses five MCP servers, each hosted as an AgentCore Runtime behind the `makita-mcp-gateway` AgentCore Gateway. Each gateway target has a Cedar policy (`policies/agentcore/`) restricting allowed tool actions, and a Bedrock Guardrail (`policies/guardrails/`) for content safety.
 
 ### Failover MCP Server (`makita-postgresql-failover-mcp`)
 
@@ -339,9 +332,9 @@ Executes the core PostgreSQL failover operation: verifies replication, promotes 
 - `health_check(cluster_name)` — returns cluster health status
 
 **Governance:**
-- AgentCore Policy: `makita-failover-policy` — restricts to `makita-*` resources with `Env=prod1` tag
-- AgentCore Identity: `makita-failover-identity` → `makita-failover-role`
-- Bedrock Guardrail: `makita-failover-guardrail` — restricts to DR failover actions, blocks prompt injection
+- Cedar Policy: `policies/agentcore/postgresql-failover.cedar`
+- Bedrock Guardrail: `policies/guardrails/postgresql-failover-guardrail.json`
+- IAM Role: `makita-failover-role`
 
 ### Pre-Check MCP Server (`makita-postgresql-precheck-mcp`)
 
@@ -353,9 +346,9 @@ Performs all pre-failover verifications before the failover is initiated.
 - `verify_replica_readiness(cluster_name, dr_region)` — verifies replica is ready for promotion
 
 **Governance:**
-- AgentCore Policy: `makita-precheck-policy` — read-only on `makita-*` resources with `Env=prod1` tag
-- AgentCore Identity: `makita-precheck-identity` → `makita-precheck-role`
-- Bedrock Guardrail: `makita-precheck-guardrail` — restricts to pre-check read actions
+- Cedar Policy: `policies/agentcore/postgresql-precheck.cedar`
+- Bedrock Guardrail: `policies/guardrails/postgresql-precheck-guardrail.json`
+- IAM Role: `makita-precheck-role`
 
 ### Post-Check MCP Server (`makita-postgresql-postcheck-mcp`)
 
@@ -367,9 +360,33 @@ Performs all post-failover verifications after the failover completes.
 - `verify_replication_established(cluster_name)` — verifies replication from the new primary
 
 **Governance:**
-- AgentCore Policy: `makita-postcheck-policy` — read-only on `makita-*` resources with `Env=prod1` tag
-- AgentCore Identity: `makita-postcheck-identity` → `makita-postcheck-role`
-- Bedrock Guardrail: `makita-postcheck-guardrail` — restricts to post-check read actions
+- Cedar Policy: `policies/agentcore/postgresql-postcheck.cedar`
+- Bedrock Guardrail: `policies/guardrails/postgresql-postcheck-guardrail.json`
+- IAM Role: `makita-postcheck-role`
+
+### AWS Support Stub Server (`makita-aws-support-stub`)
+
+Simulates the AWS Support API for tracking DR operations.
+
+**Tools:**
+- `create_support_case(subject, description, ...)` — creates a support case
+- `update_support_case(case_id, status, ...)` — updates a support case
+
+**Governance:**
+- Cedar Policy: `policies/agentcore/aws-support-stub.cedar`
+- Bedrock Guardrail: `policies/guardrails/aws-support-stub-guardrail.json`
+
+### ServiceNow Stub Server (`makita-servicenow-stub`)
+
+Simulates the ServiceNow API for incident ticket tracking.
+
+**Tools:**
+- `create_ticket(short_description, description, ...)` — creates an incident ticket
+- `update_ticket(ticket_id, status, ...)` — updates an incident ticket
+
+**Governance:**
+- Cedar Policy: `policies/agentcore/servicenow-stub.cedar`
+- Bedrock Guardrail: `policies/guardrails/servicenow-stub-guardrail.json`
 
 ## Initiating a Failover via DevOps Agent
 
