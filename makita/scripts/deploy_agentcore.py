@@ -29,34 +29,44 @@ ROLE_ARN = f"arn:aws:iam::{ACCOUNT_ID}:role/makita-failover-role"
 # MCP server definitions
 MCP_SERVERS = [
     {
-        "name": "makita_failover_mcp",
+        "name": "makita_postgresql_failover_mcp",
         "description": "Failover MCP Server — promotes DR replica to primary",
-        "module_path": "mcp-servers/failover",
+        "module_path": "mcp-servers/workloads/postgresql/failover",
         "entry_point": ["server.py"],
+        "policy_file": "policies/agentcore/postgresql-failover.cedar",
+        "guardrail_file": "policies/guardrails/postgresql-failover-guardrail.json",
     },
     {
-        "name": "makita_precheck_mcp",
+        "name": "makita_postgresql_precheck_mcp",
         "description": "Pre-Check MCP Server — verifies cluster health before failover",
-        "module_path": "mcp-servers/precheck",
+        "module_path": "mcp-servers/workloads/postgresql/precheck",
         "entry_point": ["server.py"],
+        "policy_file": "policies/agentcore/postgresql-precheck.cedar",
+        "guardrail_file": "policies/guardrails/postgresql-precheck-guardrail.json",
     },
     {
-        "name": "makita_postcheck_mcp",
+        "name": "makita_postgresql_postcheck_mcp",
         "description": "Post-Check MCP Server — verifies cluster state after failover",
-        "module_path": "mcp-servers/postcheck",
+        "module_path": "mcp-servers/workloads/postgresql/postcheck",
         "entry_point": ["server.py"],
+        "policy_file": "policies/agentcore/postgresql-postcheck.cedar",
+        "guardrail_file": "policies/guardrails/postgresql-postcheck-guardrail.json",
     },
     {
         "name": "makita_aws_support_stub",
         "description": "AWS Support Stub Server — simulates AWS Support API",
         "module_path": "mcp-servers/aws-support-stub",
         "entry_point": ["server.py"],
+        "policy_file": "policies/agentcore/aws-support-stub.cedar",
+        "guardrail_file": "policies/guardrails/aws-support-stub-guardrail.json",
     },
     {
         "name": "makita_servicenow_stub",
         "description": "ServiceNow Stub Server — simulates ServiceNow API",
         "module_path": "mcp-servers/servicenow-stub",
         "entry_point": ["server.py"],
+        "policy_file": "policies/agentcore/servicenow-stub.cedar",
+        "guardrail_file": "policies/guardrails/servicenow-stub-guardrail.json",
     },
 ]
 
@@ -69,6 +79,7 @@ TAGS = {
 }
 
 client = boto3.client("bedrock-agentcore-control", region_name=REGION)
+bedrock_client = boto3.client("bedrock", region_name=REGION)
 s3 = boto3.client("s3", region_name=REGION)
 
 
@@ -409,7 +420,9 @@ def deploy_gateway():
 # ---------------------------------------------------------------------------
 
 def create_gateway_targets(gw_id, runtime_ids, endpoint_urls):
-    """Create Gateway Targets for each MCP server Runtime."""
+    """Create Gateway Targets for each MCP server Runtime with Cedar policies."""
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     for server_def in MCP_SERVERS:
         name = server_def["name"]
         runtime_id = runtime_ids.get(name)
@@ -420,34 +433,161 @@ def create_gateway_targets(gw_id, runtime_ids, endpoint_urls):
 
         target_name = f"{name.replace('_', '-')}-target"
 
+        # Load Cedar policy from file
+        policy_statement = None
+        policy_file = server_def.get("policy_file")
+        if policy_file:
+            policy_path = os.path.join(project_root, policy_file)
+            try:
+                with open(policy_path) as f:
+                    policy_statement = f.read()
+                log(f"Loaded Cedar policy: {policy_file}")
+            except FileNotFoundError:
+                log(f"Warning: policy file not found: {policy_file}")
+
         log(f"Creating Gateway Target: {target_name} -> {endpoint_url}")
 
-        # Use mcpServer target type with the HTTPS endpoint URL
-        try:
-            client.create_gateway_target(
-                gatewayIdentifier=gw_id,
-                name=target_name,
-                description=server_def["description"],
-                targetConfiguration={
-                    "mcp": {
-                        "mcpServer": {"endpoint": endpoint_url}
+        # Build target kwargs
+        target_kwargs = dict(
+            gatewayIdentifier=gw_id,
+            name=target_name,
+            description=server_def["description"],
+            targetConfiguration={
+                "mcp": {
+                    "mcpServer": {"endpoint": endpoint_url}
+                }
+            },
+            credentialProviderConfigurations=[{
+                "credentialProviderType": "GATEWAY_IAM_ROLE",
+                "credentialProvider": {
+                    "iamCredentialProvider": {
+                        "service": "bedrock-agentcore",
+                        "region": REGION,
                     }
                 },
-                credentialProviderConfigurations=[{
-                    "credentialProviderType": "GATEWAY_IAM_ROLE",
-                    "credentialProvider": {
-                        "iamCredentialProvider": {
-                            "service": "bedrock-agentcore",
-                            "region": REGION,
-                        }
-                    },
-                }],
-            )
-            log(f"Created target: {target_name}")
+            }],
+        )
+
+        # Attach Cedar policy if available
+        if policy_statement:
+            target_kwargs["authorizationConfiguration"] = {
+                "cedar": {
+                    "statement": policy_statement,
+                }
+            }
+
+        try:
+            client.create_gateway_target(**target_kwargs)
+            log(f"Created target: {target_name}" + (" (with Cedar policy)" if policy_statement else ""))
         except client.exceptions.ConflictException:
             log(f"Target already exists: {target_name}")
         except Exception as e:
             log(f"Error creating target {target_name}: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Deploy Bedrock Guardrails
+# ---------------------------------------------------------------------------
+
+def deploy_guardrails(runtime_ids):
+    """Create or update Bedrock Guardrails for each MCP server from config files."""
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    guardrail_ids = {}
+
+    for server_def in MCP_SERVERS:
+        name = server_def["name"]
+        guardrail_file = server_def.get("guardrail_file")
+        if not guardrail_file:
+            continue
+
+        config_path = os.path.join(project_root, guardrail_file)
+        try:
+            with open(config_path) as f:
+                config = json.load(f)
+        except FileNotFoundError:
+            log(f"Warning: guardrail config not found: {guardrail_file}")
+            continue
+
+        guardrail_name = config["name"]
+        log(f"Deploying Bedrock Guardrail: {guardrail_name}")
+
+        # Check if guardrail already exists
+        existing_id = None
+        try:
+            resp = bedrock_client.list_guardrails()
+            for g in resp.get("guardrails", []):
+                if g.get("name") == guardrail_name:
+                    existing_id = g.get("id")
+                    break
+        except Exception as e:
+            log(f"  Error listing guardrails: {e}")
+
+        # Delete existing guardrail to recreate
+        if existing_id:
+            log(f"  Deleting existing guardrail: {guardrail_name} ({existing_id})")
+            try:
+                bedrock_client.delete_guardrail(guardrailIdentifier=existing_id)
+                # Wait for deletion
+                for _ in range(30):
+                    try:
+                        bedrock_client.get_guardrail(guardrailIdentifier=existing_id)
+                        time.sleep(5)
+                    except Exception:
+                        break
+            except Exception as e:
+                log(f"  Error deleting guardrail: {e}")
+
+        # Create guardrail
+        try:
+            create_kwargs = {
+                "name": guardrail_name,
+                "description": config.get("description", ""),
+                "blockedInputMessaging": config["blockedInputMessaging"],
+                "blockedOutputsMessaging": config["blockedOutputsMessaging"],
+                "tags": [{"key": t["key"], "value": t["value"]} for t in config.get("tags", [])],
+            }
+            if "contentPolicyConfig" in config:
+                create_kwargs["contentPolicyConfig"] = config["contentPolicyConfig"]
+            if "topicPolicyConfig" in config:
+                create_kwargs["topicPolicyConfig"] = config["topicPolicyConfig"]
+
+            resp = bedrock_client.create_guardrail(**create_kwargs)
+            gid = resp.get("guardrailId", "")
+            log(f"  Created guardrail: {guardrail_name} ({gid})")
+            guardrail_ids[name] = gid
+        except Exception as e:
+            log(f"  Error creating guardrail {guardrail_name}: {e}")
+
+    return guardrail_ids
+
+
+def delete_guardrails():
+    """Delete all MAKITA Bedrock Guardrails."""
+    for server_def in MCP_SERVERS:
+        guardrail_file = server_def.get("guardrail_file")
+        if not guardrail_file:
+            continue
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            guardrail_file,
+        )
+        try:
+            with open(config_path) as f:
+                config = json.load(f)
+            guardrail_name = config["name"]
+        except Exception:
+            continue
+
+        try:
+            resp = bedrock_client.list_guardrails()
+            for g in resp.get("guardrails", []):
+                if g.get("name") == guardrail_name:
+                    gid = g.get("id")
+                    bedrock_client.delete_guardrail(guardrailIdentifier=gid)
+                    log(f"  Deleted guardrail: {guardrail_name} ({gid})")
+                    break
+        except Exception as e:
+            log(f"  Error deleting guardrail {guardrail_name}: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -464,6 +604,9 @@ def teardown():
     # Delete all makita runtimes (includes endpoints)
     for server_def in MCP_SERVERS:
         delete_runtime_by_name(server_def["name"])
+
+    # Delete Bedrock Guardrails
+    delete_guardrails()
 
     log("Teardown complete")
 
@@ -510,12 +653,19 @@ def main():
         create_gateway_targets(gw_id, runtime_ids, endpoint_urls)
     log("")
 
+    # 4. Deploy Bedrock Guardrails
+    log("Deploying Bedrock Guardrails...")
+    guardrail_ids = deploy_guardrails(runtime_ids)
+    log("")
+
     # Summary
     log("=== Deployment Summary ===")
     for name, rid in runtime_ids.items():
         log(f"  Runtime: {name} -> {rid}")
     if gw_id:
         log(f"  Gateway: {GATEWAY_NAME} -> {gw_id}")
+    for name, gid in guardrail_ids.items():
+        log(f"  Guardrail: {name} -> {gid}")
     log("Done.")
 
 

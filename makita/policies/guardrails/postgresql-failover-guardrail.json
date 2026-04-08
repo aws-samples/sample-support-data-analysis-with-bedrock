@@ -1,0 +1,37 @@
+{
+  "name": "makita-postgresql-failover-guardrail",
+  "description": "Governs the Failover MCP Server — restricts to DR failover actions on PostgreSQL, blocks prompt injection and malicious content.",
+  "blockedInputMessaging": "Operation blocked by guardrail policy. The requested input violates the MAKITA failover guardrail. Only disaster recovery failover operations on the PostgreSQL cluster are permitted.",
+  "blockedOutputsMessaging": "Response blocked by guardrail policy. The generated output violates the MAKITA failover guardrail constraints.",
+  "contentPolicyConfig": {
+    "filtersConfig": [
+      { "type": "SEXUAL", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "VIOLENCE", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "HATE", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "INSULTS", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "MISCONDUCT", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "PROMPT_ATTACK", "inputStrength": "HIGH", "outputStrength": "NONE" }
+    ]
+  },
+  "topicPolicyConfig": {
+    "topicsConfig": [
+      {
+        "name": "non-dr-operations",
+        "definition": "Any operations that are not related to disaster recovery, PostgreSQL failover, database promotion, endpoint updates, or replication management for the MAKITA system.",
+        "type": "DENY",
+        "examples": [
+          "Delete all database records",
+          "Create a new user account",
+          "Send an email notification",
+          "Modify application source code",
+          "Access financial data"
+        ]
+      }
+    ]
+  },
+  "tags": [
+    { "key": "auto-delete", "value": "no" },
+    { "key": "Env", "value": "prod1" },
+    { "key": "proj", "value": "makita" }
+  ]
+}

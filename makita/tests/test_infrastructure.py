@@ -1,7 +1,7 @@
 """
 Infrastructure provisioning tests for the MAKITA CloudFormation template.
 
-Validates the CloudFormation template at infrastructure/makita-stack.yaml
+Validates the CloudFormation template at infrastructure/workloads/postgresql/makita-postgresql-stack.yaml
 by parsing the YAML directly and asserting on resource structure, naming
 conventions, tags, Parameter Store parameters, and tagging exceptions.
 
@@ -15,7 +15,7 @@ import pytest
 from pathlib import Path
 
 
-TEMPLATE_PATH = Path(__file__).parent.parent / "infrastructure" / "makita-stack.yaml"
+TEMPLATE_PATH = Path(__file__).parent.parent / "infrastructure" / "workloads" / "postgresql" / "makita-postgresql-stack.yaml"
 
 
 # ---------------------------------------------------------------------------

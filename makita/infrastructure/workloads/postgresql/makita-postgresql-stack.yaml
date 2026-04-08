@@ -3,7 +3,7 @@ Description: >-
   MAKITA (Machine Augmented Key Infrastructure Technology Automation) -
   Primary region CloudFormation stack (us-east-1) for multi-region PostgreSQL
   disaster recovery with MCP servers, AgentCore governance, and Bedrock
-  Guardrails. Deploy makita-replica-stack.yaml to us-west-2 for the replica.
+  Guardrails. Deploy makita-postgresql-replica-stack.yaml to us-west-2 for the replica.
 
 # =============================================================================
 # Parameters
@@ -21,7 +21,7 @@ Parameters:
     Default: pending-replica-deployment
     Description: >-
       Endpoint address of the cross-region read replica in us-west-2.
-      Set this after deploying makita-replica-stack.yaml to us-west-2.
+      Set this after deploying makita-postgresql-replica-stack.yaml to us-west-2.
 
 # =============================================================================
 # Resources
@@ -207,7 +207,7 @@ Resources:
   # PostgreSQL Cluster — Read Replica (us-west-2, cross-region replication)
   # ---------------------------------------------------------------------------
   # The cross-region read replica is provisioned by a separate stack
-  # (makita-replica-stack.yaml) deployed to us-west-2. After deploying
+  # (makita-postgresql-replica-stack.yaml) deployed to us-west-2. After deploying
   # the replica stack, pass its endpoint as the ReplicaEndpoint parameter
   # to this stack so that Parameter Store is kept in sync.
 
@@ -306,7 +306,7 @@ Resources:
       Name: /makita/mcp/failover-server-arn
       Type: String
       Description: ARN of the Failover MCP Server in AgentCore
-      Value: !Sub "arn:aws:agentcore:us-east-1:${AWS::AccountId}:mcp-server/makita-failover-mcp"
+      Value: !Sub "arn:aws:agentcore:us-east-1:${AWS::AccountId}:mcp-server/makita-postgresql-failover-mcp"
       Tags:
         auto-delete: "no"
         Env: prod1
@@ -318,7 +318,7 @@ Resources:
       Name: /makita/mcp/precheck-server-arn
       Type: String
       Description: ARN of the Pre-Check MCP Server in AgentCore
-      Value: !Sub "arn:aws:agentcore:us-east-1:${AWS::AccountId}:mcp-server/makita-precheck-mcp"
+      Value: !Sub "arn:aws:agentcore:us-east-1:${AWS::AccountId}:mcp-server/makita-postgresql-precheck-mcp"
       Tags:
         auto-delete: "no"
         Env: prod1
@@ -330,7 +330,7 @@ Resources:
       Name: /makita/mcp/postcheck-server-arn
       Type: String
       Description: ARN of the Post-Check MCP Server in AgentCore
-      Value: !Sub "arn:aws:agentcore:us-east-1:${AWS::AccountId}:mcp-server/makita-postcheck-mcp"
+      Value: !Sub "arn:aws:agentcore:us-east-1:${AWS::AccountId}:mcp-server/makita-postgresql-postcheck-mcp"
       Tags:
         auto-delete: "no"
         Env: prod1

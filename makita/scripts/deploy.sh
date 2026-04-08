@@ -4,20 +4,20 @@ set -euo pipefail
 # MAKITA Deploy Script
 #
 # Usage:
-#   ./scripts/deploy.sh              Deploy all stacks in order
-#   ./scripts/deploy.sh primary      Deploy primary stack only (us-east-1)
-#   ./scripts/deploy.sh replica      Deploy replica stack only (us-west-2)
-#   ./scripts/deploy.sh agentcore    Deploy AgentCore via Python script (us-east-1)
-#   ./scripts/deploy.sh devops-agent Deploy DevOps Agent Space (us-east-1)
-#   ./scripts/deploy.sh kiro-agent   Deploy Kiro agent config for AgentCore Gateway
-#   ./scripts/deploy.sh all          Deploy all stacks in order (same as no args)
+#   ./scripts/deploy.sh                  Deploy all stacks in order
+#   ./scripts/deploy.sh postgresql       Deploy PostgreSQL primary stack (us-east-1)
+#   ./scripts/deploy.sh postgresql-dr    Deploy PostgreSQL replica stack (us-west-2)
+#   ./scripts/deploy.sh agentcore        Deploy AgentCore Runtimes + Gateway (us-east-1)
+#   ./scripts/deploy.sh devops-agent     Deploy DevOps Agent Space (us-east-1)
+#   ./scripts/deploy.sh kiro-agent       Deploy Kiro agent config for AgentCore Gateway
+#   ./scripts/deploy.sh all              Deploy all stacks in order (same as no args)
 
 PRIMARY_REGION="us-east-1"
 DR_REGION="us-west-2"
-PRIMARY_STACK="makita-stack"
-REPLICA_STACK="makita-replica-stack"
+PRIMARY_STACK="makita-postgresql-stack"
+REPLICA_STACK="makita-postgresql-replica-stack"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INFRA_DIR="${SCRIPT_DIR}/../infrastructure"
+INFRA_DIR="${SCRIPT_DIR}/../infrastructure/workloads/postgresql"
 TARGET="${1:-all}"
 
 # ---------------------------------------------------------------------------
@@ -127,15 +127,15 @@ deploy_or_create_stack() {
 # ---------------------------------------------------------------------------
 
 deploy_primary() {
-  echo "[primary] Deploying ${PRIMARY_STACK} to ${PRIMARY_REGION}..."
+  echo "[postgresql] Deploying ${PRIMARY_STACK} to ${PRIMARY_REGION}..."
   cleanup_failed_stack "${PRIMARY_STACK}" "${PRIMARY_REGION}"
-  deploy_or_create_stack "${PRIMARY_STACK}" "${INFRA_DIR}/makita-stack.yaml" \
+  deploy_or_create_stack "${PRIMARY_STACK}" "${INFRA_DIR}/makita-postgresql-stack.yaml" \
     "${PRIMARY_REGION}" --capabilities CAPABILITY_NAMED_IAM
-  echo "[primary] Done."
+  echo "[postgresql] Done."
 }
 
 deploy_replica() {
-  echo "[replica] Retrieving primary instance ARN..."
+  echo "[postgresql-dr] Retrieving primary instance ARN..."
   local primary_arn
   primary_arn=$(aws cloudformation describe-stacks \
     --stack-name "${PRIMARY_STACK}" \
@@ -149,14 +149,14 @@ deploy_replica() {
   fi
   echo "         Primary ARN: ${primary_arn}"
 
-  echo "[replica] Deploying ${REPLICA_STACK} to ${DR_REGION}..."
+  echo "[postgresql-dr] Deploying ${REPLICA_STACK} to ${DR_REGION}..."
   cleanup_failed_stack "${REPLICA_STACK}" "${DR_REGION}"
-  deploy_or_create_stack "${REPLICA_STACK}" "${INFRA_DIR}/makita-replica-stack.yaml" \
+  deploy_or_create_stack "${REPLICA_STACK}" "${INFRA_DIR}/makita-postgresql-replica-stack.yaml" \
     "${DR_REGION}" --parameter-overrides "PrimaryInstanceArn=${primary_arn}"
-  echo "[replica] Done."
+  echo "[postgresql-dr] Done."
 
   # Update primary stack with replica endpoint
-  echo "[replica] Updating primary stack with replica endpoint..."
+  echo "[postgresql-dr] Updating primary stack with replica endpoint..."
   local replica_endpoint
   replica_endpoint=$(aws cloudformation describe-stacks \
     --stack-name "${REPLICA_STACK}" \
@@ -170,7 +170,7 @@ deploy_replica() {
   fi
 
   aws cloudformation deploy \
-    --template-file "${INFRA_DIR}/makita-stack.yaml" \
+    --template-file "${INFRA_DIR}/makita-postgresql-stack.yaml" \
     --stack-name "${PRIMARY_STACK}" \
     --capabilities CAPABILITY_NAMED_IAM \
     --region "${PRIMARY_REGION}" \
@@ -222,10 +222,10 @@ echo "=== MAKITA Deployment (target: ${TARGET}) ==="
 echo ""
 
 case "${TARGET}" in
-  primary)
+  postgresql)
     deploy_primary
     ;;
-  replica)
+  postgresql-dr)
     deploy_replica
     ;;
   agentcore)
@@ -245,14 +245,14 @@ case "${TARGET}" in
     print_summary
     ;;
   *)
-    echo "Usage: $0 [primary|replica|agentcore|devops-agent|kiro-agent|all]"
+    echo "Usage: $0 [postgresql|postgresql-dr|agentcore|devops-agent|kiro-agent|all]"
     echo ""
-    echo "  primary       Deploy primary stack (us-east-1)"
-    echo "  replica       Deploy replica stack (us-west-2) + update primary"
-    echo "  agentcore     Deploy AgentCore Runtimes + Gateway (us-east-1)"
-    echo "  devops-agent  Deploy DevOps Agent Space (us-east-1)"
-    echo "  kiro-agent    Deploy Kiro agent config for AgentCore Gateway"
-    echo "  all           Deploy all (default)"
+    echo "  postgresql      Deploy PostgreSQL primary stack (us-east-1)"
+    echo "  postgresql-dr   Deploy PostgreSQL replica stack (us-west-2) + update primary"
+    echo "  agentcore       Deploy AgentCore Runtimes + Gateway (us-east-1)"
+    echo "  devops-agent    Deploy DevOps Agent Space (us-east-1)"
+    echo "  kiro-agent      Deploy Kiro agent config for AgentCore Gateway"
+    echo "  all             Deploy all (default)"
     exit 1
     ;;
 esac

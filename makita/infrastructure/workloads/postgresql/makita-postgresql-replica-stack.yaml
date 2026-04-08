@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   MAKITA Replica Stack — Cross-region PostgreSQL read replica in us-west-2.
-  Deploy this stack to us-west-2 after deploying makita-stack.yaml to us-east-1.
+  Deploy this stack to us-west-2 after deploying makita-postgresql-stack.yaml to us-east-1.
 
 # =============================================================================
 # Parameters
@@ -11,7 +11,7 @@ Parameters:
     Type: String
     Description: >-
       ARN of the primary PostgreSQL instance (makita-pg-primary) in us-east-1.
-      Get this from the makita-stack outputs or from the RDS console.
+      Get this from the makita-postgresql-stack outputs or from the RDS console.
 
 # =============================================================================
 # Resources

@@ -1,0 +1,37 @@
+{
+  "name": "makita-servicenow-stub-guardrail",
+  "description": "Governs the ServiceNow Stub MCP Server — restricts to ticket management actions, blocks prompt injection and malicious content.",
+  "blockedInputMessaging": "Operation blocked by guardrail policy. The requested input violates the MAKITA ServiceNow guardrail. Only ticket creation and update operations are permitted.",
+  "blockedOutputsMessaging": "Response blocked by guardrail policy. The generated output violates the MAKITA ServiceNow guardrail constraints.",
+  "contentPolicyConfig": {
+    "filtersConfig": [
+      { "type": "SEXUAL", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "VIOLENCE", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "HATE", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "INSULTS", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "MISCONDUCT", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "PROMPT_ATTACK", "inputStrength": "HIGH", "outputStrength": "NONE" }
+    ]
+  },
+  "topicPolicyConfig": {
+    "topicsConfig": [
+      {
+        "name": "non-ticketing-operations",
+        "definition": "Any operations that are not related to creating or updating ServiceNow incident tickets for the MAKITA disaster recovery system.",
+        "type": "DENY",
+        "examples": [
+          "Delete all database records",
+          "Execute a failover",
+          "Modify infrastructure",
+          "Access financial data",
+          "Send marketing emails"
+        ]
+      }
+    ]
+  },
+  "tags": [
+    { "key": "auto-delete", "value": "no" },
+    { "key": "Env", "value": "prod1" },
+    { "key": "proj", "value": "makita" }
+  ]
+}

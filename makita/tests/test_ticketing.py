@@ -49,7 +49,7 @@ def _sample_context(**overrides) -> TicketUpdateContext:
         status="failover initiated",
         resource_names=["makita-pg-primary", "makita-pg-replica"],
         parameter_paths=["/makita/db/primary-endpoint"],
-        agentcore_resources=["makita-failover-mcp"],
+        agentcore_resources=["makita-postgresql-failover-mcp"],
         primary_region="us-east-1",
         dr_region="us-west-2",
         endpoints={"primary": "primary.rds.amazonaws.com", "replica": "replica.rds.amazonaws.com"},
@@ -57,7 +57,7 @@ def _sample_context(**overrides) -> TicketUpdateContext:
         iam_role="makita-failover-role",
         error_code=None,
         error_message=None,
-        mcp_server="makita-failover-mcp",
+        mcp_server="makita-postgresql-failover-mcp",
     )
     defaults.update(overrides)
     return TicketUpdateContext(**defaults)
@@ -84,7 +84,7 @@ class TestBuildUpdateDescription:
     def test_includes_mcp_server(self):
         ctx = _sample_context()
         desc = build_update_description(ctx)
-        assert "MCP Server: makita-failover-mcp" in desc
+        assert "MCP Server: makita-postgresql-failover-mcp" in desc
 
     def test_includes_resource_names(self):
         ctx = _sample_context()
@@ -100,7 +100,7 @@ class TestBuildUpdateDescription:
     def test_includes_agentcore_resources(self):
         ctx = _sample_context()
         desc = build_update_description(ctx)
-        assert "AgentCore Resources: makita-failover-mcp" in desc
+        assert "AgentCore Resources: makita-postgresql-failover-mcp" in desc
 
     def test_includes_endpoints(self):
         ctx = _sample_context()
@@ -300,4 +300,4 @@ class TestTicketUpdateContext:
         assert ctx.phase == "failover"
         assert ctx.status == "failover initiated"
         assert len(ctx.resource_names) == 2
-        assert ctx.mcp_server == "makita-failover-mcp"
+        assert ctx.mcp_server == "makita-postgresql-failover-mcp"

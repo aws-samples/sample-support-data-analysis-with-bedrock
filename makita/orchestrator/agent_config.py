@@ -9,7 +9,8 @@ Defines the DevOps Agent's connection to all five MCP servers:
 
 Each server entry maps a logical name to its AgentCore server name and
 the tool functions it exposes.  Tool functions are loaded via importlib
-from the hyphenated ``mcp-servers`` package directories.
+from the hyphenated ``mcp-servers`` package directories (workload servers
+live under ``mcp-servers/workloads/``).
 
 Requirements: 8.1, 8.2, 8.3, 11.7, 12.7, 18.9, 19.9
 """
@@ -26,7 +27,7 @@ from typing import Any
 
 
 def _load_failover_tools() -> dict[str, Any]:
-    mod = importlib.import_module("mcp-servers.failover.server")
+    mod = importlib.import_module("mcp-servers.workloads.postgresql.failover.server")
     return {
         "execute_failover": mod.execute_failover,
         "health_check": mod.health_check,
@@ -34,7 +35,7 @@ def _load_failover_tools() -> dict[str, Any]:
 
 
 def _load_precheck_tools() -> dict[str, Any]:
-    mod = importlib.import_module("mcp-servers.precheck.server")
+    mod = importlib.import_module("mcp-servers.workloads.postgresql.precheck.server")
     return {
         "verify_replication_health": mod.verify_replication_health,
         "verify_primary_status": mod.verify_primary_status,
@@ -43,7 +44,7 @@ def _load_precheck_tools() -> dict[str, Any]:
 
 
 def _load_postcheck_tools() -> dict[str, Any]:
-    mod = importlib.import_module("mcp-servers.postcheck.server")
+    mod = importlib.import_module("mcp-servers.workloads.postgresql.postcheck.server")
     return {
         "verify_new_primary_health": mod.verify_new_primary_health,
         "verify_endpoints": mod.verify_endpoints,
@@ -80,15 +81,15 @@ def get_agent_config() -> dict[str, dict[str, Any]]:
     """
     return {
         "failover": {
-            "server_name": "makita-failover-mcp",
+            "server_name": "makita-postgresql-failover-mcp",
             "tools": _load_failover_tools(),
         },
         "precheck": {
-            "server_name": "makita-precheck-mcp",
+            "server_name": "makita-postgresql-precheck-mcp",
             "tools": _load_precheck_tools(),
         },
         "postcheck": {
-            "server_name": "makita-postcheck-mcp",
+            "server_name": "makita-postgresql-postcheck-mcp",
             "tools": _load_postcheck_tools(),
         },
         "aws_support": {

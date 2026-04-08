@@ -16,12 +16,12 @@ from typing import Callable
 
 
 # ---------------------------------------------------------------------------
-# Default tool loaders — import from mcp-servers via importlib (hyphen path)
+# Default tool loaders — import from mcp-servers/workload via importlib (hyphen path)
 # ---------------------------------------------------------------------------
 
 def _load_precheck_tools() -> dict:
     """Load pre-check tool functions from the precheck MCP server."""
-    mod = importlib.import_module("mcp-servers.precheck.server")
+    mod = importlib.import_module("mcp-servers.workloads.postgresql.precheck.server")
     return {
         "verify_replication_health": mod.verify_replication_health,
         "verify_primary_status": mod.verify_primary_status,
@@ -31,7 +31,7 @@ def _load_precheck_tools() -> dict:
 
 def _load_failover_tools() -> dict:
     """Load failover tool functions from the failover MCP server."""
-    mod = importlib.import_module("mcp-servers.failover.server")
+    mod = importlib.import_module("mcp-servers.workloads.postgresql.failover.server")
     return {
         "execute_failover": mod.execute_failover,
     }
@@ -39,7 +39,7 @@ def _load_failover_tools() -> dict:
 
 def _load_postcheck_tools() -> dict:
     """Load post-check tool functions from the postcheck MCP server."""
-    mod = importlib.import_module("mcp-servers.postcheck.server")
+    mod = importlib.import_module("mcp-servers.workloads.postgresql.postcheck.server")
     return {
         "verify_new_primary_health": mod.verify_new_primary_health,
         "verify_endpoints": mod.verify_endpoints,
