@@ -1,9 +1,11 @@
 """
-AgentCore policy enforcement tests for the MAKITA AgentCore stack.
+AgentCore policy enforcement tests for the MAKITA project.
 
-The policies are now embedded in the Lambda function code within
-makita-agentcore-stack.yaml. This test extracts the build_policy_doc
-function logic and validates the policy documents it produces.
+Validates the IAM policy structure used by the three PostgreSQL workload
+MCP servers (failover, precheck, postcheck). Each policy enforces:
+  - Allow only specific actions on makita-* resources
+  - Deny non-makita resources, unauthorized regions, non-prod environments,
+    and non-makita principals.
 
 Validates: Requirements 23.9, 25.1, 25.2, 25.3, 25.4, 25.5, 25.6
 """

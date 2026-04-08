@@ -4,7 +4,7 @@ Validates Requirements 23.4, 23.5, 23.6 — MCP server functionality including
 success paths, failure paths, and exception handling for all tools.
 
 All boto3 calls are mocked via unittest.mock.patch.
-The mcp-servers/workload directory uses a hyphen, so we import via importlib and
+The mcp-servers/workloads directory uses a hyphen, so we import via importlib and
 patch attributes directly on the imported module objects.
 """
 
