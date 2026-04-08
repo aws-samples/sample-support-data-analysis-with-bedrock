@@ -1,8 +1,8 @@
 """
 PostgreSQL cluster tests for the MAKITA CloudFormation templates.
 
-Validates the primary instance in makita-stack.yaml (us-east-1) and the
-replica instance in makita-replica-stack.yaml (us-west-2).
+Validates the primary instance in makita-postgresql-stack.yaml (us-east-1) and the
+replica instance in makita-postgresql-replica-stack.yaml (us-west-2).
 
 Validates: Requirement 23.3
 """
@@ -12,8 +12,8 @@ import pytest
 from pathlib import Path
 
 
-PRIMARY_TEMPLATE_PATH = Path(__file__).parent.parent / "infrastructure" / "makita-stack.yaml"
-REPLICA_TEMPLATE_PATH = Path(__file__).parent.parent / "infrastructure" / "makita-replica-stack.yaml"
+PRIMARY_TEMPLATE_PATH = Path(__file__).parent.parent / "infrastructure" / "workloads" / "postgresql" / "makita-postgresql-stack.yaml"
+REPLICA_TEMPLATE_PATH = Path(__file__).parent.parent / "infrastructure" / "workloads" / "postgresql" / "makita-postgresql-replica-stack.yaml"
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ def replica_instance(replica_resources):
 
 
 # =========================================================================
-# Primary instance (us-east-1) — makita-stack.yaml
+# Primary instance (us-east-1) — makita-postgresql-stack.yaml
 # =========================================================================
 
 class TestPrimaryInstance:
@@ -108,7 +108,7 @@ class TestPrimaryInstance:
 
 
 # =========================================================================
-# Replica instance (us-west-2) — makita-replica-stack.yaml
+# Replica instance (us-west-2) — makita-postgresql-replica-stack.yaml
 # =========================================================================
 
 class TestReplicaInstance:

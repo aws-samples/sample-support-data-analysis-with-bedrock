@@ -1,0 +1,37 @@
+{
+  "name": "makita-postgresql-precheck-guardrail",
+  "description": "Governs the Pre-Check MCP Server — restricts to pre-check read actions on PostgreSQL, blocks prompt injection and malicious content.",
+  "blockedInputMessaging": "Operation blocked by guardrail policy. The requested input violates the MAKITA pre-check guardrail. Only disaster recovery pre-check operations on the PostgreSQL cluster are permitted.",
+  "blockedOutputsMessaging": "Response blocked by guardrail policy. The generated output violates the MAKITA pre-check guardrail constraints.",
+  "contentPolicyConfig": {
+    "filtersConfig": [
+      { "type": "SEXUAL", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "VIOLENCE", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "HATE", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "INSULTS", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "MISCONDUCT", "inputStrength": "HIGH", "outputStrength": "HIGH" },
+      { "type": "PROMPT_ATTACK", "inputStrength": "HIGH", "outputStrength": "NONE" }
+    ]
+  },
+  "topicPolicyConfig": {
+    "topicsConfig": [
+      {
+        "name": "non-dr-operations",
+        "definition": "Any operations that are not related to disaster recovery pre-checks, replication health verification, primary status checks, or replica readiness verification for the MAKITA system.",
+        "type": "DENY",
+        "examples": [
+          "Delete all database records",
+          "Modify database schema",
+          "Execute failover without checks",
+          "Access financial data",
+          "Send notifications"
+        ]
+      }
+    ]
+  },
+  "tags": [
+    { "key": "auto-delete", "value": "no" },
+    { "key": "Env", "value": "prod1" },
+    { "key": "proj", "value": "makita" }
+  ]
+}

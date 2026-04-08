@@ -16,14 +16,14 @@ from orchestrator.agent_config import get_agent_config, invoke_tool
 # ---------------------------------------------------------------------------
 
 def _make_failover_module():
-    mod = types.ModuleType("mcp-servers.failover.server")
+    mod = types.ModuleType("mcp-servers.workloads.postgresql.failover.server")
     mod.execute_failover = lambda **kw: {"success": True}
     mod.health_check = lambda **kw: {"cluster_name": "test"}
     return mod
 
 
 def _make_precheck_module():
-    mod = types.ModuleType("mcp-servers.precheck.server")
+    mod = types.ModuleType("mcp-servers.workloads.postgresql.precheck.server")
     mod.verify_replication_health = lambda **kw: {"passed": True}
     mod.verify_primary_status = lambda **kw: {"passed": True}
     mod.verify_replica_readiness = lambda **kw: {"passed": True}
@@ -31,7 +31,7 @@ def _make_precheck_module():
 
 
 def _make_postcheck_module():
-    mod = types.ModuleType("mcp-servers.postcheck.server")
+    mod = types.ModuleType("mcp-servers.workloads.postgresql.postcheck.server")
     mod.verify_new_primary_health = lambda **kw: {"passed": True}
     mod.verify_endpoints = lambda **kw: {"passed": True}
     mod.verify_replication_established = lambda **kw: {"passed": True}
@@ -53,9 +53,9 @@ def _make_servicenow_module():
 
 
 _FAKE_MODULES = {
-    "mcp-servers.failover.server": _make_failover_module(),
-    "mcp-servers.precheck.server": _make_precheck_module(),
-    "mcp-servers.postcheck.server": _make_postcheck_module(),
+    "mcp-servers.workloads.postgresql.failover.server": _make_failover_module(),
+    "mcp-servers.workloads.postgresql.precheck.server": _make_precheck_module(),
+    "mcp-servers.workloads.postgresql.postcheck.server": _make_postcheck_module(),
     "mcp-servers.aws-support-stub.server": _make_aws_support_module(),
     "mcp-servers.servicenow-stub.server": _make_servicenow_module(),
 }
@@ -88,9 +88,9 @@ class TestGetAgentConfig:
 
     def test_server_names_match_agentcore(self, _mock_import):
         cfg = get_agent_config()
-        assert cfg["failover"]["server_name"] == "makita-failover-mcp"
-        assert cfg["precheck"]["server_name"] == "makita-precheck-mcp"
-        assert cfg["postcheck"]["server_name"] == "makita-postcheck-mcp"
+        assert cfg["failover"]["server_name"] == "makita-postgresql-failover-mcp"
+        assert cfg["precheck"]["server_name"] == "makita-postgresql-precheck-mcp"
+        assert cfg["postcheck"]["server_name"] == "makita-postgresql-postcheck-mcp"
         assert cfg["aws_support"]["server_name"] == "makita-aws-support-stub"
         assert cfg["servicenow"]["server_name"] == "makita-servicenow-stub"
 

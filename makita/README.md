@@ -104,27 +104,44 @@ graph TB
 ```
 makita/
 ├── infrastructure/
-│   ├── makita-stack.yaml          # Primary stack (us-east-1)
-│   └── makita-replica-stack.yaml  # Replica stack (us-west-2)
+│   └── workloads/
+│       └── postgresql/
+│           ├── makita-postgresql-stack.yaml          # Primary stack (us-east-1)
+│           └── makita-postgresql-replica-stack.yaml  # Replica stack (us-west-2)
 ├── scripts/
 │   ├── deploy.sh                  # Automated deployment script
 │   ├── deploy_agentcore.py        # AgentCore Runtime + Gateway deployment
 │   ├── deploy_devops_agent.py     # DevOps Agent Space deployment
 │   └── teardown.sh                # Automated teardown script
 ├── mcp-servers/
-│   ├── failover/                  # Failover MCP Server (Strands SDK)
-│   │   ├── models.py
-│   │   └── server.py
-│   ├── precheck/                  # Pre-Check MCP Server (Strands SDK)
-│   │   ├── models.py
-│   │   └── server.py
-│   ├── postcheck/                 # Post-Check MCP Server (Strands SDK)
-│   │   ├── models.py
-│   │   └── server.py
+│   ├── workloads/                  # Workload MCP servers
+│   │   └── postgresql/            # PostgreSQL DR workload
+│   │       ├── failover/          # Failover MCP Server (Strands SDK)
+│   │       │   ├── models.py
+│   │       │   └── server.py
+│   │       ├── precheck/          # Pre-Check MCP Server (Strands SDK)
+│   │       │   ├── models.py
+│   │       │   └── server.py
+│   │       └── postcheck/         # Post-Check MCP Server (Strands SDK)
+│   │           ├── models.py
+│   │           └── server.py
 │   ├── aws-support-stub/          # AWS Support Stub Server
 │   │   └── server.py
 │   └── servicenow-stub/           # ServiceNow Stub Server
 │       └── server.py
+├── policies/                      # AgentCore and Bedrock governance configs
+│   ├── agentcore/                 # Cedar policies for AgentCore Gateway targets
+│   │   ├── postgresql-failover.cedar
+│   │   ├── postgresql-precheck.cedar
+│   │   ├── postgresql-postcheck.cedar
+│   │   ├── aws-support-stub.cedar
+│   │   └── servicenow-stub.cedar
+│   └── guardrails/                # Bedrock Guardrail configurations
+│       ├── postgresql-failover-guardrail.json
+│       ├── postgresql-precheck-guardrail.json
+│       ├── postgresql-postcheck-guardrail.json
+│       ├── aws-support-stub-guardrail.json
+│       └── servicenow-stub-guardrail.json
 ├── orchestrator/                  # Failover sequence orchestration
 │   ├── agent_config.py
 │   ├── event_integration.py
@@ -194,10 +211,10 @@ All MAKITA infrastructure is defined in two CloudFormation templates: a primary 
 ```
 
 The script handles all four steps automatically:
-1. Deploys `makita-stack` to us-east-1 (primary RDS, SSM, IAM, AgentCore, Guardrails, Dashboard)
+1. Deploys `makita-postgresql-stack` to us-east-1 (primary RDS, SSM, IAM, AgentCore, Guardrails, Dashboard)
 2. Retrieves the primary instance ARN from stack outputs
-3. Deploys `makita-replica-stack` to us-west-2 (cross-region read replica)
-4. Updates `makita-stack` with the replica endpoint so Parameter Store stays in sync
+3. Deploys `makita-postgresql-replica-stack` to us-west-2 (cross-region read replica)
+4. Updates `makita-postgresql-stack` with the replica endpoint so Parameter Store stays in sync
 
 On completion it prints the primary endpoint, replica endpoint, and dashboard URL.
 
@@ -207,8 +224,8 @@ On completion it prints the primary endpoint, replica endpoint, and dashboard UR
 
 ```bash
 aws cloudformation deploy \
-  --template-file infrastructure/makita-stack.yaml \
-  --stack-name makita-stack \
+  --template-file infrastructure/workloads/postgresql/makita-postgresql-stack.yaml \
+  --stack-name makita-postgresql-stack \
   --capabilities CAPABILITY_NAMED_IAM \
   --region us-east-1
 ```
@@ -217,7 +234,7 @@ aws cloudformation deploy \
 
 ```bash
 PRIMARY_ARN=$(aws cloudformation describe-stacks \
-  --stack-name makita-stack \
+  --stack-name makita-postgresql-stack \
   --region us-east-1 \
   --query "Stacks[0].Outputs[?OutputKey=='PrimaryInstanceArn'].OutputValue" \
   --output text)
@@ -227,8 +244,8 @@ PRIMARY_ARN=$(aws cloudformation describe-stacks \
 
 ```bash
 aws cloudformation deploy \
-  --template-file infrastructure/makita-replica-stack.yaml \
-  --stack-name makita-replica-stack \
+  --template-file infrastructure/workloads/postgresql/makita-postgresql-replica-stack.yaml \
+  --stack-name makita-postgresql-replica-stack \
   --region us-west-2 \
   --parameter-overrides PrimaryInstanceArn=$PRIMARY_ARN
 ```
@@ -237,14 +254,14 @@ aws cloudformation deploy \
 
 ```bash
 REPLICA_ENDPOINT=$(aws cloudformation describe-stacks \
-  --stack-name makita-replica-stack \
+  --stack-name makita-postgresql-replica-stack \
   --region us-west-2 \
   --query "Stacks[0].Outputs[?OutputKey=='ReplicaEndpoint'].OutputValue" \
   --output text)
 
 aws cloudformation deploy \
-  --template-file infrastructure/makita-stack.yaml \
-  --stack-name makita-stack \
+  --template-file infrastructure/workloads/postgresql/makita-postgresql-stack.yaml \
+  --stack-name makita-postgresql-stack \
   --capabilities CAPABILITY_NAMED_IAM \
   --region us-east-1 \
   --parameter-overrides ReplicaEndpoint=$REPLICA_ENDPOINT
@@ -254,14 +271,14 @@ aws cloudformation deploy \
 
 ```bash
 # Check primary stack status
-aws cloudformation describe-stacks --stack-name makita-stack --region us-east-1
+aws cloudformation describe-stacks --stack-name makita-postgresql-stack --region us-east-1
 
 # Check replica stack status
-aws cloudformation describe-stacks --stack-name makita-replica-stack --region us-west-2
+aws cloudformation describe-stacks --stack-name makita-postgresql-replica-stack --region us-west-2
 
 # Verify outputs
 aws cloudformation describe-stacks \
-  --stack-name makita-stack \
+  --stack-name makita-postgresql-stack \
   --region us-east-1 \
   --query "Stacks[0].Outputs"
 ```
@@ -272,14 +289,14 @@ The single stack creates all resources with the `makita-` prefix and mandatory t
 
 | Resource Group | Resources | Stack / Region |
 |---|---|---|
-| PostgreSQL Primary | `makita-pg-primary` | `makita-stack` / us-east-1 |
-| PostgreSQL Replica | `makita-pg-replica` | `makita-replica-stack` / us-west-2 |
-| Parameter Store | `/makita/db/*`, `/makita/mcp/*`, `/makita/dashboard/*` | `makita-stack` / us-east-1 |
-| MCP Servers | `makita-failover-mcp`, `makita-precheck-mcp`, `makita-postcheck-mcp` | `makita-stack` / us-east-1 |
-| Stub Servers | `makita-aws-support-stub`, `makita-servicenow-stub` | `makita-stack` / us-east-1 |
+| PostgreSQL Primary | `makita-pg-primary` | `makita-postgresql-stack` / us-east-1 |
+| PostgreSQL Replica | `makita-pg-replica` | `makita-postgresql-replica-stack` / us-west-2 |
+| Parameter Store | `/makita/db/*`, `/makita/mcp/*`, `/makita/dashboard/*` | `makita-postgresql-stack` / us-east-1 |
+| MCP Servers | `makita-postgresql-failover-mcp`, `makita-postgresql-precheck-mcp`, `makita-postgresql-postcheck-mcp` | `makita-postgresql-stack` / us-east-1 |
+| Stub Servers | `makita-aws-support-stub`, `makita-servicenow-stub` | `makita-postgresql-stack` / us-east-1 |
 | AgentCore Governance | Policies, identities, and Bedrock Guardrails per MCP server | `makita-agentcore-stack` / us-east-1 |
-| IAM | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | `makita-stack` / us-east-1 |
-| Secrets Manager | `makita-db-master-secret` | `makita-stack` / us-east-1 |
+| IAM | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | `makita-postgresql-stack` / us-east-1 |
+| Secrets Manager | `makita-db-master-secret` | `makita-postgresql-stack` / us-east-1 |
 
 ### Tear Down
 
@@ -291,18 +308,18 @@ Or manually:
 
 ```bash
 # Delete replica stack first (us-west-2)
-aws cloudformation delete-stack --stack-name makita-replica-stack --region us-west-2
-aws cloudformation wait stack-delete-complete --stack-name makita-replica-stack --region us-west-2
+aws cloudformation delete-stack --stack-name makita-postgresql-replica-stack --region us-west-2
+aws cloudformation wait stack-delete-complete --stack-name makita-postgresql-replica-stack --region us-west-2
 
 # Then delete primary stack (us-east-1)
-aws cloudformation delete-stack --stack-name makita-stack --region us-east-1
+aws cloudformation delete-stack --stack-name makita-postgresql-stack --region us-east-1
 ```
 
 ## MCP Server Configuration
 
 MAKITA uses three dedicated MCP servers, each hosted in Amazon AgentCore and governed by its own AgentCore Policy, Identity, and Bedrock Guardrail.
 
-### Failover MCP Server (`makita-failover-mcp`)
+### Failover MCP Server (`makita-postgresql-failover-mcp`)
 
 Executes the core PostgreSQL failover operation: verifies replication, promotes the replica, and updates Parameter Store endpoints.
 
@@ -315,7 +332,7 @@ Executes the core PostgreSQL failover operation: verifies replication, promotes 
 - AgentCore Identity: `makita-failover-identity` → `makita-failover-role`
 - Bedrock Guardrail: `makita-failover-guardrail` — restricts to DR failover actions, blocks prompt injection
 
-### Pre-Check MCP Server (`makita-precheck-mcp`)
+### Pre-Check MCP Server (`makita-postgresql-precheck-mcp`)
 
 Performs all pre-failover verifications before the failover is initiated.
 
@@ -329,7 +346,7 @@ Performs all pre-failover verifications before the failover is initiated.
 - AgentCore Identity: `makita-precheck-identity` → `makita-precheck-role`
 - Bedrock Guardrail: `makita-precheck-guardrail` — restricts to pre-check read actions
 
-### Post-Check MCP Server (`makita-postcheck-mcp`)
+### Post-Check MCP Server (`makita-postgresql-postcheck-mcp`)
 
 Performs all post-failover verifications after the failover completes.
 

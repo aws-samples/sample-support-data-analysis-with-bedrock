@@ -4,7 +4,7 @@ Validates Requirements 23.4, 23.5, 23.6 — MCP server functionality including
 success paths, failure paths, and exception handling for all tools.
 
 All boto3 calls are mocked via unittest.mock.patch.
-The mcp-servers directory uses a hyphen, so we import via importlib and
+The mcp-servers/workload directory uses a hyphen, so we import via importlib and
 patch attributes directly on the imported module objects.
 """
 
@@ -28,10 +28,10 @@ import pytest
 
 with patch("boto3.client") as _mock_boto:
     _mock_boto.return_value = MagicMock()
-    _failover_mod = importlib.import_module("mcp-servers.failover.server")
+    _failover_mod = importlib.import_module("mcp-servers.workloads.postgresql.failover.server")
 
-_precheck_mod = importlib.import_module("mcp-servers.precheck.server")
-_postcheck_mod = importlib.import_module("mcp-servers.postcheck.server")
+_precheck_mod = importlib.import_module("mcp-servers.workloads.postgresql.precheck.server")
+_postcheck_mod = importlib.import_module("mcp-servers.workloads.postgresql.postcheck.server")
 
 
 # ============================================================================
