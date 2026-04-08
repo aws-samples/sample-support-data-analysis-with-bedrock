@@ -1,14 +1,8 @@
-# Sample Support Data Analysis with Bedrock
+# Sample Support Data Analysis and Actions with Amazon Bedrock, DevOps Agent and AgentCore
 
-This repository contains two projects that demonstrate AI-powered operations using Amazon Bedrock.
+This repository contains two projects that demonstrate AI-powered operations using Amazon's GenAI and AgenticAI services.
 
 ## Projects
-
-### [MAKI — Machine Augmented Key Insights](MAKI_README.md)
-
-MAKI is a sample application that uses Amazon Bedrock to analyze AWS Enterprise Support cases and AWS Health events. It automates categorization, sentiment analysis, and generates actionable recommendations through both batch reporting and an interactive agentic workflow via Amazon Q CLI.
-
-➜ [MAKI README](MAKI_README.md) · [User Guide](MAKI_USER_GUIDE.md) · [Agent Guide](MAKI_AGENT_GUIDE.md)
 
 ### [MAKITA — Machine Augmented Key Infrastructure Technology Automation](makita/README.md)
 
@@ -19,17 +13,16 @@ MAKITA is a technical reference architecture demonstrating AI-assisted disaster 
 
 ➜ [MAKITA README](makita/README.md)
 
+### [MAKI — Machine Augmented Key Insights](MAKI_README.md)
+
+MAKI is a sample application that uses Amazon Bedrock to analyze AWS Enterprise Support cases and AWS Health events. It automates categorization, sentiment analysis, and generates actionable recommendations through both batch reporting and an interactive agentic workflow via Amazon Q CLI.
+
+➜ [MAKI README](MAKI_README.md) · [User Guide](MAKI_USER_GUIDE.md) · [Agent Guide](MAKI_AGENT_GUIDE.md)
+
 ## Repository Structure
 
 ```
 .
-├── MAKI_README.md          # MAKI project README
-├── MAKI_USER_GUIDE.md      # MAKI deployment and usage guide
-├── MAKI_AGENT_GUIDE.md     # MAKI agentic workflow guide
-├── maki/                   # MAKI CDK stack and constructs
-├── lambda/                 # MAKI Lambda functions
-├── categories/             # MAKI event categorization definitions
-├── tools/                  # MAKI utilities and scripts
 ├── makita/                 # MAKITA project (self-contained)
 │   ├── README.md           # MAKITA project README
 │   ├── infrastructure/     # CloudFormation templates
@@ -37,6 +30,13 @@ MAKITA is a technical reference architecture demonstrating AI-assisted disaster 
 │   ├── orchestrator/       # Failover orchestration
 │   ├── policies/           # Cedar policies and Bedrock Guardrails
 │   └── scripts/            # Deployment and teardown scripts
+├── MAKI_README.md          # MAKI project README
+├── MAKI_USER_GUIDE.md      # MAKI deployment and usage guide
+├── MAKI_AGENT_GUIDE.md     # MAKI agentic workflow guide
+├── maki/                   # MAKI CDK stack and constructs
+├── lambda/                 # MAKI Lambda functions
+├── categories/             # MAKI event categorization definitions
+├── tools/                  # MAKI utilities and scripts
 ├── app.py                  # CDK app entry point (MAKI)
 ├── config.py               # MAKI configuration
 └── requirements.txt        # MAKI Python dependencies
