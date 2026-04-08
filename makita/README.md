@@ -207,14 +207,25 @@ All MAKITA infrastructure is defined in two CloudFormation templates: a primary 
 ### Automated Deployment (recommended)
 
 ```bash
-./scripts/deploy.sh
+./scripts/deploy.sh            # Deploy everything (default)
 ```
 
-The script handles all four steps automatically:
-1. Deploys `makita-postgresql-stack` to us-east-1 (primary RDS, SSM, IAM, AgentCore, Guardrails, Dashboard)
-2. Retrieves the primary instance ARN from stack outputs
-3. Deploys `makita-postgresql-replica-stack` to us-west-2 (cross-region read replica)
-4. Updates `makita-postgresql-stack` with the replica endpoint so Parameter Store stays in sync
+The script supports targeted deployments:
+
+| Target | Command | Description |
+|---|---|---|
+| `postgresql` | `./scripts/deploy.sh postgresql` | Deploy PostgreSQL primary stack to us-east-1 |
+| `postgresql-dr` | `./scripts/deploy.sh postgresql-dr` | Deploy PostgreSQL replica stack to us-west-2 and update primary with replica endpoint |
+| `agentcore` | `./scripts/deploy.sh agentcore` | Deploy AgentCore Runtimes, Gateway, Cedar policies, and Bedrock Guardrails to us-east-1 |
+| `devops-agent` | `./scripts/deploy.sh devops-agent` | Deploy DevOps Agent Space, operator IAM role, and web app to us-east-1 |
+| `kiro-agent` | `./scripts/deploy.sh kiro-agent` | Deploy Kiro agent config for AgentCore Gateway |
+| `all` | `./scripts/deploy.sh all` | Deploy all targets in order (default when no argument given) |
+
+When run with `all` (or no argument), the script executes in order:
+1. Deploys `makita-postgresql-stack` to us-east-1 (primary RDS, SSM, IAM, Guardrails)
+2. Deploys `makita-postgresql-replica-stack` to us-west-2 (cross-region read replica) and updates primary with replica endpoint
+3. Deploys AgentCore Runtimes + Gateway with Cedar policies and Bedrock Guardrails
+4. Deploys DevOps Agent Space with operator role and web app
 
 On completion it prints the primary endpoint, replica endpoint, and dashboard URL.
 
