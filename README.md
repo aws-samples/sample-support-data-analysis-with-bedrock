@@ -1,18 +1,47 @@
 # Sample Support Data Analysis with Bedrock
 
+This repository contains two projects that demonstrate AI-powered operations using Amazon Bedrock.
 
-## What is this?
-This is a sample application for educational purposes which processes Amazon Enterprise Support data with Amazon Bedrock.
+## Projects
 
-The sample application, MAKI (Machine Augmented Key Insights), demonstrates how Amazon Bedrock can analyze Amazon Enterprise Support cases and derive insightful information. This repo can be studied and used to build other AWS Enterprise Support data analysis pipelines. This repo is meant as an educational reference and not production code. The implementer of an organization can use MAKI as a reference to build their own application, which should then be reviewed by the necessary oversight teams at the organization.
+### [MAKI — Machine Augmented Key Insights](MAKI_README.md)
 
-## Reporting and Analysis
-![MAKI Architecture Reporting and Analysis](maki-architecture-reporting-analysis.jpeg)
+MAKI is a sample application that uses Amazon Bedrock to analyze AWS Enterprise Support cases and AWS Health events. It automates categorization, sentiment analysis, and generates actionable recommendations through both batch reporting and an interactive agentic workflow via Amazon Q CLI.
 
-## Agentic Workflow
-![MAKI Architecture Agentic Workflow](maki-architecture-agentic-workflow.jpeg)
+➜ [MAKI README](MAKI_README.md) · [User Guide](MAKI_USER_GUIDE.md) · [Agent Guide](MAKI_AGENT_GUIDE.md)
 
-## Documentation
+### [MAKITA — Machine Augmented Key Infrastructure Technology Automation](makita/README.md)
 
-- **[MAKI User Guide](MAKI_USER_GUIDE.md)** - Complete guide for deploying and using MAKI
-- **[MAKI Agent Guide](MAKI_AGENT_GUIDE.md)** - Guide for using the MAKI FastMCP agent with Amazon Q CLI
+> [!CAUTION]
+> MAKITA is a work in progress and not ready for usage.
+
+MAKITA is a technical reference architecture demonstrating AI-assisted disaster recovery using Amazon DevOps Agent and Amazon AgentCore. It provisions a multi-region PostgreSQL cluster (us-east-1 primary, us-west-2 DR) and orchestrates automated failover through MCP servers built with the Strands Agents SDK, with governance via Cedar policies and Bedrock Guardrails.
+
+➜ [MAKITA README](makita/README.md)
+
+## Repository Structure
+
+```
+.
+├── MAKI_README.md          # MAKI project README
+├── MAKI_USER_GUIDE.md      # MAKI deployment and usage guide
+├── MAKI_AGENT_GUIDE.md     # MAKI agentic workflow guide
+├── maki/                   # MAKI CDK stack and constructs
+├── lambda/                 # MAKI Lambda functions
+├── categories/             # MAKI event categorization definitions
+├── tools/                  # MAKI utilities and scripts
+├── makita/                 # MAKITA project (self-contained)
+│   ├── README.md           # MAKITA project README
+│   ├── infrastructure/     # CloudFormation templates
+│   ├── mcp-servers/        # MCP server implementations
+│   ├── orchestrator/       # Failover orchestration
+│   ├── policies/           # Cedar policies and Bedrock Guardrails
+│   └── scripts/            # Deployment and teardown scripts
+├── app.py                  # CDK app entry point (MAKI)
+├── config.py               # MAKI configuration
+└── requirements.txt        # MAKI Python dependencies
+```
+
+## License
+
+This project is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file.
