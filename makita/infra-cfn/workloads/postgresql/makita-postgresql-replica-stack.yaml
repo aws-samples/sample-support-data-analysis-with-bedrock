@@ -112,6 +112,8 @@ Resources:
   # ---------------------------------------------------------------------------
   MakitaDrKmsKey:
     Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       Description: KMS key for MAKITA PostgreSQL replica encryption in us-west-2
       KeyPolicy:
@@ -120,7 +122,7 @@ Resources:
           - Sid: EnableRootAccountAccess
             Effect: Allow
             Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
             Action: "kms:*"
             Resource: "*"
       Tags:
@@ -138,12 +140,19 @@ Resources:
   # ---------------------------------------------------------------------------
   MakitaPgReplica:
     Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Snapshot
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3003  # StorageEncrypted conflicts with SourceDBInstanceIdentifier; KmsKeyId ensures encryption
     Properties:
       DBInstanceIdentifier: makita-pg-replica
       SourceDBInstanceIdentifier: !Ref PrimaryInstanceArn
       DBInstanceClass: db.t3.medium
+      AutoMinorVersionUpgrade: true
       StorageType: gp3
-      StorageEncrypted: true
       KmsKeyId: !GetAtt MakitaDrKmsKey.Arn
       PubliclyAccessible: false
       CopyTagsToSnapshot: true

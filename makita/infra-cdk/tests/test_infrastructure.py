@@ -15,7 +15,7 @@ import pytest
 from pathlib import Path
 
 
-TEMPLATE_PATH = Path(__file__).parent.parent / "infrastructure" / "workloads" / "postgresql" / "makita-postgresql-stack.yaml"
+TEMPLATE_PATH = Path(__file__).parent.parent.parent / "infra-cfn" / "workloads" / "postgresql" / "makita-postgresql-stack.yaml"
 
 
 # ---------------------------------------------------------------------------

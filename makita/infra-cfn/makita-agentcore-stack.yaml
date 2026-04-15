@@ -1,0 +1,295 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  MAKITA AgentCore Stack — S3 artifacts bucket, custom resource IAM role
+  for managing AgentCore Runtimes, Gateway, and Bedrock Guardrails.
+  AgentCore resources (runtimes, gateway, targets) are created via custom
+  resources since there are no native CloudFormation types for these APIs.
+
+Parameters:
+  FailoverRoleArn:
+    Type: String
+    Description: ARN of the makita-failover-role from the PostgreSQL stack
+    Default: ""
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # S3 Bucket for AgentCore Runtime Artifacts
+  # ---------------------------------------------------------------------------
+  AgentCoreArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "makita-artifacts-${AWS::AccountId}"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+        - Key: proj
+          Value: makita
+    DeletionPolicy: Retain
+
+  # ---------------------------------------------------------------------------
+  # IAM Role for Custom Resource Lambda (manages AgentCore resources)
+  # ---------------------------------------------------------------------------
+  AgentCoreCustomResourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: makita-agentcore-cr-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: makita-agentcore-cr-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # AgentCore Runtime management
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore-control:CreateAgentRuntime
+                  - bedrock-agentcore-control:DeleteAgentRuntime
+                  - bedrock-agentcore-control:GetAgentRuntime
+                  - bedrock-agentcore-control:ListAgentRuntimes
+                  - bedrock-agentcore-control:CreateAgentRuntimeEndpoint
+                  - bedrock-agentcore-control:DeleteAgentRuntimeEndpoint
+                  - bedrock-agentcore-control:GetAgentRuntimeEndpoint
+                  - bedrock-agentcore-control:ListAgentRuntimeEndpoints
+                  - bedrock-agentcore-control:TagResource
+                Resource: "*"
+              # Gateway management
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore-control:CreateGateway
+                  - bedrock-agentcore-control:DeleteGateway
+                  - bedrock-agentcore-control:GetGateway
+                  - bedrock-agentcore-control:ListGateways
+                  - bedrock-agentcore-control:CreateGatewayTarget
+                  - bedrock-agentcore-control:DeleteGatewayTarget
+                  - bedrock-agentcore-control:ListGatewayTargets
+                Resource: "*"
+              # Bedrock Guardrails
+              - Effect: Allow
+                Action:
+                  - bedrock:CreateGuardrail
+                  - bedrock:DeleteGuardrail
+                  - bedrock:GetGuardrail
+                  - bedrock:ListGuardrails
+                  - bedrock:TagResource
+                Resource: "*"
+              # S3 access for runtime artifacts
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub "arn:aws:s3:::makita-artifacts-${AWS::AccountId}/*"
+              # IAM PassRole for runtimes and gateway
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - !Ref FailoverRoleArn
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+        - Key: proj
+          Value: makita
+
+  # ---------------------------------------------------------------------------
+  # Bedrock Guardrails
+  # ---------------------------------------------------------------------------
+  FailoverGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Name: makita-postgresql-failover-guardrail
+      Description: >-
+        Governs the Failover MCP Server - restricts to DR failover actions
+        on PostgreSQL, blocks prompt injection and malicious content.
+      BlockedInputMessaging: >-
+        Operation blocked by guardrail policy. The requested input violates
+        the MAKITA failover guardrail.
+      BlockedOutputsMessaging: >-
+        Response blocked by guardrail policy. The generated output violates
+        the MAKITA failover guardrail constraints.
+      ContentPolicyConfig:
+        FiltersConfig:
+          - Type: SEXUAL
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: VIOLENCE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: HATE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: INSULTS
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: MISCONDUCT
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: PROMPT_ATTACK
+            InputStrength: HIGH
+            OutputStrength: NONE
+      TopicPolicyConfig:
+        TopicsConfig:
+          - Name: non-dr-operations
+            Definition: >-
+              Any operations not related to disaster recovery, PostgreSQL
+              failover, database promotion, endpoint updates, or replication
+              management for the MAKITA system.
+            Type: DENY
+            Examples:
+              - "Delete all database records"
+              - "Create a new user account"
+              - "Send an email notification"
+              - "Modify application source code"
+              - "Access financial data"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+        - Key: proj
+          Value: makita
+
+  PrecheckGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Name: makita-postgresql-precheck-guardrail
+      Description: >-
+        Governs the Pre-Check MCP Server - restricts to pre-check read
+        actions on PostgreSQL.
+      BlockedInputMessaging: >-
+        Operation blocked by guardrail policy. Only pre-check operations
+        on the PostgreSQL cluster are permitted.
+      BlockedOutputsMessaging: >-
+        Response blocked by guardrail policy.
+      ContentPolicyConfig:
+        FiltersConfig:
+          - Type: SEXUAL
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: VIOLENCE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: HATE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: INSULTS
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: MISCONDUCT
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: PROMPT_ATTACK
+            InputStrength: HIGH
+            OutputStrength: NONE
+      TopicPolicyConfig:
+        TopicsConfig:
+          - Name: non-dr-operations
+            Definition: >-
+              Any operations not related to disaster recovery pre-checks,
+              replication health verification, or replica readiness
+              verification for the MAKITA system.
+            Type: DENY
+            Examples:
+              - "Delete all database records"
+              - "Modify database schema"
+              - "Execute failover without checks"
+              - "Access financial data"
+              - "Send notifications"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+        - Key: proj
+          Value: makita
+
+  PostcheckGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Name: makita-postgresql-postcheck-guardrail
+      Description: >-
+        Governs the Post-Check MCP Server - restricts to post-check read
+        actions on PostgreSQL.
+      BlockedInputMessaging: >-
+        Operation blocked by guardrail policy. Only post-check operations
+        on the PostgreSQL cluster are permitted.
+      BlockedOutputsMessaging: >-
+        Response blocked by guardrail policy.
+      ContentPolicyConfig:
+        FiltersConfig:
+          - Type: SEXUAL
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: VIOLENCE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: HATE
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: INSULTS
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: MISCONDUCT
+            InputStrength: HIGH
+            OutputStrength: HIGH
+          - Type: PROMPT_ATTACK
+            InputStrength: HIGH
+            OutputStrength: NONE
+      TopicPolicyConfig:
+        TopicsConfig:
+          - Name: non-dr-operations
+            Definition: >-
+              Any operations not related to disaster recovery post-checks,
+              new primary health verification, or endpoint verification
+              for the MAKITA system.
+            Type: DENY
+            Examples:
+              - "Delete all database records"
+              - "Modify database schema"
+              - "Roll back the failover"
+              - "Access financial data"
+              - "Send notifications"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+        - Key: proj
+          Value: makita
+
+Outputs:
+  ArtifactsBucketName:
+    Description: S3 bucket for AgentCore runtime artifacts
+    Value: !Ref AgentCoreArtifactsBucket
+
+  CustomResourceRoleArn:
+    Description: IAM role for AgentCore custom resource Lambda
+    Value: !GetAtt AgentCoreCustomResourceRole.Arn
+
+  GatewayName:
+    Description: AgentCore Gateway name
+    Value: makita-mcp-gateway
+
+  FailoverGuardrailId:
+    Description: Bedrock Guardrail ID for failover MCP server
+    Value: !GetAtt FailoverGuardrail.GuardrailId
+
+  PrecheckGuardrailId:
+    Description: Bedrock Guardrail ID for precheck MCP server
+    Value: !GetAtt PrecheckGuardrail.GuardrailId
+
+  PostcheckGuardrailId:
+    Description: Bedrock Guardrail ID for postcheck MCP server
+    Value: !GetAtt PostcheckGuardrail.GuardrailId

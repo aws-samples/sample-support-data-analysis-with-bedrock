@@ -9,9 +9,11 @@ from __future__ import annotations
 from dataclasses import asdict
 
 import boto3
-from strands import tool
+from mcp.server.fastmcp import FastMCP
 
-from .models import VerificationResult
+from models import VerificationResult
+
+mcp = FastMCP(host="0.0.0.0", port=8080, stateless_http=True)
 
 # ---------------------------------------------------------------------------
 # Helper — boto3 clients per region
@@ -33,7 +35,7 @@ def _ssm_client(region: str = "us-east-1"):
 # ---------------------------------------------------------------------------
 
 
-@tool
+@mcp.tool()
 def verify_replication_health(cluster_name: str) -> dict:
     """Checks replication lag, replication state, and data consistency.
 
@@ -118,7 +120,7 @@ def verify_replication_health(cluster_name: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-@tool
+@mcp.tool()
 def verify_primary_status(cluster_name: str, primary_region: str) -> dict:
     """Verifies the primary instance status in the Primary Region.
 
@@ -172,7 +174,7 @@ def verify_primary_status(cluster_name: str, primary_region: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-@tool
+@mcp.tool()
 def verify_replica_readiness(cluster_name: str, dr_region: str) -> dict:
     """Verifies the replica instance readiness for promotion in the DR Region.
 
@@ -232,3 +234,7 @@ def verify_replica_readiness(cluster_name: str, dr_region: str) -> dict:
                 error=str(exc),
             )
         )
+
+
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
