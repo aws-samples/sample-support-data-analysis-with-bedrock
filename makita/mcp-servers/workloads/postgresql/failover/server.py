@@ -12,9 +12,11 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 
 import boto3
-from strands import tool
+from mcp.server.fastmcp import FastMCP
 
-from .models import FailoverResult, FailoverState, HealthCheckResult
+from models import FailoverResult, FailoverState, HealthCheckResult
+
+mcp = FastMCP(host="0.0.0.0", port=8080, stateless_http=True)
 
 # ---------------------------------------------------------------------------
 # Runtime configuration — loaded from Parameter Store on module import
@@ -67,7 +69,7 @@ def _ssm_client(region: str = "us-east-1"):
 # ---------------------------------------------------------------------------
 
 
-@tool
+@mcp.tool()
 def execute_failover(
     primary_region: str,
     dr_region: str,
@@ -197,7 +199,7 @@ def execute_failover(
 # ---------------------------------------------------------------------------
 
 
-@tool
+@mcp.tool()
 def health_check(cluster_name: str) -> dict:
     """Returns the current health status of the PostgreSQL cluster.
 
@@ -263,3 +265,7 @@ def health_check(cluster_name: str) -> dict:
             "replication_healthy": False,
             "error": str(exc),
         }
+
+
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")

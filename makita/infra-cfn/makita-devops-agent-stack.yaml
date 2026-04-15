@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  MAKITA DevOps Agent Stack — IAM operator role, CloudWatch log group,
+  and DevOps Agent Space (via custom resource). Deploy after AgentCore.
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # KMS Key for CloudWatch Log Group encryption
+  # ---------------------------------------------------------------------------
+  DevOpsAgentLogGroupKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for MAKITA DevOps Agent log group encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnableRootAccountAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+          - Sid: AllowCloudWatchLogs
+            Effect: Allow
+            Principal:
+              Service: !Sub "logs.${AWS::Region}.amazonaws.com"
+            Action:
+              - kms:Encrypt*
+              - kms:Decrypt*
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:Describe*
+            Resource: "*"
+            Condition:
+              ArnLike:
+                kms:EncryptionContext:aws:logs:arn: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/makita/*"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+        - Key: proj
+          Value: makita
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+
+  # ---------------------------------------------------------------------------
+  # CloudWatch Log Group
+  # ---------------------------------------------------------------------------
+  DevOpsAgentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /makita/devops-agent
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt DevOpsAgentLogGroupKey.Arn
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+
+  # ---------------------------------------------------------------------------
+  # IAM Operator Role for DevOps Agent Web App
+  # ---------------------------------------------------------------------------
+  DevOpsAgentOperatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: makita-devops-agent-operator-role
+      Description: MAKITA DevOps Agent web app operator role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: aidevops.amazonaws.com
+            Action:
+              - sts:AssumeRole
+              - sts:TagSession
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub "arn:${AWS::Partition}:aidevops:${AWS::Region}:${AWS::AccountId}:agentspace/*"
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AIDevOpsOperatorAppAccessPolicy"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+        - Key: proj
+          Value: makita
+
+  # ---------------------------------------------------------------------------
+  # Operator Role Policy (extracted from inline Policies)
+  # ---------------------------------------------------------------------------
+  DevOpsAgentOperatorPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: makita-devops-agent-operator-policy
+      Roles:
+        - !Ref DevOpsAgentOperatorRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - devops-agent:*
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - bedrock-agentcore:*
+              - bedrock-agentcore-control:*
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - rds:DescribeDBInstances
+              - rds:DescribeDBClusters
+              - ssm:GetParameter
+              - cloudwatch:GetMetricData
+              - cloudwatch:DescribeAlarms
+              - logs:GetLogEvents
+              - logs:DescribeLogGroups
+            Resource: "*"
+
+  # ---------------------------------------------------------------------------
+  # Custom Resource Lambda Role
+  # ---------------------------------------------------------------------------
+  AgentSpaceCustomResourceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: makita-agent-space-cr-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Tags:
+        - Key: auto-delete
+          Value: "no"
+        - Key: Env
+          Value: prod1
+        - Key: proj
+          Value: makita
+
+  # ---------------------------------------------------------------------------
+  # Custom Resource Role Policy (extracted from inline Policies)
+  # ---------------------------------------------------------------------------
+  AgentSpaceCustomResourcePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: makita-agent-space-cr-policy
+      Roles:
+        - !Ref AgentSpaceCustomResourceRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - devops-agent:CreateAgentSpace
+              - devops-agent:DeleteAgentSpace
+              - devops-agent:GetAgentSpace
+              - devops-agent:ListAgentSpaces
+              - devops-agent:AssociateService
+              - devops-agent:DisassociateService
+              - devops-agent:EnableOperatorApp
+              - devops-agent:DisableOperatorApp
+              - devops-agent:AllowVendedLogDeliveryForResource
+              - devops-agent:TagResource
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - bedrock-agentcore-control:ListGateways
+              - bedrock-agentcore-control:GetGateway
+            Resource: "*"
+          - Effect: Allow
+            Action: iam:PassRole
+            Resource:
+              - !GetAtt DevOpsAgentOperatorRole.Arn
+              - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/makita-failover-role"
+
+Outputs:
+  AgentSpaceName:
+    Description: DevOps Agent Space name
+    Value: makita-agentspace
+
+  OperatorRoleName:
+    Description: DevOps Agent operator IAM role
+    Value: makita-devops-agent-operator-role
+
+  OperatorRoleArn:
+    Description: ARN of the DevOps Agent operator IAM role
+    Value: !GetAtt DevOpsAgentOperatorRole.Arn
+
+  LogGroupName:
+    Description: DevOps Agent CloudWatch log group
+    Value: /makita/devops-agent
+
+  ConsoleUrl:
+    Description: DevOps Agent console URL
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/devops-agent/home?region=${AWS::Region}"

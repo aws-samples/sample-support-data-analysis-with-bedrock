@@ -1,8 +1,8 @@
 """MAKITA ServiceNow Stub MCP Server.
 
-Built with the Strands SDK. Simulates the ServiceNow API by storing
-tickets in-memory. Allows DevOps Agent to create and update
-ServiceNow tickets during disaster recovery operations.
+Simulates the ServiceNow API by storing tickets in-memory.
+Runs as a FastMCP server on streamable-http transport for
+AgentCore container deployment.
 """
 
 from __future__ import annotations
@@ -10,7 +10,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
-from strands import tool
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP(host="0.0.0.0", port=8080, stateless_http=True)
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -70,7 +72,7 @@ def _now_iso() -> str:
 # ---------------------------------------------------------------------------
 
 
-@tool
+@mcp.tool()
 def create_ticket(
     short_description: str,
     description: str,
@@ -118,7 +120,7 @@ def create_ticket(
 # ---------------------------------------------------------------------------
 
 
-@tool
+@mcp.tool()
 def update_ticket(
     ticket_id: str,
     status: str,
@@ -164,3 +166,7 @@ def update_ticket(
         "updated_at": updated_at,
         "error": None,
     }
+
+
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")

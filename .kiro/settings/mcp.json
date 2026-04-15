@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "awslabs.aws-iac-mcp-server": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": ["awslabs.aws-iac-mcp-server@latest"],
+      "env": {
+        "AWS_PROFILE": "your-named-profile",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  },
+  "venue-mcp": {
+      "command": "/Users/devirev/.toolbox/bin/venue-mcp",
+      "args": [],
+      "env": {
+        "PATH": "/opt/homebrew/bin:/Users/devirev/.toolbox/bin:/usr/local/bin:/usr/bin:/bin"
+      },
+      "disabled": true,
+      "autoApprove": [
+        "venue_design_status",
+        "venue_design_status",
+        "venue_generate_code"
+      ],
+      "disabledTools": [
+        "venue_design",
+        "venue_design_status",
+        "venue_generate_code",
+        "venue_list_projects"
+      ]
+    }
+}

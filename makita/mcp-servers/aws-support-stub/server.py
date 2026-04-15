@@ -1,8 +1,8 @@
 """MAKITA AWS Support Stub MCP Server.
 
-Built with the Strands SDK. Simulates the AWS Support API by storing
-support cases in-memory. Allows DevOps Agent to create and update
-AWS Support cases during disaster recovery operations.
+Simulates the AWS Support API by storing support cases in-memory.
+Runs as a FastMCP server on streamable-http transport for
+AgentCore container deployment.
 """
 
 from __future__ import annotations
@@ -10,7 +10,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
-from strands import tool
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP(host="0.0.0.0", port=8080, stateless_http=True)
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -70,7 +72,7 @@ def _now_iso() -> str:
 # ---------------------------------------------------------------------------
 
 
-@tool
+@mcp.tool()
 def create_support_case(
     subject: str,
     description: str,
@@ -115,7 +117,7 @@ def create_support_case(
 # ---------------------------------------------------------------------------
 
 
-@tool
+@mcp.tool()
 def update_support_case(
     case_id: str,
     status: str,
@@ -161,3 +163,7 @@ def update_support_case(
         "updated_at": updated_at,
         "error": None,
     }
+
+
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
