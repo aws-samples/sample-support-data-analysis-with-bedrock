@@ -47,6 +47,7 @@ from resources.agentcore import (
     GATEWAY_NAME,
     _load_file,
 )
+from resources.cognito import McpOAuthPool, AgentCoreOAuthProvider
 from resources.devops_agent import (
     DevOpsAgentLogGroup,
     DevOpsAgentOperatorRole,
@@ -88,7 +89,7 @@ class PostgresqlNestedStack(NestedStack):
 
 
 class AgentCoreNestedStack(NestedStack):
-    """AgentCore runtimes, gateway, and guardrails."""
+    """AgentCore runtimes, gateway, Cognito OAuth, and guardrails."""
 
     def __init__(
         self, scope: Construct, id: str, *,
@@ -98,7 +99,14 @@ class AgentCoreNestedStack(NestedStack):
     ) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # Deploy each MCP server as a Docker container
+        # Cognito for M2M OAuth between gateway and runtimes
+        oauth_pool = McpOAuthPool(self, "OAuthPool")
+        oauth_provider = AgentCoreOAuthProvider(
+            self, "OAuthProvider",
+            cognito_pool=oauth_pool,
+        )
+
+        # Deploy each MCP server as a Docker container with JWT auth
         runtimes = {}
         for server_def in MCP_SERVERS:
             name = server_def["name"]
@@ -107,7 +115,10 @@ class AgentCoreNestedStack(NestedStack):
                 server_def=server_def,
                 role_arn=role_arn,
                 project_root=project_root,
+                discovery_url=oauth_pool.discovery_url,
+                allowed_clients=[oauth_pool.client_id],
             )
+            runtime.node.add_dependency(oauth_pool)
             runtimes[name] = runtime
 
         # Gateway
@@ -115,7 +126,7 @@ class AgentCoreNestedStack(NestedStack):
         for runtime in runtimes.values():
             gateway.node.add_dependency(runtime)
 
-        # Gateway Targets — wire each runtime to the gateway
+        # Gateway Targets with OAuth credentials
         for server_def in MCP_SERVERS:
             name = server_def["name"]
             runtime = runtimes[name]
@@ -131,9 +142,11 @@ class AgentCoreNestedStack(NestedStack):
                 self, f"Target-{name}",
                 gateway_id=gateway.gateway_id,
                 runtime=runtime,
+                oauth_provider_arn=oauth_provider.provider_arn,
                 cedar_policy=cedar_policy,
             )
             target.node.add_dependency(gateway)
+            target.node.add_dependency(oauth_provider)
 
         # Guardrails
         for server_def in MCP_SERVERS:

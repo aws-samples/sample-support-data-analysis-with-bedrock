@@ -102,6 +102,8 @@ class AgentCoreRuntime(Construct):
         server_def: dict,
         role_arn: str,
         project_root: str,
+        discovery_url: str = None,
+        allowed_clients: list = None,
     ) -> None:
         super().__init__(scope, id)
 
@@ -111,10 +113,12 @@ class AgentCoreRuntime(Construct):
         module_path = os.path.join(project_root, server_def["module_path"])
 
         # Build ARM64 Docker image and push to ECR
+        # Use file_invalidation to ensure changes to server.py trigger rebuilds
         self.image_asset = ecr_assets.DockerImageAsset(
             self, f"Image-{name}",
             directory=module_path,
             platform=ecr_assets.Platform.LINUX_ARM64,
+            cache_disabled=True,
         )
 
         # Policy for custom resource to manage runtimes
@@ -144,24 +148,37 @@ class AgentCoreRuntime(Construct):
             ),
         ])
 
+        # Build runtime parameters
+        runtime_params = {
+            "agentRuntimeName": name,
+            "description": server_def["description"],
+            "roleArn": role_arn,
+            "agentRuntimeArtifact": {
+                "containerConfiguration": {
+                    "containerUri": self.image_asset.image_uri,
+                }
+            },
+            "networkConfiguration": {"networkMode": "PUBLIC"},
+            "protocolConfiguration": {"serverProtocol": "MCP"},
+        }
+
+        # Add JWT auth if Cognito is configured
+        if discovery_url and allowed_clients:
+            runtime_params["authorizerConfiguration"] = {
+                "customJWTAuthorizer": {
+                    "discoveryUrl": discovery_url,
+                    "allowedClients": allowed_clients,
+                }
+            }
+
         # Create the runtime with container configuration
         self.runtime = cr.AwsCustomResource(
             self, f"Runtime-{name}",
+            install_latest_aws_sdk=True,
             on_create=cr.AwsSdkCall(
                 service="bedrock-agentcore-control",
                 action="createAgentRuntime",
-                parameters={
-                    "agentRuntimeName": name,
-                    "description": server_def["description"],
-                    "roleArn": role_arn,
-                    "agentRuntimeArtifact": {
-                        "containerConfiguration": {
-                            "containerUri": self.image_asset.image_uri,
-                        }
-                    },
-                    "networkConfiguration": {"networkMode": "PUBLIC"},
-                    "protocolConfiguration": {"serverProtocol": "MCP"},
-                },
+                parameters=runtime_params,
                 physical_resource_id=cr.PhysicalResourceId.from_response("agentRuntimeId"),
             ),
             on_delete=cr.AwsSdkCall(
@@ -230,6 +247,7 @@ class AgentCoreGateway(Construct):
 
         self.gateway = cr.AwsCustomResource(
             self, "Gateway",
+            install_latest_aws_sdk=True,
             on_create=cr.AwsSdkCall(
                 service="bedrock-agentcore-control",
                 action="createGateway",
@@ -275,6 +293,7 @@ class AgentCoreGatewayTarget(Construct):
         *,
         gateway_id: str,
         runtime: 'AgentCoreRuntime',
+        oauth_provider_arn: str = None,
         cedar_policy: str = None,
     ) -> None:
         super().__init__(scope, id)
@@ -289,14 +308,34 @@ class AgentCoreGatewayTarget(Construct):
                 ],
                 resources=["*"],
             ),
+            iam.PolicyStatement(
+                actions=["secretsmanager:GetSecretValue"],
+                resources=["*"],
+            ),
         ])
 
-        # Use the runtime ARN as the endpoint — AgentCore resolves
-        # to the DEFAULT endpoint automatically
-        # Use mcpServer with endpoint URL
-        # Runtime ID may contain underscores from the name, which are
-        # invalid in DNS hostnames. The endpoint URL uses the runtime ID
-        # directly in the hostname.
+        # Build credential provider config
+        if oauth_provider_arn:
+            cred_config = [{
+                "credentialProviderType": "OAUTH",
+                "credentialProvider": {
+                    "oauthCredentialProvider": {
+                        "providerArn": oauth_provider_arn,
+                        "scopes": [f"{PROJECT}-mcp/invoke"],
+                    }
+                },
+            }]
+        else:
+            cred_config = [{
+                "credentialProviderType": "GATEWAY_IAM_ROLE",
+                "credentialProvider": {
+                    "iamCredentialProvider": {
+                        "service": "bedrock-agentcore",
+                        "region": PRIMARY_REGION,
+                    }
+                },
+            }]
+
         target_params = {
             "gatewayIdentifier": gateway_id,
             "name": target_name,
@@ -308,15 +347,7 @@ class AgentCoreGatewayTarget(Construct):
                     }
                 }
             },
-            "credentialProviderConfigurations": [{
-                "credentialProviderType": "GATEWAY_IAM_ROLE",
-                "credentialProvider": {
-                    "iamCredentialProvider": {
-                        "service": "bedrock-agentcore",
-                        "region": PRIMARY_REGION,
-                    }
-                },
-            }],
+            "credentialProviderConfigurations": cred_config,
         }
 
         if cedar_policy:
@@ -326,6 +357,7 @@ class AgentCoreGatewayTarget(Construct):
 
         self.target = cr.AwsCustomResource(
             self, "Target",
+            install_latest_aws_sdk=True,
             on_create=cr.AwsSdkCall(
                 service="bedrock-agentcore-control",
                 action="createGatewayTarget",

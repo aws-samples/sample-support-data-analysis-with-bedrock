@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  MAKITA Cognito Stack — User Pool, Resource Server, and App Client
+  for OAuth M2M authentication between AgentCore Gateway and Runtimes.
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Cognito User Pool for M2M Authentication
+  # ---------------------------------------------------------------------------
+  M2MUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: makita-m2m-pool
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+
+  # ---------------------------------------------------------------------------
+  # Cognito Domain (required for token endpoint)
+  # ---------------------------------------------------------------------------
+  M2MDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: makita-m2m-auth
+      UserPoolId: !Ref M2MUserPool
+
+  # ---------------------------------------------------------------------------
+  # Resource Server with invoke scope
+  # ---------------------------------------------------------------------------
+  McpResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref M2MUserPool
+      Identifier: makita-mcp
+      Name: MAKITA MCP Scopes
+      Scopes:
+        - ScopeName: invoke
+          ScopeDescription: Invoke MCP tools
+
+  # ---------------------------------------------------------------------------
+  # App Client with client_credentials grant
+  # ---------------------------------------------------------------------------
+  GatewayClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: McpResourceServer
+    Properties:
+      UserPoolId: !Ref M2MUserPool
+      ClientName: makita-gateway-client
+      GenerateSecret: true
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthScopes:
+        - makita-mcp/invoke
+      AllowedOAuthFlowsUserPoolClient: true
+
+Outputs:
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref M2MUserPool
+    Export:
+      Name: makita-m2m-pool-id
+
+  UserPoolArn:
+    Description: Cognito User Pool ARN
+    Value: !GetAtt M2MUserPool.Arn
+    Export:
+      Name: makita-m2m-pool-arn
+
+  ClientId:
+    Description: Cognito App Client ID
+    Value: !Ref GatewayClient
+    Export:
+      Name: makita-gateway-client-id
+
+  DiscoveryUrl:
+    Description: OpenID Connect Discovery URL
+    Value: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${M2MUserPool}/.well-known/openid-configuration"
+    Export:
+      Name: makita-m2m-discovery-url
+
+  TokenEndpoint:
+    Description: OAuth2 Token Endpoint
+    Value: !Sub "https://makita-m2m-auth.auth.${AWS::Region}.amazoncognito.com/oauth2/token"
+    Export:
+      Name: makita-m2m-token-endpoint

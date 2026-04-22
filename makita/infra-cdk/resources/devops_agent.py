@@ -145,6 +145,7 @@ class DevOpsAgentSpace(Construct):
         # Create Agent Space (without tags to avoid serialization issues)
         self.create_space = cr.AwsCustomResource(
             self, "CreateAgentSpace",
+            install_latest_aws_sdk=True,
             on_create=cr.AwsSdkCall(
                 service="devops-agent",
                 action="createAgentSpace",

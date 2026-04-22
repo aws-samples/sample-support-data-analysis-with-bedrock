@@ -16,7 +16,7 @@ from mcp.server.fastmcp import FastMCP
 
 from models import FailoverResult, FailoverState, HealthCheckResult
 
-mcp = FastMCP(host="0.0.0.0", port=8080, stateless_http=True)
+mcp = FastMCP(host="0.0.0.0", port=8080, stateless_http=True, streamable_http_path="/invocations")
 
 # ---------------------------------------------------------------------------
 # Runtime configuration — loaded from Parameter Store on module import
