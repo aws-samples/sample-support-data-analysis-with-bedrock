@@ -149,6 +149,7 @@ makita/
 
 - Python 3.11+
 - Node.js 18+ (for AWS CDK)
+- Docker (required for building AgentCore MCP server container images)
 - AWS CLI configured with credentials for us-east-1 and us-west-2
 - AWS CDK v2 (`npm install -g aws-cdk`)
 - AWS account with permissions for RDS, SSM, IAM, CloudWatch, CloudFormation, AgentCore, and Bedrock

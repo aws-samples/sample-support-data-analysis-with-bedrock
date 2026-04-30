@@ -27,8 +27,10 @@ help: ## Show this help
 install: $(VENV)/bin/activate ## Install Python dependencies
 $(VENV)/bin/activate:
 	python3 -m venv $(VENV)
+	$(PIP) install --upgrade pip
 	$(PIP) install -r $(CDK_DIR)/requirements.txt
 	$(PIP) install -e ".[dev]"
+	touch $(VENV)/bin/activate
 
 # ---------------------------------------------------------------------------
 # CDK commands
