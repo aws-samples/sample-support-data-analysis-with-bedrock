@@ -172,7 +172,15 @@ def buildGetCasesFromCID(self, execution_role, log_group, prompt_gen_cases_input
     return lambdaGetCasesFromCID
 
 # builds a lambda layer
+# If the layer directory contains a requirements.txt, pip install is run
+# at synth time so that dependencies don't need to be committed to the repo.
 def buildLambdaLayer(self, execution_role, layer_path, layer_desc, layer_name):
+
+    requirements_path = os.path.join(layer_path, 'requirements.txt')
+
+    if os.path.isfile(requirements_path):
+        # Install deps into python/ subdirectory before CDK packages the asset
+        _install_layer_deps(layer_path, requirements_path)
 
     layer = _lambda.LayerVersion(
         self, layer_name,
@@ -186,6 +194,54 @@ def buildLambdaLayer(self, execution_role, layer_path, layer_desc, layer_name):
     layer.node.add_dependency(execution_role) # add dependency
 
     return layer
+
+
+def _install_layer_deps(layer_path, requirements_path):
+    """pip install requirements.txt into <layer_path>/python/ at synth time.
+    
+    Skips installation if the only dependencies are boto3/botocore,
+    since those are already available in the Lambda runtime.
+    """
+    import subprocess, shutil
+
+    # Check if requirements.txt only contains boto3/botocore (runtime-provided)
+    runtime_packages = {'boto3', 'botocore'}
+    with open(requirements_path, 'r') as f:
+        deps = [line.strip().split('==')[0].split('>=')[0].split('<=')[0].split('<')[0].split('>')[0].strip()
+                for line in f if line.strip() and not line.startswith('#')]
+    if deps and all(dep in runtime_packages for dep in deps):
+        return  # Nothing to install — already in Lambda runtime
+
+    python_dir = os.path.join(layer_path, "python")
+
+    # Skip if already installed (idempotent across multiple synths)
+    marker = os.path.join(python_dir, ".installed")
+    if os.path.isfile(marker):
+        return
+
+    os.makedirs(python_dir, exist_ok=True)
+
+    subprocess.check_call([
+        sys.executable, "-m", "pip", "install",
+        "-r", requirements_path,
+        "-t", python_dir,
+        "--quiet"
+    ])
+
+    # Copy any source .py files from the layer directory into python/
+    for item in os.listdir(layer_path):
+        if item in ("requirements.txt", "__pycache__", "python", ".gitignore"):
+            continue
+        src = os.path.join(layer_path, item)
+        dst = os.path.join(python_dir, item)
+        if os.path.isdir(src):
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+        else:
+            shutil.copy2(src, dst)
+
+    # Write marker so we don't re-install on every synth
+    with open(marker, "w") as f:
+        f.write("installed")
 
 # use the above general layer function
 # the layer functions should be generalized

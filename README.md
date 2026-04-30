@@ -1,52 +1,32 @@
 # Sample Support Data Analysis and Actions with Amazon Bedrock, DevOps Agent and AgentCore
 
-This repository contains two projects that demonstrate AI-powered operations using Amazon's GenAI and AgenticAI services.
+This repository contains two self-contained projects that demonstrate AI-powered operations using Amazon's GenAI and AgenticAI services.
 
 ## Projects
 
 ### [MAKITA — Machine Augmented Key Infrastructure Technology Automation](makita/README.md)
 
-> [!CAUTION]
-> MAKITA is a work in progress and not ready for usage.
-
 MAKITA is a technical reference architecture demonstrating AI-assisted disaster recovery using Amazon DevOps Agent and Amazon AgentCore. It provisions a multi-region PostgreSQL cluster (us-east-1 primary, us-west-2 DR) and orchestrates automated failover through MCP servers built with the Strands Agents SDK, with governance via Cedar policies and Bedrock Guardrails.
 
-➜ [MAKITA README](makita/README.md)
+### [MAKI — Machine Augmented Key Insights](maki/README.md)
 
-### [MAKI — Machine Augmented Key Insights](MAKI_README.md)
+MAKI is a sample application that uses Amazon Bedrock to analyze AWS Enterprise Support cases and AWS Health events. It automates categorization, sentiment analysis, and generates actionable recommendations through both batch reporting and an interactive agentic workflow.
 
-MAKI is a sample application that uses Amazon Bedrock to analyze AWS Enterprise Support cases and AWS Health events. It automates categorization, sentiment analysis, and generates actionable recommendations through both batch reporting and an interactive agentic workflow via Amazon Q CLI.
-
-➜ [MAKI README](MAKI_README.md) · [User Guide](MAKI_USER_GUIDE.md) · [Agent Guide](MAKI_AGENT_GUIDE.md)
+Note that MAKI is pre-agentic patterns, considered legacy and no longer maintained.
 
 ## Repository Structure
 
 ```
 .
-├── makita/                 # MAKITA project (self-contained)
-│   ├── README.md           # MAKITA project README
-│   ├── infrastructure/     # CloudFormation templates
-│   ├── mcp-servers/        # MCP server implementations
-│   ├── orchestrator/       # Failover orchestration
-│   ├── policies/           # Cedar policies and Bedrock Guardrails
-│   └── scripts/            # Deployment and teardown scripts
-├── MAKI_README.md          # MAKI project README
-├── MAKI_USER_GUIDE.md      # MAKI deployment and usage guide
-├── MAKI_AGENT_GUIDE.md     # MAKI agentic workflow guide
-├── maki/                   # MAKI CDK stack, constructs, and project files
-│   ├── app.py              # CDK app entry point
-│   ├── config.py           # MAKI configuration
-│   ├── maki_stack.py       # CDK stack definitions
-│   ├── Build*.py           # CDK construct builders
-│   ├── requirements.txt    # Python dependencies
-│   ├── lambda/             # Lambda functions
-│   ├── categories/         # Event categorization definitions
-│   ├── tools/              # Utilities and scripts
-│   ├── tests/              # Test files
-│   └── utils/              # Shared utilities
-├── cdk.json                # CDK configuration
-└── requirements.txt        # Root Python dependencies
+├── makita/                 # MAKITA project
+├── maki/                   # MAKI project
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── LICENSE
+└── README.md
 ```
+
+Each project is self-contained with its own CDK configuration, dependencies, and documentation. See the individual project READMEs for details.
 
 ## License
 

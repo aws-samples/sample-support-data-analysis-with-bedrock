@@ -2,7 +2,7 @@
 
 import math
 from collections.abc import Iterable, Mapping, Sequence
-from typing import Any, SupportsInt, Union
+from typing import TYPE_CHECKING, Any, SupportsInt, Union, cast
 
 from multidict import istr
 
@@ -38,7 +38,7 @@ def query_var(v: SimpleQuery) -> str:
 
 
 def get_str_query_from_sequence_iterable(
-    items: Iterable[tuple[Union[str, istr], QueryVariable]],
+    items: Iterable[tuple[str | istr, QueryVariable]],
 ) -> str:
     """Return a query string from a sequence of (key, value) pairs.
 
@@ -58,7 +58,7 @@ def get_str_query_from_sequence_iterable(
 
 
 def get_str_query_from_iterable(
-    items: Iterable[tuple[Union[str, istr], SimpleQuery]],
+    items: Iterable[tuple[str | istr, SimpleQuery]],
 ) -> str:
     """Return a query string from an iterable.
 
@@ -76,9 +76,14 @@ def get_str_query_from_iterable(
     return "&".join(pairs)
 
 
-def get_str_query(*args: Any, **kwargs: Any) -> Union[str, None]:
+def get_str_query(*args: Any, **kwargs: Any) -> str | None:
     """Return a query string from supported args."""
-    query: Union[str, Mapping[str, QueryVariable], None]
+    query: (
+        str
+        | Mapping[str, QueryVariable]
+        | Sequence[tuple[str | istr, SimpleQuery]]
+        | None
+    )
     if kwargs:
         if args:
             msg = "Either kwargs or single query parameter must be present"
@@ -99,7 +104,7 @@ def get_str_query(*args: Any, **kwargs: Any) -> Union[str, None]:
         return QUERY_QUOTER(query)
     if isinstance(query, Mapping):
         return get_str_query_from_sequence_iterable(query.items())
-    if isinstance(query, (bytes, bytearray, memoryview)):  # type: ignore[unreachable]
+    if isinstance(query, (bytes, bytearray, memoryview)):
         msg = "Invalid query type: bytes, bytearray and memoryview are forbidden"
         raise TypeError(msg)
     if isinstance(query, Sequence):
@@ -107,6 +112,8 @@ def get_str_query(*args: Any, **kwargs: Any) -> Union[str, None]:
         # already; only mappings like builtin `dict` which can't have the
         # same key pointing to multiple values are allowed to use
         # `_query_seq_pairs`.
+        if TYPE_CHECKING:
+            query = cast(Sequence[tuple[Union[str, istr], SimpleQuery]], query)
         return get_str_query_from_iterable(query)
     raise TypeError(
         "Invalid query type: only str, mapping or "
