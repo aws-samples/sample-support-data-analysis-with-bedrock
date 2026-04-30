@@ -11,6 +11,9 @@ patch attributes directly on the imported module objects.
 from __future__ import annotations
 
 import importlib
+import importlib.util
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,19 +22,51 @@ import pytest
 # Import modules with hyphenated package names via importlib.
 # We must also mock boto3.client at import time for the failover server
 # because it calls boto3.client("ssm") at module level.
+#
+# Each MCP server does `from models import ...` expecting its own directory
+# on sys.path.  We add each server directory before importing it.
 # ---------------------------------------------------------------------------
 
-# Pre-check and post-check servers only call boto3 inside helper functions,
-# so they can be imported without mocking.  The failover server has a
-# module-level  _ssm = boto3.client("ssm", ...)  call, so we mock boto3
-# before importing it.
+_project_root = Path(__file__).parent.parent
 
-with patch("boto3.client") as _mock_boto:
-    _mock_boto.return_value = MagicMock()
-    _failover_mod = importlib.import_module("mcp-servers.workloads.postgresql.failover.server")
+_servers_base = _project_root / "mcp-servers" / "workloads" / "postgresql"
 
-_precheck_mod = importlib.import_module("mcp-servers.workloads.postgresql.precheck.server")
-_postcheck_mod = importlib.import_module("mcp-servers.workloads.postgresql.postcheck.server")
+
+def _import_server(server_name, mock_boto=False):
+    """Import an MCP server.py as a standalone module.
+    
+    Uses spec_from_file_location to avoid package-tree caching issues
+    that cause each server to pick up the wrong models.py.
+    """
+    server_dir = _servers_base / server_name
+    server_file = server_dir / "server.py"
+    models_file = server_dir / "models.py"
+
+    # Load the server's own models.py first so `from models import ...` works
+    models_spec = importlib.util.spec_from_file_location("models", str(models_file))
+    models_mod = importlib.util.module_from_spec(models_spec)
+    sys.modules["models"] = models_mod
+    models_spec.loader.exec_module(models_mod)
+
+    # Now load server.py
+    mod_name = f"makita_mcp_{server_name}_server"
+    spec = importlib.util.spec_from_file_location(mod_name, str(server_file))
+    mod = importlib.util.module_from_spec(spec)
+
+    if mock_boto:
+        with patch("boto3.client") as m:
+            m.return_value = MagicMock()
+            spec.loader.exec_module(mod)
+    else:
+        spec.loader.exec_module(mod)
+
+    sys.modules[mod_name] = mod
+    return mod
+
+
+_failover_mod = _import_server("failover", mock_boto=True)
+_precheck_mod = _import_server("precheck")
+_postcheck_mod = _import_server("postcheck")
 
 
 # ============================================================================
