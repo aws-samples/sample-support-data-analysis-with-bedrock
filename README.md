@@ -33,13 +33,19 @@ MAKI is a sample application that uses Amazon Bedrock to analyze AWS Enterprise 
 ├── MAKI_README.md          # MAKI project README
 ├── MAKI_USER_GUIDE.md      # MAKI deployment and usage guide
 ├── MAKI_AGENT_GUIDE.md     # MAKI agentic workflow guide
-├── maki/                   # MAKI CDK stack and constructs
-├── lambda/                 # MAKI Lambda functions
-├── categories/             # MAKI event categorization definitions
-├── tools/                  # MAKI utilities and scripts
-├── app.py                  # CDK app entry point (MAKI)
-├── config.py               # MAKI configuration
-└── requirements.txt        # MAKI Python dependencies
+├── maki/                   # MAKI CDK stack, constructs, and project files
+│   ├── app.py              # CDK app entry point
+│   ├── config.py           # MAKI configuration
+│   ├── maki_stack.py       # CDK stack definitions
+│   ├── Build*.py           # CDK construct builders
+│   ├── requirements.txt    # Python dependencies
+│   ├── lambda/             # Lambda functions
+│   ├── categories/         # Event categorization definitions
+│   ├── tools/              # Utilities and scripts
+│   ├── tests/              # Test files
+│   └── utils/              # Shared utilities
+├── cdk.json                # CDK configuration
+└── requirements.txt        # Root Python dependencies
 ```
 
 ## License
