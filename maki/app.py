@@ -78,13 +78,14 @@ Resource Management:
 import os
 import sys
 
+# Ensure maki/ directory is on the Python path so sibling modules resolve
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import aws_cdk as cdk
 
 from cdk_nag import AwsSolutionsChecks, NagSuppressions
 
-from maki.maki_stack import MakiFoundations, MakiData, MakiEmbeddings, MakiAgents
+from maki_stack import MakiFoundations, MakiData, MakiEmbeddings, MakiAgents
 
 app = cdk.App()
 

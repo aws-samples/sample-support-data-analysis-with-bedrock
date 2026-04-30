@@ -51,18 +51,16 @@ from aws_cdk import (
     custom_resources as cr,
 )
 
-from . import (
-    BuildIAM,
-    BuildS3,
-    BuildLambda,
-    BuildEC2,
-    BuildCloudWatch,
-    BuildStateMachine,
-    BuildEventBridge,
-    BuildSageMaker,
-    BuildOpenSearch,
-    BuildSSM
-)
+import BuildIAM
+import BuildS3
+import BuildLambda
+import BuildEC2
+import BuildCloudWatch
+import BuildStateMachine
+import BuildEventBridge
+import BuildSageMaker
+import BuildOpenSearch
+import BuildSSM
 
 from constructs import Construct
 
@@ -453,7 +451,7 @@ class MakiEmbeddings(Stack):
             self, "InitHealthEventsFunction",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="init_health_events.handler",
-            code=lambda_.Code.from_asset("maki/lambda/initHealthEvents"),
+            code=lambda_.Code.from_asset("lambda/initHealthEvents"),
             timeout=Duration.minutes(15),
             memory_size=1024,
             role=makiRole,

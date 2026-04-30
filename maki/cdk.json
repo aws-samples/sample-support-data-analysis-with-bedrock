@@ -1,5 +1,5 @@
 {
-  "app": "python3 maki/app.py",
+  "app": "python3 app.py",
   "watch": {
     "include": [
       "**"

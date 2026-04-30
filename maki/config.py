@@ -39,7 +39,7 @@ CATEGORIES = [
     'upgrade-management'
 ]
 # where example category files are stored, relative to base
-CATEGORY_DIR =  'maki/categories'
+CATEGORY_DIR =  'categories'
 
 ###
 # Default mode when not specified in input
@@ -587,7 +587,7 @@ CHECK_BATCH_INFERENCE_JOBS_NAME_BASE = 'check-batch-inference-jobs'
 CHECK_BATCH_INFERENCE_JOBS_TIMEOUT = 900
 CHECK_BATCH_INFERENCE_JOBS_MEMORY = 128
 CHECK_BATCH_INFERENCE_JOBS_DESC = 'check batch inference jobs'
-CHECK_BATCH_INFERENCE_JOBS_PATH = 'maki/lambda/checkBatchInferenceJobs'
+CHECK_BATCH_INFERENCE_JOBS_PATH = 'lambda/checkBatchInferenceJobs'
 CHECK_BATCH_INFERENCE_JOBS_HANDLER_FILE = 'checkBatchInferenceJobs_handler'
 CHECK_BATCH_INFERENCE_JOBS_HANDLER_FUNC = 'handler'
 CHECK_BATCH_INFERENCE_JOBS_RETRIES = 0
@@ -597,7 +597,7 @@ CHECK_ENABLED_MODELS_NAME_BASE = 'check-enabled_models'
 CHECK_ENABLED_MODELS_TIMEOUT = 900
 CHECK_ENABLED_MODELS_MEMORY = 128
 CHECK_ENABLED_MODELS_DESC = 'check enabled models'
-CHECK_ENABLED_MODELS_PATH = 'maki/lambda/checkEnabledModels'
+CHECK_ENABLED_MODELS_PATH = 'lambda/checkEnabledModels'
 CHECK_ENABLED_MODELS_HANDLER_FILE = 'checkEnabledModels_handler'
 CHECK_ENABLED_MODELS_HANDLER_FUNC = 'handler'
 CHECK_ENABLED_MODELS_RETRIES = 0
@@ -607,7 +607,7 @@ CHECK_RUNNING_JOBS_NAME_BASE = 'check-running-jobs'
 CHECK_RUNNING_JOBS_TIMEOUT = 900
 CHECK_RUNNING_JOBS_MEMORY = 128
 CHECK_RUNNING_JOBS_DESC = 'check running jobs'
-CHECK_RUNNING_JOBS_PATH = 'maki/lambda/checkRunningJobs'
+CHECK_RUNNING_JOBS_PATH = 'lambda/checkRunningJobs'
 CHECK_RUNNING_JOBS_HANDLER_FILE = 'checkRunningJobs_handler'
 CHECK_RUNNING_JOBS_HANDLER_FUNC = 'handler'
 CHECK_RUNNING_JOBS_RETRIES = 0
@@ -618,7 +618,7 @@ GET_CID_CASES_NAME_BASE = 'GetCasesFromCID'
 GET_CID_CASES_TIMEOUT = 900
 GET_CID_CASES_MEMORY = 10240
 GET_CID_CASES_DESC = 'get cases from the CID'
-GET_CID_CASES_PATH = 'maki/lambda/getCasesFromCID'
+GET_CID_CASES_PATH = 'lambda/getCasesFromCID'
 GET_CID_CASES_HANDLER_FILE = 'getCasesFromCID_handler'
 GET_CID_CASES_HANDLER_FUNC = 'handler'
 GET_CID_CASES_RETRIES = 0
@@ -628,7 +628,7 @@ GET_HEALTH_FROM_OPENSEARCH_NAME_BASE = 'GetHealthFromOpenSearch'
 GET_HEALTH_FROM_OPENSEARCH_TIMEOUT = 900
 GET_HEALTH_FROM_OPENSEARCH_MEMORY = 10240
 GET_HEALTH_FROM_OPENSEARCH_DESC = 'get health events from OpenSearch'
-GET_HEALTH_FROM_OPENSEARCH_PATH = 'maki/lambda/getHealthFromOpenSearch'
+GET_HEALTH_FROM_OPENSEARCH_PATH = 'lambda/getHealthFromOpenSearch'
 GET_HEALTH_FROM_OPENSEARCH_HANDLER_FILE = 'getHealthFromOpenSearch_handler'
 GET_HEALTH_FROM_OPENSEARCH_HANDLER_FUNC = 'handler'
 GET_HEALTH_FROM_OPENSEARCH_RETRIES = 0
@@ -638,7 +638,7 @@ BEDROCK_ONDEMAND_INF_NAME_BASE = 'cases-ondemand-inference'
 BEDROCK_ONDEMAND_INF_TIMEOUT = 900
 BEDROCK_ONDEMAND_INF_MEMORY = 10240
 BEDROCK_ONDEMAND_INF_DESC = 'ondemand inference'
-BEDROCK_ONDEMAND_INF_PATH = 'maki/lambda/bedrockOnDemandInference'
+BEDROCK_ONDEMAND_INF_PATH = 'lambda/bedrockOnDemandInference'
 BEDROCK_ONDEMAND_INF_HANDLER_FILE = 'bedrockOnDemandInference_handler'
 BEDROCK_ONDEMAND_INF_HANDLER_FUNC = 'handler'
 BEDROCK_ONDEMAND_INF_RETRIES = 0
@@ -647,7 +647,7 @@ BEDROCK_HEALTH_ONDEMAND_INF_NAME_BASE = 'health-ondemand-inference'
 BEDROCK_HEALTH_ONDEMAND_INF_TIMEOUT = 900
 BEDROCK_HEALTH_ONDEMAND_INF_MEMORY = 10240
 BEDROCK_HEALTH_ONDEMAND_INF_DESC = 'health ondemand inference'
-BEDROCK_HEALTH_ONDEMAND_INF_PATH = 'maki/lambda/bedrockOnDemandInference'
+BEDROCK_HEALTH_ONDEMAND_INF_PATH = 'lambda/bedrockOnDemandInference'
 BEDROCK_HEALTH_ONDEMAND_INF_HANDLER_FILE = 'bedrockOnDemandInferenceHealth_handler'
 BEDROCK_HEALTH_ONDEMAND_INF_HANDLER_FUNC = 'handler'
 BEDROCK_HEALTH_ONDEMAND_INF_RETRIES = 0
@@ -657,7 +657,7 @@ GEN_BATCH_INF_RECORDS_NAME_BASE = 'gen-batch-inference-records'
 GEN_BATCH_INF_RECORDS_TIMEOUT = 900
 GEN_BATCH_INF_RECORDS_MEMORY = 10240
 GEN_BATCH_INF_RECORDS_DESC = 'generate batch inference records'
-GEN_BATCH_INF_RECORDS_PATH = 'maki/lambda/genBatchInferenceRecords'
+GEN_BATCH_INF_RECORDS_PATH = 'lambda/genBatchInferenceRecords'
 GEN_BATCH_INF_RECORDS_HANDLER_FILE = 'genBatchInferenceRecords_handler'
 GEN_BATCH_INF_RECORDS_HANDLER_FUNC = 'handler'
 GEN_BATCH_INF_RECORDS_RETRIES = 0
@@ -667,7 +667,7 @@ CLEAN_OUTPUT_FILES_NAME_BASE = 'clean-output-files'
 CLEAN_OUTPUT_FILES_TIMEOUT = 900
 CLEAN_OUTPUT_FILES_MEMORY = 128
 CLEAN_OUTPUT_FILES_DESC = 'clean output files'
-CLEAN_OUTPUT_FILES_PATH = 'maki/lambda/cleanOutputFiles'
+CLEAN_OUTPUT_FILES_PATH = 'lambda/cleanOutputFiles'
 CLEAN_OUTPUT_FILES_HANDLER_FILE = 'cleanOutputFiles_handler'
 CLEAN_OUTPUT_FILES_HANDLER_FUNC = 'handler'
 CLEAN_OUTPUT_FILES_RETRIES = 0
@@ -677,7 +677,7 @@ BEDROCK_BATCH_INF_JOB_NAME_BASE = 'batch-inference'
 BEDROCK_BATCH_INF_JOB_TIMEOUT = 900
 BEDROCK_BATCH_INF_JOB_MEMORY = 10240
 BEDROCK_BATCH_INF_JOB_DESC = 'create Bedrock batch inference job'
-BEDROCK_BATCH_INF_JOB_PATH = 'maki/lambda/bedrockBatchInferenceJob'
+BEDROCK_BATCH_INF_JOB_PATH = 'lambda/bedrockBatchInferenceJob'
 BEDROCK_BATCH_INF_JOB_HANDLER_FILE = 'bedrockBatchInferenceJob_handler'
 BEDROCK_BATCH_INF_JOB_HANDLER_FUNC = 'handler'
 BEDROCK_BATCH_INF_JOB_RETRIES = 0
@@ -687,7 +687,7 @@ BEDROCK_PROCESS_BATCH_OUTPUT_NAME_BASE = 'process-batch-output'
 BEDROCK_PROCESS_BATCH_OUTPUT_TIMEOUT = 900
 BEDROCK_PROCESS_BATCH_OUTPUT_MEMORY = 10240
 BEDROCK_PROCESS_BATCH_OUTPUT_DESC = 'process Bedrock batch inference output'
-BEDROCK_PROCESS_BATCH_OUTPUT_PATH = 'maki/lambda/bedrockProcessBatchOutput'
+BEDROCK_PROCESS_BATCH_OUTPUT_PATH = 'lambda/bedrockProcessBatchOutput'
 BEDROCK_PROCESS_BATCH_OUTPUT_HANDLER_FILE = 'bedrockProcessBatchOutput_handler'
 BEDROCK_PROCESS_BATCH_OUTPUT_HANDLER_FUNC = 'handler'
 BEDROCK_PROCESS_BATCH_OUTPUT_RETRIES = 0
@@ -697,7 +697,7 @@ BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_NAME_BASE = 'cases-process-ondemand'
 BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_TIMEOUT = 900
 BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_MEMORY = 10240
 BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_DESC = 'process ondemand inference output'
-BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_PATH = 'maki/lambda/bedrockProcessOnDemandOutput'
+BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_PATH = 'lambda/bedrockProcessOnDemandOutput'
 BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_HANDLER_FILE = 'bedrockProcessOnDemandOutput_handler'
 BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_HANDLER_FUNC = 'handler'
 BEDROCK_PROCESS_CASES_ONDEMAND_OUTPUT_RETRIES = 0
@@ -706,36 +706,36 @@ BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_NAME_BASE = 'health-process-ondemand'
 BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_TIMEOUT = 900
 BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_MEMORY = 10240
 BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_DESC = 'process health ondemand inference output'
-BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_PATH = 'maki/lambda/bedrockProcessOnDemandOutput'
+BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_PATH = 'lambda/bedrockProcessOnDemandOutput'
 BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_HANDLER_FILE = 'bedrockProcessOnDemandOutput_handler'
 BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_HANDLER_FUNC = 'handler'
 BEDROCK_PROCESS_HEALTH_ONDEMAND_OUTPUT_RETRIES = 0
 
 # this Lambda layer is used to store prompts that generate Bedrock batch inference records from CID and synthetic records
-PROMPT_GEN_CASES_INPUT_LAYER_PATH = 'maki/lambda/layers/prompt_gen_input'
+PROMPT_GEN_CASES_INPUT_LAYER_PATH = 'lambda/layers/prompt_gen_input'
 PROMPT_GEN_CASES_INPUT_LAYER_NAME_BASE = 'MakiPromptGenCasesInput'
 PROMPT_GEN_CASES_INPUT_LAYER_DESC = 'MAKI Prompt Cases Input Layer'
 
 # this lambda layer is used to process and aggregate the output from Bedrock batch inference
-PROMPT_AGG_CASES_LAYER_PATH = 'maki/lambda/layers/prompt_agg_cases'
+PROMPT_AGG_CASES_LAYER_PATH = 'lambda/layers/prompt_agg_cases'
 PROMPT_AGG_CASES_LAYER_NAME_BASE = 'MakiPromptAggCases'
 PROMPT_AGG_CASES_LAYER_DESC = 'MAKI Prompt Aggregate Cases Layer'
 
-PROMPT_AGG_HEALTH_LAYER_PATH = 'maki/lambda/layers/prompt_agg_health'
+PROMPT_AGG_HEALTH_LAYER_PATH = 'lambda/layers/prompt_agg_health'
 PROMPT_AGG_HEALTH_LAYER_NAME_BASE = 'MakiPromptAggHealth'
 PROMPT_AGG_HEALTH_LAYER_DESC = 'MAKI Prompt Aggregate Health Layer'
 
 # this Lambda layer is used for various S3 functions
-S3_UTILS_LAYER_PATH = 'maki/lambda/layers/s3_utils'
+S3_UTILS_LAYER_PATH = 'lambda/layers/s3_utils'
 S3_UTILS_LAYER_NAME_BASE = 'MakiS3Utils'
 S3_UTILS_LAYER_DESC = 'MAKI S3 Utils Layer'
 
 # this Lambda layer is used for various json methods
-JSON_UTILS_LAYER_PATH = 'maki/lambda/layers/json_utils'
+JSON_UTILS_LAYER_PATH = 'lambda/layers/json_utils'
 JSON_UTILS_LAYER_NAME_BASE = 'MakiJsonUtils'
 JSON_UTILS_LAYER_DESC = 'MAKI JSON Utils Layer'
 
-OPENSEARCH_UTILS_LAYER_PATH = 'maki/lambda/layers/opensearch_utils'
+OPENSEARCH_UTILS_LAYER_PATH = 'lambda/layers/opensearch_utils'
 OPENSEARCH_UTILS_LAYER_NAME_BASE = 'MakiOpenSearchUtils'
 OPENSEARCH_UTILS_LAYER_DESC = 'MAKI OpenSearch Utils Layer'
 
