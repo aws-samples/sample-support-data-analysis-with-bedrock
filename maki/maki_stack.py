@@ -31,9 +31,10 @@ Deployment Order:
 
 import sys
 import json
+import os
 import config
 from constructs import Construct
-sys.path.append('utils')    
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))    
 import utils
 
 from aws_cdk import (
@@ -452,7 +453,7 @@ class MakiEmbeddings(Stack):
             self, "InitHealthEventsFunction",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="init_health_events.handler",
-            code=lambda_.Code.from_asset("lambda/initHealthEvents"),
+            code=lambda_.Code.from_asset("maki/lambda/initHealthEvents"),
             timeout=Duration.minutes(15),
             memory_size=1024,
             role=makiRole,

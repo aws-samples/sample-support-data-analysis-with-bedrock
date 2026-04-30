@@ -44,7 +44,8 @@ import aws_cdk.aws_lambda as _lambda
 import aws_cdk.aws_iam as iam
 import config
 import sys
-sys.path.append('utils')
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
 import utils
 
 # checks to see if required models are enabled in Bedrock

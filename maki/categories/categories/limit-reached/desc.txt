@@ -1,0 +1,8 @@
+This category is due to a technical limit reached.  The following are common technical limits reached in this category;
+
+AWS Service Quota limits
+Internal AWS API Throttling limits  
+CPU
+Memory 
+Throughput
+Insufficient Capacity

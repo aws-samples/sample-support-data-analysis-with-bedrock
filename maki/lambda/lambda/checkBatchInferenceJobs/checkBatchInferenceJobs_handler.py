@@ -1,0 +1,211 @@
+"""
+MAKI Bedrock Batch Inference Jobs Status Checker
+
+This Lambda function monitors and reports on the status of Amazon Bedrock batch 
+inference jobs, providing comprehensive job tracking and status management for 
+MAKI's batch processing operations.
+
+Purpose:
+- Monitor status of all Bedrock batch inference jobs
+- Provide detailed job status information for Step Functions
+- Track job completion and failure states
+- Support EventBridge integration for job completion events
+- Enable proper workflow orchestration based on job status
+
+Key Features:
+- Comprehensive job status monitoring across all states
+- Pagination support for large numbers of jobs
+- Job grouping by status for easy analysis
+- Detailed job information including S3 output locations
+- EventBridge event handling for job completion notifications
+- Incomplete job tracking for workflow decisions
+
+Job Status States Monitored:
+- Submitted: Jobs submitted but not yet started
+- Validating: Jobs undergoing input validation
+- Scheduled: Jobs scheduled for execution
+- InProgress: Jobs currently running
+- Completed: Successfully completed jobs
+- Failed: Jobs that failed during execution
+- Stopping: Jobs in the process of being stopped
+- Stopped: Jobs that were manually stopped
+
+Processing Flow:
+1. Connect to Bedrock service
+2. List all batch inference jobs with optional status filtering
+3. Retrieve detailed information for completed jobs
+4. Group jobs by status for analysis
+5. Calculate counts and identify incomplete jobs
+6. Return comprehensive status information
+
+Environment Variables:
+- None required (uses default AWS credentials and region)
+
+Input Event Structure:
+- statusFilter: Optional filter for specific job status
+- detail: EventBridge job completion event details (if applicable)
+
+Output Structure:
+- statusCounts: Count of jobs by status
+- totalJobs: Total number of jobs found
+- incompleteJobsCount: Number of jobs not yet complete
+- incompleteJobs: List of incomplete job details
+- allJobs: Complete list of all jobs
+- batchJobs: List of completed jobs ready for processing
+
+Integration Points:
+- Step Functions: Workflow decision making based on job status
+- EventBridge: Job completion event handling
+- S3: Output location tracking for completed jobs
+"""
+
+import sys
+sys.path.append('/opt')
+import boto3
+import logging
+import json
+import os
+from botocore.exceptions import ClientError
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+def get_batch_jobs_status(bedrock, status_filter=None):
+    """Get batch inference jobs with optional status filter."""
+    try:
+        jobs = []
+        paginator = bedrock.get_paginator('list_model_invocation_jobs')
+        
+        # Set up parameters
+        params = {
+            'sortOrder': 'Descending'  # Most recent first
+        }
+        if status_filter:
+            params['statusEquals'] = status_filter
+        
+        # Paginate through results
+        for page in paginator.paginate(**params):
+            for job in page.get('invocationJobSummaries', []):
+                job_info = {
+                    'roleArn': job.get('roleArn'),
+                    'jobName': job.get('name'),
+                    'jobId': job.get('jobIdentifier'),
+                    'status': job.get('status'),
+                    'modelId': job.get('modelId'),
+                    'submitTime': job.get('submitTime').isoformat() if job.get('submitTime') else None,
+                    'endTime': job.get('endTime').isoformat() if job.get('endTime') else None
+                }
+                
+                # For completed jobs, get detailed info including output S3 URI
+                if job.get('status') == 'Completed':
+                    try:
+                        job_details = bedrock.get_model_invocation_job(
+                            jobIdentifier=job.get('jobIdentifier')
+                        )
+                        output_config = job_details.get('outputConfig', {})
+                        if 's3OutputDataConfig' in output_config:
+                            job_info['output_s3_uri'] = output_config['s3OutputDataConfig'].get('s3Uri', '')
+                    except Exception as e:
+                        logger.warning(f"Could not get details for job {job.get('jobIdentifier')}: {str(e)}")
+                
+                jobs.append(job_info)
+                
+                logger.info(f"Found job: {job_info['jobName']} with status: {job_info['status']}")
+                
+        return jobs
+        
+    except ClientError as e:
+        logger.warning(f"Error listing batch jobs: {str(e)}")
+        raise
+
+def group_jobs_by_status(jobs):
+    """Group jobs by their status."""
+    status_groups = {
+        'Submitted': [],
+        'Validating': [],
+        'Scheduled': [],
+        'InProgress': [],
+        'Completed': [],
+        'Failed': [],
+        'Stopping': [],
+        'Stopped': []
+    }
+    
+    for job in jobs:
+        status = job['status']
+        if status in status_groups:
+            status_groups[status].append(job)
+    
+    return status_groups
+
+def handler(event, context):
+    """Lambda handler to check Bedrock batch inference jobs status."""
+    try:
+        bedrock = boto3.client('bedrock')
+        
+        # Check if this is an EventBridge event for a job completion
+        is_job_completion_event = False
+        job_detail = {}
+        
+        if event and 'detail' in event and 'status' in event['detail']:
+            is_job_completion_event = True
+            job_detail = event['detail']
+            logger.info(f"Received job completion event: {job_detail}")
+        
+        # Get status filter from event if provided
+        status_filter = event.get('statusFilter') if not is_job_completion_event else None
+        
+        # Get all jobs or filtered by status
+        jobs = get_batch_jobs_status(bedrock, status_filter)
+        
+        # Group jobs by status
+        status_groups = group_jobs_by_status(jobs)
+        
+        # Calculate counts
+        status_counts = {status: len(jobs) for status, jobs in status_groups.items()}
+        
+        incomplete_jobs = []
+        for status, jobs in status_groups.items():
+            if status not in ['Completed', 'Stopped', 'Failed']:
+                incomplete_jobs.extend(jobs)
+        
+        response = {
+            'statusCounts': status_counts,
+            'totalJobs': len(jobs),
+            'incompleteJobsCount': len(incomplete_jobs),
+            'incompleteJobs': incomplete_jobs,
+            'allJobs': jobs,
+            'batchJobs': status_groups.get('Completed', [])  # Include completed jobs for processing
+        }
+        
+        # Log summary
+        logger.info(f"Job Status Summary: {status_counts}")
+        logger.info(f"Total Incomplete Jobs: {len(incomplete_jobs)}")
+
+        return response
+        
+    except Exception as e:
+        logger.warning(f"Error processing batch job status: {str(e)}")
+        raise
+
+def get_specific_job_status(job_id):
+    """Get detailed status for a specific job ID."""
+    try:
+        bedrock = boto3.client('bedrock')
+        response = bedrock.get_model_invocation_job(
+            jobIdentifier=job_id
+        )
+        
+        return {
+            'jobId': job_id,
+            'status': response.get('status'),
+            'statusMessage': response.get('statusMessage'),
+            'submitTime': response.get('submitTime').isoformat() if response.get('submitTime') else None,
+            'endTime': response.get('endTime').isoformat() if response.get('endTime') else None,
+            'inputConfig': response.get('inputConfig'),
+            'outputConfig': response.get('outputConfig')
+        }
+        
+    except ClientError as e:
+        logger.warning(f"Error getting status for job {job_id}: {str(e)}")
+        raise

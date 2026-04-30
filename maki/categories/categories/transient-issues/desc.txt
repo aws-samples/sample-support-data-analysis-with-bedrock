@@ -1,0 +1,4 @@
+Temporary disruptions or intermittent performance anomalies affecting AWS services or customer workloads that resolve autonomously without clear identification of root cause. 
+These elusive issues manifest through sporadic service latency, temporary connectivity problems, brief performance degradation, or momentary resource availability concerns. 
+The incidents are characterized by their temporary nature and inability to consistently reproduce the problem, making traditional troubleshooting approaches challenging. 
+Common patterns include occasional network packet loss, intermittent API response delays, temporary resource availability fluctuations, or brief periods of increased error rates.

@@ -37,9 +37,9 @@ Security Considerations:
 
 import aws_cdk.aws_iam as iam
 import sys
-sys.path.append('..')
+import os
 import config
-sys.path.append('utils')
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
 import utils
 
 # this role is used to retrieve cases across the organization

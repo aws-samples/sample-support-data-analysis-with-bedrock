@@ -43,7 +43,8 @@ import aws_cdk.aws_iam as iam
 import aws_cdk.custom_resources as cr
 import config
 import sys
-sys.path.append('utils')
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
 import utils
 
 def buildOpenSearchCollection(self, execution_role):

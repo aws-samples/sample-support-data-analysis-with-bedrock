@@ -1,0 +1,29 @@
+{
+    "caseId": "case-823456789012-use1-2025-456bc23f1560gh8e",
+    "displayId": "1945678901567",
+    "subject": "Production EBS volume reached 100% capacity causing application outage",
+    "status": "working",
+    "serviceCode": "Amazon Elastic Block Store",
+    "categoryCode": "Lack Monitoring | Storage Capacity",
+    "submittedBy": "steve.williams@ecommerce.com",
+    "timeCreated": "2025-04-08T03:15:42.891Z",
+    "recentCommunications": {
+        "communications": [
+            {
+            "caseId": "case-823456789012-use1-2025-456bc23f1560gh8e",
+            "body": "Hello Steve,\n\nThank you for contacting AWS Support. My name is Rachel, and I will be helping you with the EBS volume capacity issue and implementing proper monitoring solutions.\n\nI understand that:\n1. Your application experienced an outage due to a full EBS volume\n2. There were no monitoring alerts in place\n3. You need help with immediate resolution and future prevention\n\nImmediate Actions Taken:\n1. Verified volume state:\n\naws ec2 describe-volumes \\\n    --volume-ids vol-0abc123def456789 \\\n    --region us-east-1\n\n\n2. Increased volume size:\n\naws ec2 modify-volume \\\n    --volume-id vol-0abc123def456789 \\\n    --size 500 \\\n    --region us-east-1\n\n\nRecommended Monitoring Setup:\n\n1. Create CloudWatch Alarm for Volume Storage:\n\naws cloudwatch put-metric-alarm \\\n    --alarm-name \"EBS-Volume-Storage-Alert\" \\\n    --alarm-description \"Alert when EBS volume usage exceeds 80%\" \\\n    --metric-name \"VolumeUsedBytes\" \\\n    --namespace \"AWS/EBS\" \\\n    --statistic \"Average\" \\\n    --period 300 \\\n    --threshold 80 \\\n    --comparison-operator \"GreaterThanThreshold\" \\\n    --evaluation-periods 2 \\\n    --dimensions Name=VolumeId,Value=vol-0abc123def456789 \\\n    --alarm-actions arn:aws:sns:us-east-1:123456789012:EBS-Alerts\n\n\n2. Create Dashboard:\n\naws cloudwatch put-dashboard \\\n    --dashboard-name \"Storage-Monitoring\" \\\n    --dashboard-body file://storage-dashboard.json\n\n\nComprehensive Monitoring Plan:\n\n1. Volume Metrics to Monitor:\n- Available Storage Space\n- Volume Read/Write IOPS\n- Volume Queue Length\n- Volume Throughput\n\n2. Recommended Thresholds:\n- Warning: 70% capacity\n- Critical: 80% capacity\n- Emergency: 90% capacity\n\n3. Auto-remediation Setup:\n\naws events put-rule \\\n    --name \"EBSVolumeAutoExpand\" \\\n    --event-pattern \"{\n        \"source\": [\"aws.cloudwatch\"],\n        \"detail-type\": [\"CloudWatch Alarm State Change\"],\n        \"resources\": [\"arn:aws:cloudwatch:us-east-1:123456789012:alarm:EBS-Volume-Storage-Alert\"]}\"\n\n\nPreventive Measures:\n1. Implemented automated volume expansion at 80% usage\n2. Set up daily capacity trending reports\n3. Created incident response runbook\n\nMonitoring Best Practices Document:\n1. Monitor all volumes, not just production\n2. Set up multi-level alerting\n3. Implement automated cleanup jobs\n4. Configure backup retention policies\n\nWould you like me to:\n1. Set up these monitoring configurations now?\n2. Provide the CloudFormation template for the complete monitoring stack?\n3. Schedule a review of your other storage resources?\n\nBest regards,\nRachel\nAWS Support",
+            "submittedBy": "Amazon Web Services",
+            "timeCreated": "2025-04-08T03:25:17.234Z"
+            },
+            {
+            "caseId": "case-823456789012-use1-2025-456bc23f1560gh8e",
+            "body": "Our production application is down due to an EBS volume reaching 100% capacity. We had no monitoring in place to alert us before the volume filled up.\n\nEnvironment Details:\n- Account ID: 123456789012\n- Region: us-east-1\n- Volume ID: vol-0abc123def456789\n- Instance ID: i-0def456789abc0123\n- Volume Size: 256 GB\n- Volume Type: gp3\n\nCurrent Issues:\n1. Volume at 100% capacity\n2. Application unable to write to disk\n3. Database transactions failing\n4. No monitoring alerts configured\n\nImpact:\n- E-commerce platform completely down\n- Unable to process orders\n- Revenue loss approximately $10K per hour\n- 15,000 affected users\n\nImmediate Needs:\n1. Emergency volume expansion\n2. Monitoring setup to prevent future incidents\n3. Best practices for storage monitoring\n\nPlease help with immediate resolution and guide us on setting up proper monitoring.",
+            "submittedBy": "steve.williams@ecommerce.com",
+            "timeCreated": "2025-04-08T03:15:42.891Z",
+            "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": ["devops.team@ecommerce.com", "cto@ecommerce.com"],
+    "language": "en"
+    }

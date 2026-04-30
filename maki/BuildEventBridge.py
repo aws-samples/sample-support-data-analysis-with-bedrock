@@ -36,7 +36,8 @@ import aws_cdk.aws_events as events
 
 import config
 import sys
-sys.path.append('utils')
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
 import utils
 
 # cron job for running the main state machine

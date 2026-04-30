@@ -1,0 +1,29 @@
+{
+    "caseId": "case-956731840267-use1-2025-763ac45d1890ef3b",
+    "displayId": "1467823590124",
+    "subject": "Feature Request: Add tag-based access control for AWS Secrets Manager secret versions",
+    "status": "resolved",
+    "serviceCode": "AWS Secrets Manager",
+    "categoryCode": "Feature Request | Access Control Enhancement",
+    "submittedBy": "maria.garcia@enterprise.com",
+    "timeCreated": "2025-04-06T09:15:33.742Z",
+    "recentCommunications": {
+        "communications": [
+            {
+            "caseId": "case-956731840267-use1-2025-763ac45d1890ef3b",
+            "body": "Hello Maria,\n\nThank you for contacting AWS Support and for providing this detailed feature request for AWS Secrets Manager. My name is Alex, and I'll be helping you today.\n\nI understand that you would like to see tag-based access control implemented at the secret version level in AWS Secrets Manager. I've documented your specific requirements:\n\n1. Ability to assign tags to individual secret versions\n2. Support for IAM policies that can restrict access based on secret version tags\n3. Integration with AWS Organizations for cross-account management\n\nI have forwarded your feature request to our AWS Secrets Manager product team. While I cannot provide a specific timeline for implementation, please know that we take customer feedback seriously, and it helps shape our product roadmap.\n\nIn the meantime, here are some current workarounds you might consider:\n\n1. Use separate secrets for different environments/versions\n2. Implement version labels with strict IAM policies\n3. Utilize resource-based policies with specific version stages\n\nI'll be adding the 'feature-request' label to this case, which helps our product teams track customer demand for specific features.\n\nWould you like me to explain any of these workaround options in more detail?\n\nBest regards,\nAlex\nAWS Support",
+            "submittedBy": "Amazon Web Services",
+            "timeCreated": "2025-04-06T09:22:17.183Z"
+            },
+            {
+            "caseId": "case-956731840267-use1-2025-763ac45d1890ef3b",
+            "body": "Request for new feature in AWS Secrets Manager.\n\nWe manage a large enterprise with multiple environments and teams, and we need more granular control over secret versions. Currently, we can only tag secrets at the resource level, but we need the ability to tag individual versions of secrets.\n\nUse case:\n- Different teams need access to different versions of the same secret\n- Need to control access to production vs. development versions through tags\n- Want to implement automated access control based on version tags across our organization\n- Require the ability to audit access patterns based on version tags\n\nCurrent limitations:\n- Cannot assign tags to specific versions\n- Cannot restrict IAM access based on version-level tags\n- Difficult to manage version-specific permissions across accounts\n\nThis feature would significantly improve our security posture and simplify our secret management processes.\n\nAccount ID: 987654321098\nOrganization ID: o-a1b2c3d4e5\nRegion: us-east-1",
+            "submittedBy": "maria.garcia@enterprise.com",
+            "timeCreated": "2025-04-06T09:15:33.742Z",
+            "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": ["security.team@enterprise.com"],
+    "language": "en"
+    }

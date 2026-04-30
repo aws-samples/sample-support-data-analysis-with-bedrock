@@ -1,0 +1,29 @@
+{
+    "caseId": "case-423567891234-use1-2025-789de45f2130gh6b",
+    "displayId": "2389012345901",
+    "subject": "RDS PostgreSQL automatic minor version upgrade causing application issues",
+    "status": "working",
+    "serviceCode": "Amazon RDS",
+    "categoryCode": "Upgrade Management | Automated Updates",
+    "submittedBy": "patricia.wong@datatech.com",
+    "timeCreated": "2025-04-08T11:34:56.789Z",
+    "recentCommunications": {
+        "communications": [
+            {
+            "caseId": "case-423567891234-use1-2025-789de45f2130gh6b",
+            "body": "Hello Patricia,\n\nThank you for contacting AWS Support. I am Carlos, and I'll be helping you with the RDS PostgreSQL upgrade-related issues.\n\nI understand that:\n1. Your application is experiencing unexpected behavior\n2. This coincided with an automatic minor version upgrade of PostgreSQL\n3. You weren't aware the upgrade was scheduled\n\nAfter reviewing your RDS instance details:\n\naws rds describe-db-instances \\\n    --db-instance-identifier production-db \\\n    --query 'DBInstances[*].[DBInstanceIdentifier,EngineVersion,AutoMinorVersionUpgrade]'\n\n\nFindings:\n1. Upgrade occurred: 2025-04-08 10:30 UTC\n2. Version change: 14.7 -> 14.8\n3. Auto Minor Version Upgrade: Enabled\n4. Maintenance Window: Tuesday 10:30-11:30 UTC\n\nImpacted Settings:\n1. Query Planner behavior changes\n2. Performance Schema updates\n3. Extension version changes\n\nImmediate Actions Available:\n\n1. Rollback to previous version:\n\naws rds modify-db-instance \\\n    --db-instance-identifier production-db \\\n    --engine-version 14.7 \\\n    --apply-immediately\n\n\n2. Disable future automatic upgrades:\n\naws rds modify-db-instance \\\n    --db-instance-identifier production-db \\\n    --no-auto-minor-version-upgrade\n\n\nRecommended Management Practices:\n\n1. Set up upgrade notifications:\n\naws sns create-topic --name rds-upgrades\n\naws events put-rule \\\n    --name \"RDSUpgradeEvents\" \\\n    --event-pattern '{\"source\":[\"aws.rds\"],\"detail-type\":[\"RDS DB Instance Event\"]}'\n\n\n2. Configure maintenance window:\n\naws rds modify-db-instance \\\n    --db-instance-identifier production-db \\\n    --preferred-maintenance-window \"sun:05:00-sun:06:00\"\n\n\nPreventive Measures:\n1. Regular review of RDS events\n2. Test upgrades in staging environment\n3. Document version-specific dependencies\n\nMonitoring Dashboard Created:\n\naws cloudwatch put-dashboard \\\n    --dashboard-name \"RDS-Version-Monitoring\" \\\n    --dashboard-body file://rds-version-dashboard.json\n\n\nNext Steps:\n1. Would you like to rollback to version 14.7?\n2. Should we disable automatic minor version upgrades?\n3. Would you like help setting up upgrade notifications?\n\nTo prevent future surprises:\n1. Subscribe to AWS Health Dashboard\n2. Configure AWS Health event notifications\n3. Implement pre-upgrade testing procedure\n\nWould you like me to:\n1. Proceed with the rollback?\n2. Set up the notification system?\n3. Share the upgrade testing procedure template?\n\nBest regards,\nCarlos\nAWS Support",
+            "submittedBy": "Amazon Web Services",
+            "timeCreated": "2025-04-08T11:42:23.456Z"
+            },
+            {
+            "caseId": "case-423567891234-use1-2025-789de45f2130gh6b",
+            "body": "Our application started experiencing unexpected query behavior and performance issues this morning. After investigation, we discovered our RDS PostgreSQL instance underwent an automatic minor version upgrade that we weren't aware of.\n\nEnvironment Details:\n- Account ID: 123456789012\n- Region: us-east-1\n- RDS Instance ID: production-db\n- Previous Version: PostgreSQL 14.7\n- Current Version: PostgreSQL 14.8\n- Instance Class: db.r6g.2xlarge\n\nIssues Observed:\n1. Query plan changes causing performance degradation\n2. Certain stored procedures failing\n3. Unexpected extension behavior\n4. Increased query execution times\n\nImpact:\n- 30% increase in query latency\n- Multiple application errors\n- Affecting customer transactions\n- Support team overwhelmed with alerts\n\nCurrent Status:\n- Applications still running but degraded\n- No data loss observed\n- Some functionality disabled\n- Monitoring shows sustained performance impact\n\nUrgent Needs:\n1. Understand upgrade impact\n2. Possible rollback options\n3. Prevention of future unexpected upgrades\n\nPlease advise on immediate actions and help us prevent similar situations in the future.",
+            "submittedBy": "patricia.wong@datatech.com",
+            "timeCreated": "2025-04-08T11:34:56.789Z",
+            "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": ["dba.team@datatech.com", "ops.manager@datatech.com"],
+    "language": "en"
+    }

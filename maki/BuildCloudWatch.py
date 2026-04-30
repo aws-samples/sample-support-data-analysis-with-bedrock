@@ -29,9 +29,9 @@ Usage:
 import aws_cdk as cdk
 import aws_cdk.aws_logs as logs
 import sys
-sys.path.append('..')
+import os
 import config
-sys.path.append('utils')
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
 import utils
 
 # make these configurable

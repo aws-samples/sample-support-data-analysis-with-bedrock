@@ -1,0 +1,4 @@
+boto3
+botocore
+opensearch-py
+aiohttp

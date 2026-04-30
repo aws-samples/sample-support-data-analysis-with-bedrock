@@ -1,0 +1,36 @@
+{
+    "caseId": "case-78067293441094-muen-2023-954ed91f2080ab1c",
+    "displayId": "1212868713122",
+    "subject": "Phone: Lambda is not able to fetch secret from Secrets Manager when configured in a VPC",
+    "status": "resolved",
+    "serviceCode": "Lambda",
+    "categoryCode": "Permissions | Execution Role",
+    "submittedBy": "chojoe@amazon.com",
+    "timeCreated": "2023-03-02T21:41:51.096Z",
+    "recentCommunications": {
+        "communications": [
+            {
+                "caseId": "case-780672931094-muen-2023-954ed91f2080ab1c",
+                "body": "Hello Tania,  This is Ed from AWS Premium Support Lambda team, I hope this email finds you well.  You had opened a support case today as you were receiving lambda function timed out error when attempting to access AWS secrets manager and needed assisting debugging this issue, correct me if I have misunderstood.  Using internal tools, I can see within the your lambda configuration that it is placed within subnet 0568be71ad8b2fda7 within VPC 0062eca257fe7c669. The subnet currently dose not have a defined default route, which is used for communication within the VPC to integrate with other services placed within the VPC.   Your subnet uses route table 09cdb472708228114, within this route table we need to route traffic to a NAT gateway or a transit gateway like you have set up within the development architecture.   We can use a private NAT gateway to route traffic from the NAT gateway through a transit gateway or a virtual private gateway. You cannot associate an elastic IP address with a private NAT gateway.    If we use a public NAT, Instances in private subnets can connect to the internet through a public NAT gateway, but cannot receive unsolicited inbound connections from the internet. You create a public NAT gateway in a public subnet and must associate an elastic IP address with the NAT gateway at creation. You route traffic from the NAT gateway to the internet gateway for the VPC. Alternatively, you can use a public NAT gateway to connect to other VPCs or your on-premises network. In this case, you route traffic from the NAT gateway through a transit gateway or a virtual private gateway.  I have attached AWS documentation on NAT gateways here for further reading [1].  We can also VPC endpoints as I mentioned on the call to gain access to AWS Secrets manager service, you can establish a private connection between your VPC and Secrets Manager by creating an interface VPC endpoint.. Instances in your VPC don't need public IP addresses to communicate with Secrets Manager APIs. Traffic between your VPC and Secrets Manager does not leave the AWS network. I have attached AWS documentation on Using an AWS Secrets Manager VPC endpoint here [2] for further reading.  As we attempted to configure your VPC with a NAT gateway and VPC endpoint we were greeted with a access denied error when attempting to make changes in the VPC as you do not posses the required permissions to preform such actions.You are contacting your internal networking team to discuss these changes further and if the use of a transit gateway is needed in this architecture as you have set up within the development account 566401100580.  I hope this information is useful, if you have further questions or need to jump back on a chime call please feel free to let me know I would be more than happy to assist with that.  Have a lovely day Tania! :)",
+                "submittedBy": "Amazon Web Services",
+                "timeCreated": "2023-03-07T12:57:09.119Z",
+            },
+            {
+                "caseId": "case-780672931094-muen-2023-954ed91f2080ab1c",
+                "body": "Hello Tania,  This is Ed from AWS Premium Support Lambda team, I hope this email finds you well.  I attempted to reach you over the phone, however I got a answering machine and the call was ended.  I believe you are having an issue when attempting to access AWS secrets manager from your lambda function anl-reinsured-benefit-stepfuncti-LambdaToPassInput-25sh19i5DOi8 which is residing within VPC vpc-0062eca257fe7c669 and you need assisting in troubleshooting this, correct me if I have misunderstood.  Can you kindly provide me with further information into what exact error you are getting? Is there an access denied error or is the function simply timing out?   Can you attach the cloudwatch logs capturing the error you are receiving ,logs can be extracted by selecting the log group of your Lambda function under the “Action” drop down menu your can select “Download search results (CSV)” under export results. You can also use the Amazon CloudWatch console to export all data from an Amazon CloudWatch Logs log group to an Amazon S3 bucket , I have attached documentation with steps on how to complete this task[1].  Regrettably due to privacy reason I cannot access the logs, kindly note that for security reasons, AWS Premium Support have limited visibility into customer accounts and rely on logs provided by customers to investigate further in cases like this.This documentation will explain privacy reasons further[2].  I would like to mention that I am also happy to set up a chime meeting to troubleshoot this further, please let me know of a suitable time we can sync up in your local timezone.  I patiently await your response , if you have any further questions in the meantime please feel free to add them to the case I would be more than happy to assist.  Have a lovely day.",
+                "submittedBy": "Amazon Web Services",
+                "timeCreated": "2023-03-07T12:57:09.119Z",
+                "attachmentSet": []
+            },
+            {
+                "caseId": "case-780672931094-muen-2023-954ed91f2080ab1c",
+                "body": "Hi Team,  We have a business critical issue in UAT environment when we are seeing that Lambda is not able to fetch secret from Secrets Manager when configured in a VPC.  Request you to assist us at the earliest.  Thanks!  Regards, Tania Ray Function ARN: arn:aws:lambda:eu-west-1:004034016110:function:anl-reinsured-benefit-stepfuncti-LambdaToPassInput-25sh19i5DOi8 VPC ID: vpc-0062eca257fe7c669 Request ID:", 
+                "submittedBy": "Admin/chojoe-Isengard (Role) <chojoe@amazon.com>",
+                "timeCreated": "2023-03-02T21:41:52.010Z",
+                "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": [],
+    "language": "en"
+}

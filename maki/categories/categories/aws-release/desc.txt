@@ -1,0 +1,1 @@
+A service disruption or customer-impacting incident resulting from a recently deployed AWS software release, platform update, or previously undiscovered bug in existing code. 

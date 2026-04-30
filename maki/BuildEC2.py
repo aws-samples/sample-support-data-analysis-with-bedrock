@@ -32,8 +32,6 @@ Usage:
 import aws_cdk as cdk
 import aws_cdk.aws_ec2 as ec2
 import aws_cdk.aws_logs as logs
-import sys
-sys.path.append('..')
 
 def buildVPC(self, makiRole):
     # Create CloudWatch Log Group for VPC Flow Logs

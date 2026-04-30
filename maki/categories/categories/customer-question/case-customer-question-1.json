@@ -1,0 +1,29 @@
+{
+    "caseId": "case-845671239056-use1-2025-567de89f2340gh7b",
+    "displayId": "1723456890234",
+    "subject": "How to implement AWS WAF rate-limiting with custom response",
+    "status": "working",
+    "serviceCode": "AWS WAF",
+    "categoryCode": "Technical Question | Configuration",
+    "submittedBy": "robert.kim@techweb.com",
+    "timeCreated": "2025-04-08T10:15:32.456Z",
+    "recentCommunications": {
+        "communications": [
+            {
+            "caseId": "case-845671239056-use1-2025-567de89f2340gh7b",
+            "body": "Hello Robert,\n\nThank you for contacting AWS Support. My name is Lisa, and I will be helping you with implementing rate limiting using AWS WAF.\n\nI understand that you want to:\n1. Implement rate limiting of 100 requests per IP per minute\n2. Return a custom JSON response when the rate limit is exceeded\n3. Apply this to your CloudFront distribution\n\nHere's how to implement your requirements:\n\n1. First, create a rate-based rule:\nbash\naws wafv2 create-rule-group \\\n    --name 'RateLimitRules' \\\n    --scope CLOUDFRONT \\\n    --region us-east-1 \\\n    --capacity 2 \\\n    --rules '[{\n        \"Name\": \"RateLimit\",\n        \"Priority\": 1,\n        \"Statement\": {\n            \"RateBasedStatement\": {\n                \"Limit\": 100,\n                \"AggregateKeyType\": \"IP\"\n            }\n        },\n        \"Action\": {\n            \"Block\": {\n                \"CustomResponse\": {\n                    \"ResponseCode\": 429,\n                    \"CustomResponseBodyKey\": \"rate-limit-response\"\n                }\n            }\n        },\n        \"VisibilityConfig\": {\n            \"SampledRequestsEnabled\": true,\n            \"CloudWatchMetricsEnabled\": true,\n            \"MetricName\": \"RateLimitRule\"\n        }\n    }]'\n\n\n2. Create custom response body:\nbash\naws wafv2 put-custom-response-body \\\n    --custom-response-body-key 'rate-limit-response' \\\n    --content-type 'application/json' \\\n    --content '{\"error\": \"Rate limit exceeded\", \"limit\": \"100 requests per minute\"}' \\\n    --scope CLOUDFRONT \\\n    --region us-east-1\n\n\n3. Associate with your web ACL:\nbash\naws wafv2 create-web-acl \\\n    --name 'RateLimitWebACL' \\\n    --scope CLOUDFRONT \\\n    --default-action Allow={} \\\n    --rules '[{\n        \"Name\": \"RateLimit\",\n        \"Priority\": 1,\n        \"OverrideAction\": \"None\",\n        \"Statement\": {\n            \"RuleGroupReferenceStatement\": {\n                \"ARN\": \"rule-group-arn-from-step-1\"\n            }\n        },\n        \"VisibilityConfig\": {\n            \"SampledRequestsEnabled\": true,\n            \"CloudWatchMetricsEnabled\": true,\n            \"MetricName\": \"RateLimitRule\"\n        }\n    }]'\n\n\n4. Associate the Web ACL with your CloudFront distribution:\nbash\naws cloudfront update-distribution \\\n    --id YOUR_DISTRIBUTION_ID \\\n    --web-acl-id YOUR_WEB_ACL_ARN\n\n\nTo monitor the rate limiting:\n1. View metrics in CloudWatch under AWS/WAFV2\n2. Enable logging through Kinesis Firehose for detailed analysis\n\nWould you like me to explain any of these steps in more detail or help with implementing specific parts of the solution?\n\nBest regards,\nLisa\nAWS Support",
+            "submittedBy": "Amazon Web Services",
+            "timeCreated": "2025-04-08T10:22:45.789Z"
+            },
+            {
+            "caseId": "case-845671239056-use1-2025-567de89f2340gh7b",
+            "body": "I need help implementing rate limiting using AWS WAF for our API. We want to limit requests to 100 per IP address per minute and return a custom JSON response when the limit is exceeded.\n\nEnvironment Details:\n- Account ID: 234567890123\n- Region: us-east-1\n- CloudFront Distribution ID: E2KJXZQN7WWSEU\n\nSpecific Requirements:\n1. Rate limit: 100 requests per IP per minute\n2. Custom response needed:\n   - Status code: 429\n   - Content-Type: application/json\n   - Body: {"error": "Rate limit exceeded", "limit": "100 requests per minute"}\n\nQuestions:\n1. How do we implement the rate limiting rule?\n2. How do we configure the custom response?\n3. What's the best way to monitor when rate limiting occurs?\n\nPlease provide example AWS CLI commands or CloudFormation templates if possible.",
+            "submittedBy": "robert.kim@techweb.com",
+            "timeCreated": "2025-04-08T10:15:32.456Z",
+            "attachmentSet": []
+            }
+        ]
+    },
+    "ccEmailAddresses": ["security.team@techweb.com"],
+    "language": "en"
+    }
