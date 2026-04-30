@@ -21,7 +21,7 @@ import threading
 import time
 from collections import namedtuple
 from copy import deepcopy
-from hashlib import sha1
+from hashlib import sha256
 
 from dateutil.parser import parse
 from dateutil.tz import tzlocal, tzutc
@@ -2222,7 +2222,7 @@ class SSOCredentialFetcher(CachedCredentialFetcher):
         # pass separators resulting in non-minified JSON. In the long term,
         # all fetchers should use the below caching scheme.
         args = json.dumps(args, sort_keys=True, separators=(',', ':'))
-        argument_hash = sha1(args.encode('utf-8')).hexdigest()
+        argument_hash = sha256(args.encode('utf-8')).hexdigest()
         return self._make_file_safe(argument_hash)
 
     def _parse_timestamp(self, timestamp_ms):
