@@ -21,3 +21,6 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["orchestrator*", "event_logs*"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "infra-cdk"]
