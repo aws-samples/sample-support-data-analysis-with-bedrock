@@ -298,6 +298,10 @@ def create_urllib3_context(
     context = SSLContext(PROTOCOL_TLS_CLIENT)
 
     if ssl_minimum_version is not None:
+        if ssl_minimum_version < TLSVersion.TLSv1_2:
+            raise ValueError(
+                "'ssl_minimum_version' must be TLSv1.2 or higher"
+            )
         context.minimum_version = ssl_minimum_version
     else:  # Python <3.10 defaults to 'MINIMUM_SUPPORTED' so explicitly set TLSv1.2 here
         context.minimum_version = TLSVersion.TLSv1_2
