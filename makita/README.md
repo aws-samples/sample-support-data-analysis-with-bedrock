@@ -1,8 +1,5 @@
 # MAKITA — Machine Augmented Key Infrastructure Technology Automation
 
-> [!CAUTION]
-> Please note that this is a work in progress, and not ready for usage.
-
 MAKITA is a technical reference architecture demonstrating AI-assisted disaster recovery using **Amazon DevOps Agent** and **Amazon AgentCore**. The system provisions a multi-region PostgreSQL cluster across us-east-1 (primary) and us-west-2 (DR) and orchestrates automated failover through MCP servers built with the **Strands Agents SDK**.
 
 ## Key Technologies
