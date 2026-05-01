@@ -11,6 +11,8 @@ graph TB
     end
 
     subgraph "Amazon AgentCore"
+        GW[AgentCore Gateway<br/>makita-mcp-gateway]
+
         subgraph "Governance Layer"
             BG_F[Bedrock Guardrails<br/>Failover]
             BG_Pre[Bedrock Guardrails<br/>Pre-Check]
@@ -23,11 +25,6 @@ graph TB
             PreMCP[Pre-Check<br/>MCP Server]
             FailMCP[Failover<br/>MCP Server]
             PostMCP[Post-Check<br/>MCP Server]
-        end
-
-        subgraph "Stub Servers"
-            AWSS[AWS Support<br/>Stub Server]
-            SNS[ServiceNow<br/>Stub Server]
         end
     end
 
@@ -45,11 +42,10 @@ graph TB
     end
 
     User --> DA
-    DA --> PreMCP
-    DA --> FailMCP
-    DA --> PostMCP
-    DA --> AWSS
-    DA --> SNS
+    DA --> GW
+    GW --> PreMCP
+    GW --> FailMCP
+    GW --> PostMCP
 
     BG_F -.->|governs| FailMCP
     BG_Pre -.->|governs| PreMCP

@@ -18,7 +18,7 @@ MAKITA is a technical reference architecture demonstrating AI-assisted disaster 
 
 ## DR Scenario
 
-A DevOps engineer initiates a PostgreSQL disaster recovery failover through natural language chat with Amazon DevOps Agent. The agent orchestrates a three-phase sequence — pre-checks, failover execution, and post-checks — across dedicated MCP servers, while tracking the operation in both AWS Support and ServiceNow ticketing systems and logging events to markdown files.
+A DevOps engineer initiates a PostgreSQL disaster recovery failover through natural language chat with Amazon DevOps Agent. The agent orchestrates a three-phase sequence — pre-checks, failover execution, and post-checks — across dedicated MCP servers hosted behind an AgentCore Gateway.
 
 ## Architecture
 
@@ -46,8 +46,6 @@ graph TB
             PreMCP[Pre-Check<br/>MCP Server]
             FailMCP[Failover<br/>MCP Server]
             PostMCP[Post-Check<br/>MCP Server]
-            AWSS[AWS Support<br/>Stub Server]
-            SNS[ServiceNow<br/>Stub Server]
         end
     end
 
@@ -60,17 +58,11 @@ graph TB
         PG_Replica[PostgreSQL<br/>Replica Instance]
     end
 
-    subgraph "Event Logging"
-        ELF[Event Log Files<br/>Markdown .md]
-    end
-
     User --> DA
     DA --> GW
     GW --> PreMCP
     GW --> FailMCP
     GW --> PostMCP
-    GW --> AWSS
-    GW --> SNS
 
     CP -.->|restricts| GW
     BG_F -.->|governs| FailMCP
@@ -84,7 +76,6 @@ graph TB
     FailMCP --> PS1
     PostMCP --> PG_Replica
     PostMCP --> PS1
-    DA --> ELF
 
     PG_Primary -->|replication| PG_Replica
 ```
@@ -108,35 +99,24 @@ makita/
 │   │   ├── agentcore.py           # Runtime, gateway, guardrail constructs
 │   │   └── devops_agent.py        # Agent space, operator role constructs
 │   └── tests/                     # Infrastructure tests
-│       ├── test_infrastructure.py
-│       ├── test_postgresql_cluster.py
-│       └── test_guardrails.py
-├── infra-cfn/                     # CloudFormation YAML templates
-│   ├── workloads/postgresql/
-│   │   ├── makita-postgresql-stack.yaml          # Primary stack (us-east-1)
-│   │   └── makita-postgresql-replica-stack.yaml  # Replica stack (us-west-2)
-│   ├── makita-agentcore-stack.yaml               # AgentCore resources
-│   └── makita-devops-agent-stack.yaml            # DevOps Agent resources
+├── mcp-servers/                   # MCP server implementations
+│   └── workloads/postgresql/      # PostgreSQL DR workload servers
+│       ├── failover/server.py
+│       ├── precheck/server.py
+│       └── postcheck/server.py
 ├── orchestrator/                  # Failover sequence orchestration
 │   ├── agent_config.py            # DevOps Agent MCP server connections
 │   ├── failover_sequence.py       # Three-phase failover orchestrator
-│   ├── event_integration.py       # Ticketing + logging integration
-│   └── ticketing.py               # AWS Support + ServiceNow ticket management
-├── mcp-servers/                   # MCP server implementations
-│   ├── workloads/postgresql/      # PostgreSQL DR workload servers
-│   │   ├── failover/server.py
-│   │   ├── precheck/server.py
-│   │   └── postcheck/server.py
-│   ├── aws-support-stub/server.py
-│   ├── servicenow-stub/server.py
-│   └── agentcore_gateway_proxy.py
+│   └── event_integration.py       # Event logging integration
 ├── policies/                      # Governance configurations
 │   ├── agentcore/                 # Cedar policies for gateway targets
-│   └── guardrails/                # Bedrock Guardrail JSON configs
-├── event-logs/                    # Markdown event log files
-│   └── event_logger.py
+│   ├── guardrails/                # Bedrock Guardrail JSON configs
+│   └── iam/                       # Generated IAM policy JSON
 ├── scripts/
-│   └── deploy_kiro_agent.py       # Kiro agent config for AgentCore Gateway
+│   ├── generate_iam_policy.py     # Generate IAM policy for AgentCore runtimes
+│   └── build_skill_zip.py         # Build DevOps Agent skill zip
+├── dist/                          # Build artifacts (skill zip)
+├── event-logs/                    # Markdown event log files
 ├── tests/                         # Application tests
 ├── Makefile                       # Build, deploy, test commands
 ├── pyproject.toml
@@ -177,106 +157,116 @@ makita/
 
 ## Deployment
 
-MAKITA provides two deployment paths: CDK Python (recommended) and CloudFormation YAML.
-
 ### CDK Deployment (recommended)
 
 ```bash
-make deploy              # Deploy all 4 stacks in order
+make deploy              # Generate policies, build skill zip, deploy all stacks
 ```
 
-Individual stack targets:
+Individual targets:
 
-| Command | Stack | Region | Description |
-|---|---|---|---|
-| `make deploy-postgresql` | MakitaPostgresql | us-east-1 | Primary PostgreSQL + IAM + SSM |
-| `make deploy-postgresql-dr` | MakitaPostgresqlReplica | us-west-2 | Cross-region read replica |
-| `make deploy-agentcore` | MakitaAgentCore | us-east-1 | AgentCore runtimes, gateway, guardrails |
-| `make deploy-devops-agent` | MakitaDevOpsAgent | us-east-1 | DevOps Agent Space + operator role |
-| `make deploy-kiro-agent` | — | — | Kiro agent config for AgentCore Gateway |
+| Command | Description |
+|---|---|
+| `make generate-iam-policy` | Generate `policies/iam/agentcore-runtime-policy.json` |
+| `make build-skill-zip` | Build `dist/makita-postgresql-dr-skill.zip` |
+| `make deploy-primary` | Deploy Makita nested stack (PostgreSQL + AgentCore + DevOps Agent) to us-east-1 |
+| `make deploy-replica` | Deploy cross-region PostgreSQL replica to us-west-2 |
+| `make synth` | Synthesize CDK templates (no deploy) |
+| `make diff` | Show pending changes |
+| `make destroy` | Tear down all stacks (reverse order) |
+| `make clean` | Remove .venv, cdk.out, __pycache__ |
 
-Other commands:
+### Registering AgentCore Gateway with DevOps Agent (Manual Step)
 
-```bash
-make synth               # Synthesize CDK templates (no deploy)
-make diff                # Show pending changes
-make destroy             # Tear down all stacks (reverse order)
-make clean               # Remove .venv, cdk.out, __pycache__
-make help                # Show all available targets
-```
+After `make deploy` completes, you must manually register the MCP server
+and upload the skill in the DevOps Agent Operator Web App. The Agent Space
+(`makita-agentspace`) was created by the CDK deploy. This is a one-time setup.
 
-### CloudFormation Deployment (manual)
+1. **Get the Gateway endpoint URL**:
 
-Templates are in `infra-cfn/`. Deploy in order:
+   ```bash
+   # Get the Gateway ID
+   GATEWAY_ID=$(aws bedrock-agentcore-control list-gateways --region us-east-1 \
+     --query "items[?name=='makita-mcp-gateway'].gatewayId" --output text)
 
-```bash
-# 1. Primary PostgreSQL (us-east-1)
-aws cloudformation deploy \
-  --template-file infra-cfn/workloads/postgresql/makita-postgresql-stack.yaml \
-  --stack-name makita-postgresql-stack \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --region us-east-1
+   # Get the Gateway endpoint URL
+   aws bedrock-agentcore-control get-gateway --region us-east-1 \
+     --gateway-identifier $GATEWAY_ID \
+     --query "gatewayUrl" --output text
+   ```
 
-# 2. Get primary instance ARN
-PRIMARY_ARN=$(aws cloudformation describe-stacks \
-  --stack-name makita-postgresql-stack --region us-east-1 \
-  --query "Stacks[0].Outputs[?OutputKey=='PrimaryInstanceArn'].OutputValue" \
-  --output text)
+   This returns a URL like:
+   `https://makita-mcp-gateway-xxx.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp`
 
-# 3. Replica (us-west-2)
-aws cloudformation deploy \
-  --template-file infra-cfn/workloads/postgresql/makita-postgresql-replica-stack.yaml \
-  --stack-name makita-postgresql-replica-stack \
-  --region us-west-2 \
-  --parameter-overrides PrimaryInstanceArn=$PRIMARY_ARN
+2. **Get the OAuth Client Credentials**:
 
-# 4. AgentCore resources
-aws cloudformation deploy \
-  --template-file infra-cfn/makita-agentcore-stack.yaml \
-  --stack-name makita-agentcore-stack \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --region us-east-1
+   ```bash
+   # Client ID
+   aws cloudformation list-exports --region us-east-1 \
+     --query "Exports[?Name=='makita-CognitoClientId'].Value" --output text
 
-# 5. DevOps Agent resources
-aws cloudformation deploy \
-  --template-file infra-cfn/makita-devops-agent-stack.yaml \
-  --stack-name makita-devops-agent-stack \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --region us-east-1
-```
+   # Client Secret
+   CLIENT_ID=$(aws cloudformation list-exports --region us-east-1 \
+     --query "Exports[?Name=='makita-CognitoClientId'].Value" --output text)
+   POOL_ID=$(aws cognito-idp list-user-pools --max-results 10 --region us-east-1 \
+     --query "UserPools[?Name=='makita-m2m-pool'].Id" --output text)
+   aws cognito-idp describe-user-pool-client --region us-east-1 \
+     --user-pool-id $POOL_ID --client-id $CLIENT_ID \
+     --query "UserPoolClient.ClientSecret" --output text
 
-### Tear Down
+   # Exchange URL (token endpoint)
+   aws cloudformation list-exports --region us-east-1 \
+     --query "Exports[?Name=='makita-CognitoTokenEndpoint'].Value" --output text
+   ```
 
-```bash
-make destroy             # CDK: destroys all stacks in reverse order
-```
+3. **Open the DevOps Agent console** and navigate to the `makita-agentspace` space:
 
-Or manually (CloudFormation):
+   https://us-east-1.console.aws.amazon.com/devops-agent/home?region=us-east-1
 
-```bash
-aws cloudformation delete-stack --stack-name makita-devops-agent-stack --region us-east-1
-aws cloudformation delete-stack --stack-name makita-agentcore-stack --region us-east-1
-aws cloudformation delete-stack --stack-name makita-postgresql-replica-stack --region us-west-2
-aws cloudformation wait stack-delete-complete --stack-name makita-postgresql-replica-stack --region us-west-2
-aws cloudformation delete-stack --stack-name makita-postgresql-stack --region us-east-1
-```
+4. **Register the MCP server** — Go to **Capabilities** → **MCP Servers** → **Add** → **Register**:
+   - **Name**: `makita-pg`
+   - **Endpoint URL**: the gateway URL from step 1
+   - **Description**: `MAKITA PostgreSQL DR failover via AgentCore Gateway`
+   - **Authorization Flow**: OAuth Client Credentials
+   - **Client ID**: from step 2
+   - **Client Secret**: from step 2
+   - **Exchange URL**: from step 2
+   - **Scope**: `makita-mcp/invoke`
+   - Leave **Enable Dynamic Client Registration** unchecked
+   - Leave **Connect to endpoint using a private connection** unchecked
+
+5. **Allowlist tools** — After registration, allowlist the 8 tools:
+   - `execute_failover`, `health_check`
+   - `verify_replication_health`, `verify_primary_status`, `verify_replica_readiness`
+   - `verify_new_primary_health`, `verify_endpoints`, `verify_replication_established`
+
+5. **Upload the skill** — Go to **Skills** → **Add Skill** → **Upload Skill**:
+   - Upload `dist/makita-postgresql-dr-skill.zip`
+   - Select agent types: Generic
+
+6. **Verify** by asking the agent:
+
+   ```
+   What tools do you have available for PostgreSQL disaster recovery?
+   ```
+
+   The agent should list the 8 tools across the 3 MCP servers.
 
 ### What Gets Provisioned
 
 | Resource | Identifier | Stack | Region |
 |---|---|---|---|
-| PostgreSQL Primary | `makita-pg-primary` | MakitaPostgresql | us-east-1 |
+| PostgreSQL Primary | `makita-pg-primary` | Makita | us-east-1 |
 | PostgreSQL Replica | `makita-pg-replica` | MakitaPostgresqlReplica | us-west-2 |
-| Parameter Store | `/makita/db/*`, `/makita/mcp/*` | MakitaPostgresql | us-east-1 |
-| IAM Roles | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | MakitaPostgresql | us-east-1 |
-| Secrets Manager | `makita-db-master-secret` | MakitaPostgresql | us-east-1 |
-| S3 Artifacts | `makita-artifacts-{account}` | MakitaAgentCore | us-east-1 |
-| AgentCore Runtimes | 5 runtimes (failover, precheck, postcheck, support, servicenow) | MakitaAgentCore | us-east-1 |
-| AgentCore Gateway | `makita-mcp-gateway` | MakitaAgentCore | us-east-1 |
-| Bedrock Guardrails | 3 guardrails (failover, precheck, postcheck) | MakitaAgentCore | us-east-1 |
-| DevOps Agent Space | `makita-agentspace` | MakitaDevOpsAgent | us-east-1 |
-| Operator IAM Role | `makita-devops-agent-operator-role` | MakitaDevOpsAgent | us-east-1 |
-| CloudWatch Logs | `/makita/devops-agent` | MakitaDevOpsAgent | us-east-1 |
+| Parameter Store | `/makita/db/*`, `/makita/mcp/*` | Makita | us-east-1 |
+| IAM Roles | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | Makita | us-east-1 |
+| Secrets Manager | `makita-db-master-secret` | Makita | us-east-1 |
+| AgentCore Runtimes | 3 runtimes (failover, precheck, postcheck) | Makita | us-east-1 |
+| AgentCore Gateway | `makita-mcp-gateway` | Makita | us-east-1 |
+| Bedrock Guardrails | 3 guardrails (failover, precheck, postcheck) | Makita | us-east-1 |
+| DevOps Agent Space | `makita-agentspace` | Makita | us-east-1 |
+| Operator IAM Role | `makita-devops-agent-operator-role` | Makita | us-east-1 |
+| CloudWatch Logs | `/makita/devops-agent` | Makita | us-east-1 |
 
 All resources are tagged with `proj=makita`, `Env=prod1`, `auto-delete=no`.
 
@@ -291,11 +281,9 @@ from us-east-1 to us-west-2.
 
 The agent executes:
 
-1. **Ticket Creation** — AWS Support case + ServiceNow ticket
-2. **Pre-Checks** — replication health, primary status, replica readiness
-3. **Failover** — promote replica, update Parameter Store endpoints
-4. **Post-Checks** — new primary health, endpoint verification, replication established
-5. **Ticket Updates** — both tickets updated at each phase transition
+1. **Pre-Checks** — replication health, primary status, replica readiness
+2. **Failover** — promote replica, update Parameter Store endpoints
+3. **Post-Checks** — new primary health, endpoint verification, replication established
 
 Pre-check failures halt the sequence. Post-check failures are reported as warnings.
 
@@ -306,8 +294,6 @@ Pre-check failures halt the sequence. Post-check failures are reported as warnin
 | `makita-postgresql-failover-mcp` | `execute_failover`, `health_check` | `postgresql-failover.cedar` | `postgresql-failover-guardrail.json` |
 | `makita-postgresql-precheck-mcp` | `verify_replication_health`, `verify_primary_status`, `verify_replica_readiness` | `postgresql-precheck.cedar` | `postgresql-precheck-guardrail.json` |
 | `makita-postgresql-postcheck-mcp` | `verify_new_primary_health`, `verify_endpoints`, `verify_replication_established` | `postgresql-postcheck.cedar` | `postgresql-postcheck-guardrail.json` |
-| `makita-aws-support-stub` | `create_support_case`, `update_support_case` | `aws-support-stub.cedar` | `aws-support-stub-guardrail.json` |
-| `makita-servicenow-stub` | `create_ticket`, `update_ticket` | `servicenow-stub.cedar` | `servicenow-stub-guardrail.json` |
 
 ## Running Tests
 

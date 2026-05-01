@@ -1,6 +1,6 @@
 .PHONY: help install synth diff deploy deploy-primary deploy-replica \
        deploy-kiro-agent destroy destroy-primary destroy-replica \
-       test lint clean
+       test lint clean generate-iam-policy build-skill-zip
 
 # ---------------------------------------------------------------------------
 # Config
@@ -42,9 +42,18 @@ diff: install ## Show CDK diff for all stacks
 	cd $(CDK_DIR) && $(CDK) diff
 
 # ---------------------------------------------------------------------------
+# Build artifacts
+# ---------------------------------------------------------------------------
+generate-iam-policy: install ## Generate IAM policy JSON for AgentCore runtimes
+	$(PYTHON) $(SCRIPTS_DIR)/generate_iam_policy.py
+
+build-skill-zip: install ## Build DevOps Agent skill zip
+	$(PYTHON) $(SCRIPTS_DIR)/build_skill_zip.py
+
+# ---------------------------------------------------------------------------
 # Deploy
 # ---------------------------------------------------------------------------
-deploy: deploy-primary deploy-replica ## Deploy everything (primary + replica)
+deploy: generate-iam-policy build-skill-zip deploy-primary deploy-replica ## Deploy everything
 	@echo ""
 	@echo "=== All stacks deployed ==="
 

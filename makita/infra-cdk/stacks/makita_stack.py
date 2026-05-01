@@ -106,6 +106,10 @@ class AgentCoreNestedStack(NestedStack):
             cognito_pool=oauth_pool,
         )
 
+        # Expose Cognito values for parent stack outputs
+        self.cognito_client_id = oauth_pool.client_id
+        self.cognito_token_endpoint = oauth_pool.token_endpoint
+
         # Deploy each MCP server as a Docker container with JWT auth
         runtimes = {}
         for server_def in MCP_SERVERS:
@@ -122,7 +126,13 @@ class AgentCoreNestedStack(NestedStack):
             runtimes[name] = runtime
 
         # Gateway
-        gateway = AgentCoreGateway(self, "Gateway", role_arn=role_arn)
+        gateway = AgentCoreGateway(
+            self, "Gateway",
+            role_arn=role_arn,
+            discovery_url=oauth_pool.discovery_url,
+            allowed_clients=[oauth_pool.client_id],
+            allowed_scopes=[f"{PROJECT}-mcp/invoke"],
+        )
         for runtime in runtimes.values():
             gateway.node.add_dependency(runtime)
 
@@ -252,3 +262,13 @@ class MakitaStack(Stack):
         CfnOutput(self, "ConsoleUrl",
                   value=f"https://{PRIMARY_REGION}.console.aws.amazon.com/devops-agent/home?region={PRIMARY_REGION}",
                   description="DevOps Agent console URL")
+
+        CfnOutput(self, "CognitoClientId",
+                  value=agentcore.cognito_client_id,
+                  export_name=f"{PROJECT}-CognitoClientId",
+                  description="Cognito App Client ID for MCP gateway auth")
+
+        CfnOutput(self, "CognitoTokenEndpoint",
+                  value=agentcore.cognito_token_endpoint,
+                  export_name=f"{PROJECT}-CognitoTokenEndpoint",
+                  description="Cognito OAuth2 token endpoint")

@@ -59,22 +59,6 @@ MCP_SERVERS = [
         "policy_file": "policies/agentcore/postgresql-postcheck.cedar",
         "guardrail_file": "policies/guardrails/postgresql-postcheck-guardrail.json",
     },
-    {
-        "name": "makita_aws_support_stub",
-        "description": "AWS Support Stub Server - simulates AWS Support API",
-        "module_path": "mcp-servers/aws-support-stub",
-        "entry_point": ["server.py"],
-        "policy_file": "policies/agentcore/aws-support-stub.cedar",
-        "guardrail_file": "policies/guardrails/aws-support-stub-guardrail.json",
-    },
-    {
-        "name": "makita_servicenow_stub",
-        "description": "ServiceNow Stub Server - simulates ServiceNow API",
-        "module_path": "mcp-servers/servicenow-stub",
-        "entry_point": ["server.py"],
-        "policy_file": "policies/agentcore/servicenow-stub.cedar",
-        "guardrail_file": "policies/guardrails/servicenow-stub-guardrail.json",
-    },
 ]
 
 
@@ -225,6 +209,9 @@ class AgentCoreGateway(Construct):
         id: str,
         *,
         role_arn: str,
+        discovery_url: str,
+        allowed_clients: list[str],
+        allowed_scopes: list[str] = None,
     ) -> None:
         super().__init__(scope, id)
 
@@ -245,6 +232,13 @@ class AgentCoreGateway(Construct):
             ),
         ])
 
+        jwt_config = {
+            "discoveryUrl": discovery_url,
+            "allowedClients": allowed_clients,
+        }
+        if allowed_scopes:
+            jwt_config["allowedScopes"] = allowed_scopes
+
         self.gateway = cr.AwsCustomResource(
             self, "Gateway",
             install_latest_aws_sdk=True,
@@ -258,10 +252,7 @@ class AgentCoreGateway(Construct):
                     "protocolType": "MCP",
                     "authorizerType": "CUSTOM_JWT",
                     "authorizerConfiguration": {
-                        "customJWTAuthorizer": {
-                            "discoveryUrl": "https://token.actions.githubusercontent.com/.well-known/openid-configuration",
-                            "allowedAudience": ["makita-gateway"],
-                        }
+                        "customJWTAuthorizer": jwt_config,
                     },
                 },
                 physical_resource_id=cr.PhysicalResourceId.from_response("gatewayId"),

@@ -1,0 +1,60 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RDSFailover",
+      "Effect": "Allow",
+      "Action": [
+        "rds:PromoteReadReplica",
+        "rds:DescribeDBInstances",
+        "rds:DescribeDBClusters",
+        "rds:RebootDBInstance"
+      ],
+      "Resource": [
+        "arn:aws:rds:*:REDACTED_ACCOUNT_ID:db:makita-*",
+        "arn:aws:rds:*:REDACTED_ACCOUNT_ID:cluster:makita-*"
+      ]
+    },
+    {
+      "Sid": "SSMParameters",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:PutParameter"
+      ],
+      "Resource": "arn:aws:ssm:*:REDACTED_ACCOUNT_ID:parameter/makita/*"
+    },
+    {
+      "Sid": "ECRAuth",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECRPull",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchCheckLayerAvailability"
+      ],
+      "Resource": "arn:aws:ecr:*:REDACTED_ACCOUNT_ID:repository/cdk-*"
+    },
+    {
+      "Sid": "AgentCoreRuntime",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:InvokeAgentRuntime",
+        "bedrock-agentcore:GetAgentRuntime",
+        "bedrock-agentcore:GetAgentRuntimeEndpoint"
+      ],
+      "Resource": "arn:aws:bedrock-agentcore:*:REDACTED_ACCOUNT_ID:runtime/*"
+    },
+    {
+      "Sid": "LambdaInvoke",
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": "arn:aws:lambda:*:REDACTED_ACCOUNT_ID:function:makita-*"
+    }
+  ]
+}

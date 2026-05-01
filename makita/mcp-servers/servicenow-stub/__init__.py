@@ -1,1 +1,0 @@
-# MAKITA ServiceNow Stub Server

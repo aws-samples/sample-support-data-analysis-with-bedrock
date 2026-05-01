@@ -67,6 +67,7 @@ class McpOAuthPool(Construct):
         # Store values for other constructs
         self.discovery_url = f"https://cognito-idp.{PRIMARY_REGION}.amazonaws.com/{self.pool.user_pool_id}/.well-known/openid-configuration"
         self.client_id = self.client.user_pool_client_id
+        self.token_endpoint = self.domain.base_url() + "/oauth2/token"
 
 
 class AgentCoreOAuthProvider(Construct):
