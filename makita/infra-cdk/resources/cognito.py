@@ -7,6 +7,7 @@ authentication between the AgentCore Gateway and Runtimes.
 
 from constructs import Construct
 from aws_cdk import (
+    Aws,
     RemovalPolicy,
     aws_cognito as cognito,
     custom_resources as cr,
@@ -29,10 +30,11 @@ class McpOAuthPool(Construct):
         )
 
         # Domain (required for token endpoint)
+        # Cognito domain prefixes are globally unique — append account ID
         self.domain = self.pool.add_domain(
             "Domain",
             cognito_domain=cognito.CognitoDomainOptions(
-                domain_prefix=f"{PROJECT}-m2m-auth",
+                domain_prefix=f"{PROJECT}-m2m-{Aws.ACCOUNT_ID}",
             ),
         )
 
