@@ -129,9 +129,9 @@ makita/
 
 - Python 3.11+
 - Node.js 18+ (for AWS CDK)
-- Docker (required for building AgentCore MCP server container images)
 - AWS CLI configured with credentials for us-east-1 and us-west-2
 - AWS CDK v2 (`npm install -g aws-cdk`)
+- AgentCore CLI (`npm install -g @aws/agentcore`)
 - AWS account with permissions for RDS, SSM, IAM, CloudWatch, CloudFormation, AgentCore, and Bedrock
 
 ### Setup
@@ -161,6 +161,8 @@ makita/
 
 ```bash
 make deploy              # Generate policies, build skill zip, deploy all stacks
+make deploy-mcp-servers  # Deploy MCP servers to AgentCore Runtime
+make attach-runtime-permissions  # Attach RDS/SSM permissions to runtime roles
 ```
 
 Individual targets:
@@ -171,6 +173,8 @@ Individual targets:
 | `make build-skill-zip` | Build `dist/makita-postgresql-dr-skill.zip` |
 | `make deploy-primary` | Deploy Makita nested stack (PostgreSQL + AgentCore + DevOps Agent) to us-east-1 |
 | `make deploy-replica` | Deploy cross-region PostgreSQL replica to us-west-2 |
+| `make deploy-mcp-servers` | Deploy MCP servers to AgentCore Runtime via `agentcore` CLI |
+| `make attach-runtime-permissions` | Attach RDS/SSM IAM permissions to AgentCore runtime roles |
 | `make synth` | Synthesize CDK templates (no deploy) |
 | `make diff` | Show pending changes |
 | `make destroy` | Tear down all stacks (reverse order) |

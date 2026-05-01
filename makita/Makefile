@@ -1,5 +1,5 @@
 .PHONY: help install synth diff deploy deploy-primary deploy-replica \
-       deploy-kiro-agent destroy destroy-primary destroy-replica \
+       deploy-kiro-agent deploy-mcp-servers destroy destroy-primary destroy-replica \
        test lint clean generate-iam-policy build-skill-zip
 
 # ---------------------------------------------------------------------------
@@ -64,6 +64,15 @@ deploy-primary: install ## Deploy Makita nested stack (PostgreSQL + AgentCore + 
 deploy-replica: install ## Deploy cross-region PostgreSQL replica to us-west-2
 	@echo "[makita] Deploying replica to $(DR_REGION)..."
 	cd $(CDK_DIR) && $(CDK) deploy MakitaPostgresqlReplica --exclusively --require-approval never
+
+deploy-mcp-servers: ## Deploy MCP servers to AgentCore Runtime (requires agentcore CLI)
+	@echo "[makita] Deploying MCP servers to AgentCore Runtime..."
+	$(SCRIPTS_DIR)/deploy-mcp-server.sh failover
+	$(SCRIPTS_DIR)/deploy-mcp-server.sh precheck
+	$(SCRIPTS_DIR)/deploy-mcp-server.sh postcheck
+
+attach-runtime-permissions: ## Attach IAM permissions to AgentCore runtime roles
+	$(SCRIPTS_DIR)/attach-runtime-permissions.sh
 
 deploy-kiro-agent: install ## Deploy Kiro agent config
 	@echo "[kiro-agent] Deploying Kiro agent config..."

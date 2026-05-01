@@ -13,7 +13,7 @@ from mcp.server.fastmcp import FastMCP
 
 from models import VerificationResult
 
-mcp = FastMCP(host="0.0.0.0", port=8080, stateless_http=True, streamable_http_path="/invocations")
+mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 
 # ---------------------------------------------------------------------------
 # Helper — boto3 clients per region
