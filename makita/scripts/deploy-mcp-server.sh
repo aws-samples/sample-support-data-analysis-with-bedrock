@@ -76,7 +76,7 @@ config['runtimes'] = [{
     'name': agent_name,
     'build': 'CodeZip',
     'entrypoint': 'server.py',
-    'codeLocation': '..',
+    'codeLocation': '.',
     'runtimeVersion': 'PYTHON_3_12',
     'networkMode': 'PUBLIC',
 }]

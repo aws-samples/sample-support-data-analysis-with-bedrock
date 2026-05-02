@@ -154,35 +154,39 @@ makita/
 
 ## Deployment
 
-### CDK Deployment (recommended)
+### Prerequisites
+
+- `agentcore` CLI installed: `npm install -g @aws/agentcore`
+- AWS CDK bootstrapped in your account/region: `npx cdk bootstrap`
+- AWS credentials configured (run `mwinit` if using Midway)
+
+### Step 1: Deploy Infrastructure
 
 ```bash
-make deploy              # Generate policies, build skill zip, deploy all stacks
-make deploy-mcp-servers  # Deploy MCP servers to AgentCore Runtime
-make attach-runtime-permissions  # Attach RDS/SSM permissions to runtime roles
+make deploy
 ```
 
-Individual targets:
+This deploys all CDK stacks: PostgreSQL (primary + replica), AgentCore gateway, Cognito OAuth, Bedrock guardrails, and DevOps Agent space.
 
-| Command | Description |
-|---|---|
-| `make generate-iam-policy` | Generate `policies/iam/agentcore-runtime-policy.json` |
-| `make build-skill-zip` | Build `dist/makita-postgresql-dr-skill.zip` |
-| `make deploy-primary` | Deploy Makita nested stack (PostgreSQL + AgentCore + DevOps Agent) to us-east-1 |
-| `make deploy-replica` | Deploy cross-region PostgreSQL replica to us-west-2 |
-| `make deploy-mcp-servers` | Deploy MCP servers to AgentCore Runtime via `agentcore` CLI |
-| `make attach-runtime-permissions` | Attach RDS/SSM IAM permissions to AgentCore runtime roles |
-| `make synth` | Synthesize CDK templates (no deploy) |
-| `make diff` | Show pending changes |
-| `make destroy` | Tear down all stacks (reverse order) |
-| `make clean` | Remove .venv, cdk.out, __pycache__ |
+### Step 2: Deploy MCP Servers
 
-### Registering AgentCore Gateway with DevOps Agent (Manual Step)
+```bash
+make deploy-mcp-servers
+```
 
-After `make deploy`, `make deploy-mcp-servers`, and `make attach-runtime-permissions`
-complete, you must manually register the MCP server and upload the skill in the
-DevOps Agent Operator Web App. The Agent Space (`makita-agentspace`) was created
-by the CDK deploy. This is a one-time setup.
+This deploys the three MCP servers (failover, precheck, postcheck) to AgentCore Runtime using the `agentcore` CLI with direct code deploy (no Docker required).
+
+> **Note:** Each server takes 2-3 minutes to deploy. The first run also initializes the agentcore project config. Wait for all three servers to complete before proceeding. Transaction search takes ~10 minutes to become fully active after deployment.
+
+### Step 3: Attach Runtime Permissions
+
+```bash
+make attach-runtime-permissions
+```
+
+This attaches RDS and SSM IAM permissions to the AgentCore runtime roles so the MCP servers can access PostgreSQL and Parameter Store.
+
+### Step 4: Register Gateway with DevOps Agent (Manual)
 
 1. **Get the Gateway endpoint URL**:
 
@@ -253,6 +257,18 @@ by the CDK deploy. This is a one-time setup.
    ```
 
    The agent should list the 8 tools across the 3 MCP servers.
+
+### Additional Make Targets
+
+| Command | Description |
+|---|---|
+| `make synth` | Synthesize CDK templates (no deploy) |
+| `make diff` | Show pending changes |
+| `make destroy` | Tear down all CDK stacks (reverse order) |
+| `make force-delete` | Force-delete stuck stacks and all orphaned AgentCore/Cognito resources |
+| `make clean` | Remove .venv, cdk.out, __pycache__ |
+| `make test` | Run all tests |
+| `make help` | Show all available targets |
 
 ### What Gets Provisioned
 
