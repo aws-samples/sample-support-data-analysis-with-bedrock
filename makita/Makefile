@@ -115,3 +115,6 @@ clean-aws: ## Delete all orphaned AWS resources (runtimes, gateways, guardrails,
 
 force-delete: ## Force-delete stuck CloudFormation stacks (DELETE_FAILED, ROLLBACK_*)
 	$(SCRIPTS_DIR)/force-delete-stacks.sh
+
+show-config: ## Print gateway registration parameters for the DevOps Agent manual step
+	$(SCRIPTS_DIR)/show-gateway-config.sh

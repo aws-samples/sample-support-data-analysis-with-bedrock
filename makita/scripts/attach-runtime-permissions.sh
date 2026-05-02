@@ -33,7 +33,7 @@ EOF
 echo "Attaching makita-db-permissions to AgentCore runtime roles..."
 for NAME in makitapgfailover makitapgprecheck makitapgpostcheck; do
   RUNTIME_ID=$(aws bedrock-agentcore-control list-agent-runtimes --region $REGION \
-    --query "agentRuntimes[?agentRuntimeName=='${NAME}'].agentRuntimeId" --output text 2>/dev/null)
+    --query "agentRuntimes[?starts_with(agentRuntimeName, '${NAME}')].agentRuntimeId" --output text 2>/dev/null)
   [ -z "$RUNTIME_ID" ] || [ "$RUNTIME_ID" = "None" ] && { echo "  SKIP: ${NAME} not found"; continue; }
 
   ROLE_ARN=$(aws bedrock-agentcore-control get-agent-runtime \

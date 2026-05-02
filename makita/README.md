@@ -188,69 +188,40 @@ This attaches RDS and SSM IAM permissions to the AgentCore runtime roles so the 
 
 ### Step 4: Register Gateway with DevOps Agent (Manual)
 
-1. **Get the Gateway endpoint URL**:
+Run `make show-config` to print all the values needed for this step:
 
-   ```bash
-   # Get the Gateway ID
-   GATEWAY_ID=$(aws bedrock-agentcore-control list-gateways --region us-east-1 \
-     --query "items[?name=='makita-mcp-gateway'].gatewayId" --output text)
+```bash
+make show-config
+```
 
-   # Get the Gateway endpoint URL
-   aws bedrock-agentcore-control get-gateway --region us-east-1 \
-     --gateway-identifier $GATEWAY_ID \
-     --query "gatewayUrl" --output text
-   ```
+Then open the DevOps Agent console and register the gateway:
 
-   This returns a URL like:
-   `https://makita-mcp-gateway-xxx.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp`
-
-2. **Get the OAuth Client Credentials**:
-
-   ```bash
-   # Client ID
-   aws cloudformation list-exports --region us-east-1 \
-     --query "Exports[?Name=='makita-CognitoClientId'].Value" --output text
-
-   # Client Secret
-   CLIENT_ID=$(aws cloudformation list-exports --region us-east-1 \
-     --query "Exports[?Name=='makita-CognitoClientId'].Value" --output text)
-   POOL_ID=$(aws cognito-idp list-user-pools --max-results 10 --region us-east-1 \
-     --query "UserPools[?starts_with(Name, 'makita-')].Id" --output text)
-   aws cognito-idp describe-user-pool-client --region us-east-1 \
-     --user-pool-id $POOL_ID --client-id $CLIENT_ID \
-     --query "UserPoolClient.ClientSecret" --output text
-
-   # Exchange URL (token endpoint)
-   aws cloudformation list-exports --region us-east-1 \
-     --query "Exports[?Name=='makita-CognitoTokenEndpoint'].Value" --output text
-   ```
-
-3. **Open the DevOps Agent console** and navigate to the `makita-agentspace` space:
+1. **Open the DevOps Agent console** and navigate to the `makita-agentspace` space:
 
    https://us-east-1.console.aws.amazon.com/devops-agent/home?region=us-east-1
 
-4. **Register the MCP server** — Go to **Capabilities** → **MCP Servers** → **Add** → **Register**:
+2. **Register the MCP server** — Go to **Capabilities** → **MCP Servers** → **Add** → **Register**:
    - **Name**: `makita-pg`
-   - **Endpoint URL**: the gateway URL from step 1
+   - **Endpoint URL**: from `make show-config` output
    - **Description**: `MAKITA PostgreSQL DR failover via AgentCore Gateway`
    - **Authorization Flow**: OAuth Client Credentials
-   - **Client ID**: from step 2
-   - **Client Secret**: from step 2
-   - **Exchange URL**: from step 2
+   - **Client ID**: from `make show-config` output
+   - **Client Secret**: from `make show-config` output
+   - **Exchange URL**: from `make show-config` output
    - **Scope**: `makita-mcp/invoke`
    - Leave **Enable Dynamic Client Registration** unchecked
    - Leave **Connect to endpoint using a private connection** unchecked
 
-5. **Allowlist tools** — After registration, allowlist the 8 tools:
+3. **Allowlist tools** — After registration, allowlist the 8 tools:
    - `execute_failover`, `health_check`
    - `verify_replication_health`, `verify_primary_status`, `verify_replica_readiness`
    - `verify_new_primary_health`, `verify_endpoints`, `verify_replication_established`
 
-5. **Upload the skill** — Go to **Skills** → **Add Skill** → **Upload Skill**:
+4. **Upload the skill** — Go to **Skills** → **Add Skill** → **Upload Skill**:
    - Upload `dist/makita-postgresql-dr-skill.zip`
    - Select agent types: Generic
 
-6. **Verify** by asking the agent:
+5. **Verify** by asking the agent:
 
    ```
    What tools do you have available for PostgreSQL disaster recovery?
@@ -262,6 +233,7 @@ This attaches RDS and SSM IAM permissions to the AgentCore runtime roles so the 
 
 | Command | Description |
 |---|---|
+| `make show-config` | Print gateway registration parameters for the manual step |
 | `make synth` | Synthesize CDK templates (no deploy) |
 | `make diff` | Show pending changes |
 | `make destroy` | Tear down all CDK stacks (reverse order) |
