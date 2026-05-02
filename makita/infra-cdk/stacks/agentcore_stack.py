@@ -2,13 +2,12 @@
 MAKITA AgentCore CDK Stack
 
 Deploys the full AgentCore infrastructure:
-- AgentCore Runtimes (5 MCP servers) as Docker containers on ECR
+- AgentCore Runtimes (MCP servers) via direct code deploy to S3
 - AgentCore Gateway with JWT auth
 - Bedrock Guardrails for each MCP server
 
 Prerequisites:
 - PostgreSQL stacks must be deployed (provides the failover IAM role)
-- Docker must be available for building ARM64 images
 
 Usage:
     cdk deploy MakitaAgentCore --app "python3 app.py"
@@ -49,7 +48,7 @@ class MakitaAgentCoreStack(Stack):
             os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         )
 
-        # Deploy each MCP server as a Docker container on AgentCore Runtime
+        # Deploy each MCP server as a code zip on AgentCore Runtime
         runtimes = {}
         for server_def in MCP_SERVERS:
             name = server_def["name"]

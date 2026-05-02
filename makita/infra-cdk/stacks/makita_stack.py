@@ -110,7 +110,7 @@ class AgentCoreNestedStack(NestedStack):
         self.cognito_client_id = oauth_pool.client_id
         self.cognito_token_endpoint = oauth_pool.token_endpoint
 
-        # Deploy each MCP server as a Docker container with JWT auth
+        # Deploy each MCP server as a code zip with JWT auth
         runtimes = {}
         for server_def in MCP_SERVERS:
             name = server_def["name"]

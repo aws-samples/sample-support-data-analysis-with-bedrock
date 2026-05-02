@@ -72,10 +72,8 @@ def _load_file(project_root: str, relative_path: str) -> str:
 class AgentCoreRuntime(Construct):
     """
     Custom resource that creates an AgentCore Runtime for a single
-    MCP server. Builds an ARM64 Docker image via CDK DockerImageAsset,
-    pushes to ECR, and deploys to AgentCore Runtime.
-
-    Requires a Dockerfile in the server's module_path directory.
+    MCP server. Uploads the server code as a zip to S3 via CDK Asset
+    and deploys to AgentCore Runtime using direct code deploy.
     """
 
     def __init__(
@@ -91,18 +89,16 @@ class AgentCoreRuntime(Construct):
     ) -> None:
         super().__init__(scope, id)
 
-        from aws_cdk import aws_ecr_assets as ecr_assets
+        from aws_cdk import aws_s3_assets as s3_assets
 
         name = server_def["name"]
         module_path = os.path.join(project_root, server_def["module_path"])
 
-        # Build ARM64 Docker image and push to ECR
-        # Use file_invalidation to ensure changes to server.py trigger rebuilds
-        self.image_asset = ecr_assets.DockerImageAsset(
-            self, f"Image-{name}",
-            directory=module_path,
-            platform=ecr_assets.Platform.LINUX_ARM64,
-            cache_disabled=True,
+        # Upload server code as a zip to S3
+        self.code_asset = s3_assets.Asset(
+            self, f"Code-{name}",
+            path=module_path,
+            exclude=["__pycache__", "*.pyc", ".bedrock_agentcore", ".bedrock_agentcore.yaml"],
         )
 
         # Policy for custom resource to manage runtimes
@@ -123,23 +119,26 @@ class AgentCoreRuntime(Construct):
             ),
             iam.PolicyStatement(
                 actions=[
-                    "ecr:GetAuthorizationToken",
-                    "ecr:GetDownloadUrlForLayer",
-                    "ecr:BatchGetImage",
-                    "ecr:BatchCheckLayerAvailability",
+                    "s3:GetObject",
+                    "s3:GetBucketLocation",
                 ],
-                resources=["*"],
+                resources=[
+                    self.code_asset.bucket.bucket_arn,
+                    f"{self.code_asset.bucket.bucket_arn}/*",
+                ],
             ),
         ])
 
-        # Build runtime parameters
+        # Build runtime parameters using code zip instead of container
         runtime_params = {
             "agentRuntimeName": name,
             "description": server_def["description"],
             "roleArn": role_arn,
             "agentRuntimeArtifact": {
-                "containerConfiguration": {
-                    "containerUri": self.image_asset.image_uri,
+                "codeZipConfiguration": {
+                    "s3Uri": self.code_asset.s3_object_url,
+                    "entryPoint": server_def.get("entry_point", ["server.py"]),
+                    "runtimeType": "PYTHON_3_11",
                 }
             },
             "networkConfiguration": {"networkMode": "PUBLIC"},
@@ -155,7 +154,7 @@ class AgentCoreRuntime(Construct):
                 }
             }
 
-        # Create the runtime with container configuration
+        # Create the runtime with code zip configuration
         self.runtime = cr.AwsCustomResource(
             self, f"Runtime-{name}",
             install_latest_aws_sdk=True,
@@ -163,6 +162,14 @@ class AgentCoreRuntime(Construct):
                 service="bedrock-agentcore-control",
                 action="createAgentRuntime",
                 parameters=runtime_params,
+                physical_resource_id=cr.PhysicalResourceId.from_response("agentRuntimeId"),
+            ),
+            on_update=cr.AwsSdkCall(
+                service="bedrock-agentcore-control",
+                action="getAgentRuntime",
+                parameters={
+                    "agentRuntimeId": name,
+                },
                 physical_resource_id=cr.PhysicalResourceId.from_response("agentRuntimeId"),
             ),
             on_delete=cr.AwsSdkCall(
@@ -174,7 +181,7 @@ class AgentCoreRuntime(Construct):
             ),
             policy=agentcore_policy,
         )
-        self.runtime.node.add_dependency(self.image_asset)
+        self.runtime.node.add_dependency(self.code_asset)
 
         # Store runtime ID and name for gateway target creation
         self.runtime_id = self.runtime.get_response_field("agentRuntimeId")
@@ -254,6 +261,14 @@ class AgentCoreGateway(Construct):
                     "authorizerConfiguration": {
                         "customJWTAuthorizer": jwt_config,
                     },
+                },
+                physical_resource_id=cr.PhysicalResourceId.from_response("gatewayId"),
+            ),
+            on_update=cr.AwsSdkCall(
+                service="bedrock-agentcore-control",
+                action="getGateway",
+                parameters={
+                    "gatewayIdentifier": GATEWAY_NAME,
                 },
                 physical_resource_id=cr.PhysicalResourceId.from_response("gatewayId"),
             ),
