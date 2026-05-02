@@ -25,7 +25,7 @@ class McpOAuthPool(Construct):
         # User Pool
         self.pool = cognito.UserPool(
             self, "M2MPool",
-            user_pool_name=f"{PROJECT}-m2m-pool",
+            user_pool_name=f"{PROJECT}-{Aws.ACCOUNT_ID}",
             removal_policy=RemovalPolicy.DESTROY,
         )
 

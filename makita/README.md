@@ -179,9 +179,10 @@ Individual targets:
 
 ### Registering AgentCore Gateway with DevOps Agent (Manual Step)
 
-After `make deploy` completes, you must manually register the MCP server
-and upload the skill in the DevOps Agent Operator Web App. The Agent Space
-(`makita-agentspace`) was created by the CDK deploy. This is a one-time setup.
+After `make deploy`, `make deploy-mcp-servers`, and `make attach-runtime-permissions`
+complete, you must manually register the MCP server and upload the skill in the
+DevOps Agent Operator Web App. The Agent Space (`makita-agentspace`) was created
+by the CDK deploy. This is a one-time setup.
 
 1. **Get the Gateway endpoint URL**:
 
@@ -210,7 +211,7 @@ and upload the skill in the DevOps Agent Operator Web App. The Agent Space
    CLIENT_ID=$(aws cloudformation list-exports --region us-east-1 \
      --query "Exports[?Name=='makita-CognitoClientId'].Value" --output text)
    POOL_ID=$(aws cognito-idp list-user-pools --max-results 10 --region us-east-1 \
-     --query "UserPools[?Name=='makita-m2m-pool'].Id" --output text)
+     --query "UserPools[?starts_with(Name, 'makita-')].Id" --output text)
    aws cognito-idp describe-user-pool-client --region us-east-1 \
      --user-pool-id $POOL_ID --client-id $CLIENT_ID \
      --query "UserPoolClient.ClientSecret" --output text
