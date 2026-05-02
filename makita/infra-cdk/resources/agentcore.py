@@ -129,16 +129,21 @@ class AgentCoreRuntime(Construct):
             ),
         ])
 
-        # Build runtime parameters using code zip instead of container
+        # Build runtime parameters using code configuration
         runtime_params = {
             "agentRuntimeName": name,
             "description": server_def["description"],
             "roleArn": role_arn,
             "agentRuntimeArtifact": {
-                "codeZipConfiguration": {
-                    "s3Uri": self.code_asset.s3_object_url,
+                "codeConfiguration": {
+                    "code": {
+                        "s3": {
+                            "bucket": self.code_asset.s3_bucket_name,
+                            "prefix": self.code_asset.s3_object_key,
+                        }
+                    },
                     "entryPoint": server_def.get("entry_point", ["server.py"]),
-                    "runtimeType": "PYTHON_3_11",
+                    "runtime": "PYTHON_3_12",
                 }
             },
             "networkConfiguration": {"networkMode": "PUBLIC"},

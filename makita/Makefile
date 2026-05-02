@@ -112,3 +112,6 @@ clean: ## Remove build artifacts and venv
 
 clean-aws: ## Delete all orphaned AWS resources (runtimes, gateways, guardrails, etc.)
 	$(SCRIPTS_DIR)/cleanup.sh
+
+force-delete: ## Force-delete stuck CloudFormation stacks (DELETE_FAILED, ROLLBACK_*)
+	$(SCRIPTS_DIR)/force-delete-stacks.sh
