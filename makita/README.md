@@ -178,7 +178,15 @@ This deploys the three MCP servers (failover, precheck, postcheck) to AgentCore 
 
 > **Note:** Each server takes 2-3 minutes to deploy. The first run also initializes the agentcore project config. Wait for all three servers to complete before proceeding. Transaction search takes ~10 minutes to become fully active after deployment.
 
-### Step 3: Attach Runtime Permissions
+### Step 3: Register Gateway Targets
+
+```bash
+make register-targets
+```
+
+This connects the deployed MCP runtimes to the AgentCore gateway so DevOps Agent can discover the tools.
+
+### Step 4: Attach Runtime Permissions
 
 ```bash
 make attach-runtime-permissions
@@ -186,7 +194,7 @@ make attach-runtime-permissions
 
 This attaches RDS and SSM IAM permissions to the AgentCore runtime roles so the MCP servers can access PostgreSQL and Parameter Store.
 
-### Step 4: Register Gateway with DevOps Agent (Manual)
+### Step 5: Register Gateway with DevOps Agent (Manual)
 
 Run `make show-config` to print all the values needed for this step:
 
@@ -234,6 +242,7 @@ Then open the DevOps Agent console and register the gateway:
 | Command | Description |
 |---|---|
 | `make show-config` | Print gateway registration parameters for the manual step |
+| `make register-targets` | Register MCP runtimes as gateway targets |
 | `make synth` | Synthesize CDK templates (no deploy) |
 | `make diff` | Show pending changes |
 | `make destroy` | Tear down all CDK stacks (reverse order) |

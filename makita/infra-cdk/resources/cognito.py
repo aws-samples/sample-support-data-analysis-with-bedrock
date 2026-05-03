@@ -96,6 +96,9 @@ class AgentCoreOAuthProvider(Construct):
         # Get client secret - use the CDK token directly
         client_secret = cognito_pool.client.user_pool_client_secret
 
+        # Unique provider name per account/region to avoid conflicts
+        provider_name = f"{PROJECT}-{Aws.ACCOUNT_ID}-{PRIMARY_REGION}"
+
         # Create the OAuth2 credential provider
         self.provider = cr.AwsCustomResource(
             self, "OAuthProvider",
@@ -104,7 +107,7 @@ class AgentCoreOAuthProvider(Construct):
                 service="bedrock-agentcore-control",
                 action="createOauth2CredentialProvider",
                 parameters={
-                    "name": f"{PROJECT}-m2m-oauth2-provider",
+                    "name": provider_name,
                     "credentialProviderVendor": "CustomOauth2",
                     "oauth2ProviderConfigInput": {
                         "customOauth2ProviderConfig": {
@@ -122,7 +125,7 @@ class AgentCoreOAuthProvider(Construct):
                 service="bedrock-agentcore-control",
                 action="deleteOauth2CredentialProvider",
                 parameters={
-                    "name": f"{PROJECT}-m2m-oauth2-provider",
+                    "name": provider_name,
                 },
             ),
             policy=provider_policy,

@@ -39,9 +39,7 @@ from resources.postgresql import (
     MakitaSsmParameters,
 )
 from resources.agentcore import (
-    AgentCoreRuntime,
     AgentCoreGateway,
-    AgentCoreGatewayTarget,
     BedrockGuardrail,
     MCP_SERVERS,
     GATEWAY_NAME,
@@ -110,22 +108,7 @@ class AgentCoreNestedStack(NestedStack):
         self.cognito_client_id = oauth_pool.client_id
         self.cognito_token_endpoint = oauth_pool.token_endpoint
 
-        # Deploy each MCP server as a code zip with JWT auth
-        runtimes = {}
-        for server_def in MCP_SERVERS:
-            name = server_def["name"]
-            runtime = AgentCoreRuntime(
-                self, f"Runtime-{name}",
-                server_def=server_def,
-                role_arn=role_arn,
-                project_root=project_root,
-                discovery_url=oauth_pool.discovery_url,
-                allowed_clients=[oauth_pool.client_id],
-            )
-            runtime.node.add_dependency(oauth_pool)
-            runtimes[name] = runtime
-
-        # Gateway
+        # Gateway (runtimes are deployed separately via `make deploy-mcp-servers`)
         gateway = AgentCoreGateway(
             self, "Gateway",
             role_arn=role_arn,
@@ -133,30 +116,6 @@ class AgentCoreNestedStack(NestedStack):
             allowed_clients=[oauth_pool.client_id],
             allowed_scopes=[f"{PROJECT}-mcp/invoke"],
         )
-        for runtime in runtimes.values():
-            gateway.node.add_dependency(runtime)
-
-        # Gateway Targets with OAuth credentials
-        for server_def in MCP_SERVERS:
-            name = server_def["name"]
-            runtime = runtimes[name]
-
-            cedar_policy = None
-            policy_file = server_def.get("policy_file")
-            if policy_file:
-                policy_path = os.path.join(project_root, policy_file)
-                if os.path.exists(policy_path):
-                    cedar_policy = _load_file(project_root, policy_file)
-
-            target = AgentCoreGatewayTarget(
-                self, f"Target-{name}",
-                gateway_id=gateway.gateway_id,
-                runtime=runtime,
-                oauth_provider_arn=oauth_provider.provider_arn,
-                cedar_policy=cedar_policy,
-            )
-            target.node.add_dependency(gateway)
-            target.node.add_dependency(oauth_provider)
 
         # Guardrails
         for server_def in MCP_SERVERS:

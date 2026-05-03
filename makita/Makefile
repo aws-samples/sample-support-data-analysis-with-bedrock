@@ -71,6 +71,9 @@ deploy-mcp-servers: ## Deploy MCP servers to AgentCore Runtime (requires agentco
 	$(SCRIPTS_DIR)/deploy-mcp-server.sh precheck
 	$(SCRIPTS_DIR)/deploy-mcp-server.sh postcheck
 
+register-targets: ## Register MCP runtimes as gateway targets (run after deploy-mcp-servers)
+	$(SCRIPTS_DIR)/register-gateway-targets.sh
+
 attach-runtime-permissions: ## Attach IAM permissions to AgentCore runtime roles
 	$(SCRIPTS_DIR)/attach-runtime-permissions.sh
 
