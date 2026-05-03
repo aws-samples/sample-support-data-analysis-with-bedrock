@@ -6,7 +6,7 @@ This repository contains two self-contained projects that demonstrate AI-powered
 
 ### [MAKITA — Machine Augmented Key Infrastructure Technology Automation](makita/README.md)
 
-MAKITA is a sample application demonstrating AI-assisted disaster recovery using Amazon DevOps Agent and Amazon AgentCore. It provisions a multi-region PostgreSQL cluster (us-east-1 primary, us-west-2 DR) and orchestrates automated failover through MCP servers built with the Strands Agents SDK, with governance via Cedar policies and Bedrock Guardrails.
+MAKITA is a sample application demonstrating AI-assisted disaster recovery using Amazon DevOps Agent and Amazon AgentCore. It provisions a multi-region PostgreSQL cluster (us-east-1 primary, us-west-2 DR) and orchestrates automated failover through MCP servers built with governance via Cedar policies and Bedrock Guardrails.
 
 ### [MAKI — Machine Augmented Key Insights](maki/README.md)
 

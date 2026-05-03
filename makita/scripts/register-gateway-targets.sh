@@ -31,6 +31,13 @@ EXISTING_TARGETS=$(aws bedrock-agentcore-control list-gateway-targets \
   --query "items[].name" --output text 2>/dev/null || echo "")
 
 for NAME in makitapgfailover makitapgprecheck makitapgpostcheck; do
+  # Short target names to stay under DevOps Agent's 64-char limit
+  # (server_name + target_name + tool_name must be < 64 chars)
+  case "$NAME" in
+    *failover*)  SHORT="fail" ;;
+    *precheck*)  SHORT="pre" ;;
+    *postcheck*) SHORT="post" ;;
+  esac
   # Find the runtime created by agentcore CLI
   RUNTIME_ID=$(aws bedrock-agentcore-control list-agent-runtimes --region "$REGION" \
     --query "agentRuntimes[?starts_with(agentRuntimeName, '${NAME}')].agentRuntimeId" --output text 2>/dev/null || echo "")
@@ -46,7 +53,7 @@ for NAME in makitapgfailover makitapgprecheck makitapgpostcheck; do
     --query "status" --output text 2>/dev/null || echo "UNKNOWN")
   echo "  Runtime ${NAME}: ${RUNTIME_ID} (${RT_STATUS})"
 
-  TARGET_NAME="${NAME}-target"
+  TARGET_NAME="${SHORT}"
 
   # Delete existing target if present (to update endpoint)
   if echo "$EXISTING_TARGETS" | grep -q "$TARGET_NAME"; then

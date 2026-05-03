@@ -12,3 +12,8 @@ cdk.out/
 mcp-servers/**/agentcore/
 mcp-servers/**/.bedrock_agentcore/
 dist/
+
+# Pip packages installed into mcp-server dirs (pip install -t .)
+# These are rebuilt on deploy — only source files should be tracked
+mcp-servers/**/*.dist-info/
+mcp-servers/**/bin/

@@ -19,15 +19,23 @@ from models import FailoverResult, FailoverState, HealthCheckResult
 mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 
 # ---------------------------------------------------------------------------
-# Runtime configuration — loaded from Parameter Store on module import
+# Runtime configuration — loaded from Parameter Store on first use
 # ---------------------------------------------------------------------------
 
-_ssm = boto3.client("ssm", region_name="us-east-1")
+_ssm = None
+
+
+def _get_ssm():
+    """Lazily create the SSM client."""
+    global _ssm
+    if _ssm is None:
+        _ssm = boto3.client("ssm", region_name="us-east-1")
+    return _ssm
 
 
 def _get_parameter(name: str) -> str:
     """Retrieve a single parameter value from Parameter Store."""
-    resp = _ssm.get_parameter(Name=name)
+    resp = _get_ssm().get_parameter(Name=name)
     return resp["Parameter"]["Value"]
 
 
@@ -43,7 +51,7 @@ def load_config() -> dict[str, str]:
         "/makita/db/port",
     ]
     config: dict[str, str] = {}
-    resp = _ssm.get_parameters(Names=param_keys)
+    resp = _get_ssm().get_parameters(Names=param_keys)
     for p in resp["Parameters"]:
         config[p["Name"]] = p["Value"]
     return config

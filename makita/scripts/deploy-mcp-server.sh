@@ -2,7 +2,8 @@
 # MAKITA MCP Server Deployment Script
 #
 # Deploys a single MCP server to AgentCore Runtime using the agentcore CLI.
-# Uses CodeZip/direct_code_deploy builds (no Docker required).
+# Pre-installs pip dependencies into the code directory so there's no
+# cold-start pip install on AgentCore Runtime.
 #
 # Usage: ./scripts/deploy-mcp-server.sh <server-dir>
 #
@@ -51,21 +52,14 @@ if [ ! -f "${SERVER_DIR}/agentcore/agentcore.json" ] || \
     --name "$AGENT_NAME" \
     --defaults \
     --no-agent \
-    --build CodeZip
+    --build CodeZip \
+    --protocol MCP
   popd > /dev/null
 
   # Copy the agentcore/ config into our server directory
   cp -r "${STAGING}/${AGENT_NAME}/agentcore" "${SERVER_DIR}/agentcore"
 
-  # Install CDK node dependencies
-  pushd "${SERVER_DIR}/agentcore/cdk" > /dev/null
-  rm -rf node_modules
-  npm install --silent
-  popd > /dev/null
-
   # Configure the runtime in agentcore.json
-  # codeLocation is ".." because agentcore/ is inside the server dir,
-  # and the server code (server.py) is one level up from agentcore/
   python3 -c "
 import json, sys
 config_path = sys.argv[1]
@@ -77,8 +71,10 @@ config['runtimes'] = [{
     'build': 'CodeZip',
     'entrypoint': 'server.py',
     'codeLocation': '.',
-    'runtimeVersion': 'PYTHON_3_12',
+    'runtimeVersion': 'PYTHON_3_11',
     'networkMode': 'PUBLIC',
+    'protocol': 'MCP',
+    'instrumentation': {'enableOtel': False},
 }]
 with open(config_path, 'w') as f:
     json.dump(config, f, indent=2)
@@ -112,6 +108,9 @@ if [ -d "agentcore/cdk" ]; then
   npm install --silent 2>&1 | tail -1
   popd > /dev/null
 fi
+
+echo "  Packaging..."
+agentcore package
 
 echo "  Deploying..."
 agentcore deploy --yes

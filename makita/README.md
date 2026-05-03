@@ -1,15 +1,14 @@
 # MAKITA — Machine Augmented Key Infrastructure Technology Automation
 
-MAKITA is a technical reference architecture demonstrating AI-assisted disaster recovery using **Amazon DevOps Agent** and **Amazon AgentCore**. The system provisions a multi-region PostgreSQL cluster across us-east-1 (primary) and us-west-2 (DR) and orchestrates automated failover through MCP servers built with the **Strands Agents SDK**.
+MAKITA is a technical reference architecture demonstrating AI-assisted disaster recovery using **Amazon DevOps Agent** and **Amazon AgentCore**. The system provisions a multi-region PostgreSQL cluster across us-east-1 (primary) and us-west-2 (DR) and orchestrates automated failover through MCP servers built with **FastMCP** and deployed to AgentCore Runtime.
 
 ## Key Technologies
 
-- **Strands Agents SDK** — MCP server implementation framework
+- **FastMCP** (`mcp` package) — MCP server implementation framework
 - **Amazon AgentCore** — managed hosting for MCP servers with Gateway and Cedar policies
 - **Amazon DevOps Agent** — AI-assisted operations via natural language
 - **Amazon Bedrock Guardrails** — safety and compliance controls for AI operations
-- **AWS CDK (Python)** — infrastructure-as-code (primary)
-- **AWS CloudFormation** — infrastructure-as-code (YAML templates)
+- **AWS CDK (Python)** — infrastructure-as-code
 - **Amazon RDS PostgreSQL** — multi-region database cluster
 - **AWS Systems Manager Parameter Store** — centralized configuration
 
@@ -260,7 +259,7 @@ Then open the DevOps Agent console and register the gateway:
 | Parameter Store | `/makita/db/*`, `/makita/mcp/*` | Makita | us-east-1 |
 | IAM Roles | `makita-failover-role`, `makita-precheck-role`, `makita-postcheck-role` | Makita | us-east-1 |
 | Secrets Manager | `makita-db-master-secret` | Makita | us-east-1 |
-| AgentCore Runtimes | 3 runtimes (failover, precheck, postcheck) | Makita | us-east-1 |
+| AgentCore Runtimes | 3 runtimes (failover, precheck, postcheck) | `agentcore` CLI | us-east-1 |
 | AgentCore Gateway | `makita-mcp-gateway` | Makita | us-east-1 |
 | Bedrock Guardrails | 3 guardrails (failover, precheck, postcheck) | Makita | us-east-1 |
 | DevOps Agent Space | `makita-agentspace` | Makita | us-east-1 |

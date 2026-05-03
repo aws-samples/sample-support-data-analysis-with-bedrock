@@ -1,0 +1,8 @@
+# Ignore everything except source files
+*
+!.gitignore
+!server.py
+!models.py
+!requirements.txt
+!.bedrock_agentcore.yaml
+!__init__.py
