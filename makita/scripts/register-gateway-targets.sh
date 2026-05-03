@@ -25,10 +25,6 @@ if [ -z "$GATEWAY_ID" ] || [ "$GATEWAY_ID" = "None" ]; then
 fi
 echo "  Gateway: $GATEWAY_ID"
 
-# Find the OAuth provider ARN
-OAUTH_PROVIDER_ARN=$(aws bedrock-agentcore-control list-oauth2-credential-providers --region "$REGION" \
-  --query "oauth2CredentialProviders[?starts_with(name, '${PROJECT}')].credentialProviderArn" --output text 2>/dev/null || echo "")
-
 # Get existing targets to avoid duplicates
 EXISTING_TARGETS=$(aws bedrock-agentcore-control list-gateway-targets \
   --gateway-identifier "$GATEWAY_ID" --region "$REGION" \
@@ -44,37 +40,68 @@ for NAME in makitapgfailover makitapgprecheck makitapgpostcheck; do
     continue
   fi
 
+  # Check runtime status
+  RT_STATUS=$(aws bedrock-agentcore-control get-agent-runtime \
+    --agent-runtime-id "$RUNTIME_ID" --region "$REGION" \
+    --query "status" --output text 2>/dev/null || echo "UNKNOWN")
+  echo "  Runtime ${NAME}: ${RUNTIME_ID} (${RT_STATUS})"
+
   TARGET_NAME="${NAME}-target"
 
-  # Skip if target already exists
+  # Delete existing target if present (to update endpoint)
   if echo "$EXISTING_TARGETS" | grep -q "$TARGET_NAME"; then
-    echo "  EXISTS: $TARGET_NAME"
-    continue
+    echo "  Removing existing target $TARGET_NAME..."
+    EXISTING_TID=$(aws bedrock-agentcore-control list-gateway-targets \
+      --gateway-identifier "$GATEWAY_ID" --region "$REGION" \
+      --query "items[?name=='${TARGET_NAME}'].targetId" --output text 2>/dev/null || echo "")
+    if [ -n "$EXISTING_TID" ] && [ "$EXISTING_TID" != "None" ]; then
+      aws bedrock-agentcore-control delete-gateway-target \
+        --gateway-identifier "$GATEWAY_ID" --target-id "$EXISTING_TID" \
+        --region "$REGION" 2>/dev/null || true
+      sleep 3
+    fi
   fi
 
-  # Build the runtime endpoint URL
-  ENCODED_ARN="arn%3Aaws%3Abedrock-agentcore%3A${REGION}%3A${ACCOUNT}%3Aruntime%2F${RUNTIME_ID}"
-  ENDPOINT_URL="https://bedrock-agentcore.${REGION}.amazonaws.com/runtimes/${ENCODED_ARN}/invocations"
+  # Get the runtime endpoint from the runtime's endpoints list
+  ENDPOINT_URL=""
+  ENDPOINT_ID=$(aws bedrock-agentcore-control list-agent-runtime-endpoints \
+    --agent-runtime-id "$RUNTIME_ID" --region "$REGION" \
+    --query "agentRuntimeEndpoints[0].agentRuntimeEndpointId" --output text 2>/dev/null || echo "")
 
-  # Build target params
+  if [ -n "$ENDPOINT_ID" ] && [ "$ENDPOINT_ID" != "None" ]; then
+    ENDPOINT_URL=$(aws bedrock-agentcore-control get-agent-runtime-endpoint \
+      --agent-runtime-id "$RUNTIME_ID" \
+      --agent-runtime-endpoint-id "$ENDPOINT_ID" \
+      --region "$REGION" \
+      --query "agentEndpointUrl" --output text 2>/dev/null || echo "")
+  fi
+
+  # Fallback: construct the endpoint URL from the runtime ARN
+  if [ -z "$ENDPOINT_URL" ] || [ "$ENDPOINT_URL" = "None" ]; then
+    RUNTIME_ARN=$(aws bedrock-agentcore-control get-agent-runtime \
+      --agent-runtime-id "$RUNTIME_ID" --region "$REGION" \
+      --query "agentRuntimeArn" --output text 2>/dev/null || echo "")
+    ENCODED_ARN=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$RUNTIME_ARN")
+    ENDPOINT_URL="https://bedrock-agentcore.${REGION}.amazonaws.com/runtimes/${ENCODED_ARN}/invocations"
+  fi
+
+  echo "  Endpoint: $ENDPOINT_URL"
+
+  # Use IAM role credentials (CLI runtimes don't have JWT auth)
   CRED_CONFIG='[{"credentialProviderType":"GATEWAY_IAM_ROLE","credentialProvider":{"iamCredentialProvider":{"service":"bedrock-agentcore","region":"'${REGION}'"}}}]'
 
-  if [ -n "$OAUTH_PROVIDER_ARN" ] && [ "$OAUTH_PROVIDER_ARN" != "None" ]; then
-    CRED_CONFIG='[{"credentialProviderType":"OAUTH","credentialProvider":{"oauthCredentialProvider":{"providerArn":"'${OAUTH_PROVIDER_ARN}'","scopes":["'${PROJECT}'-mcp/invoke"]}}}]'
-  fi
-
-  echo "  Creating target: $TARGET_NAME → $RUNTIME_ID"
+  echo "  Creating target: $TARGET_NAME"
   aws bedrock-agentcore-control create-gateway-target \
     --gateway-identifier "$GATEWAY_ID" \
     --name "$TARGET_NAME" \
     --description "Gateway target for ${NAME}" \
-    --target-configuration '{"mcp":{"mcpServer":{"endpoint":"'${ENDPOINT_URL}'"}}}' \
+    --target-configuration '{"mcp":{"mcpServer":{"endpoint":"'"${ENDPOINT_URL}"'"}}}' \
     --credential-provider-configurations "$CRED_CONFIG" \
     --region "$REGION" \
-    --output text --query "targetId" 2>&1 && echo "" || echo "  FAILED"
+    --query "targetId" --output text 2>&1 || echo "  FAILED"
+  echo ""
 done
 
-echo ""
 echo "=== Done ==="
 echo ""
 echo "Targets:"
