@@ -14,6 +14,7 @@ from aws_cdk import (
     RemovalPolicy,
     aws_iam as iam,
     aws_logs as logs,
+    aws_devopsagent as devopsagent,
     custom_resources as cr,
 )
 from config import (
@@ -164,3 +165,21 @@ class DevOpsAgentSpace(Construct):
             ),
             policy=custom_resource_policy,
         )
+
+        # Store the agent space ID
+        self.agent_space_id = self.create_space.get_response_field("agentSpace.agentSpaceId")
+
+        # Associate the current AWS account as the primary (monitor) account
+        self.source_association = devopsagent.CfnAssociation(
+            self, "SourceAwsAssociation",
+            agent_space_id=self.agent_space_id,
+            service_id="aws",
+            configuration=devopsagent.CfnAssociation.ServiceConfigurationProperty(
+                aws=devopsagent.CfnAssociation.AWSConfigurationProperty(
+                    account_id=account_id,
+                    account_type="monitor",
+                    assumable_role_arn=operator_role.role_arn,
+                ),
+            ),
+        )
+        self.source_association.node.add_dependency(self.create_space)
