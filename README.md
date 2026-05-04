@@ -12,7 +12,7 @@ MAKITA is a sample application demonstrating AI-assisted disaster recovery using
 
 MAKI is a sample application that uses Amazon Bedrock to analyze AWS Enterprise Support cases and AWS Health events. It automates categorization, sentiment analysis, and generates actionable recommendations through both batch reporting and an interactive agentic workflow.
 
-Note that MAKI pattern is now considered legacy and no longer maintained.  Please refer to the fully agentic MAKITA pattern above.
+Note that MAKI is now considered legacy pattern and no longer maintained.  Please refer to the fully agentic MAKITA pattern above.
 
 ## Repository Structure
 
