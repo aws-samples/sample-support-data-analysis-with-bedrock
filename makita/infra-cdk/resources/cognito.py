@@ -82,14 +82,20 @@ class AgentCoreOAuthProvider(Construct):
         provider_policy = cr.AwsCustomResourcePolicy.from_statements([
             iam.PolicyStatement(
                 actions=[
-                    "bedrock-agentcore:*",
-                    "bedrock-agentcore-control:*",
+                    "bedrock-agentcore-control:CreateOauth2CredentialProvider",
+                    "bedrock-agentcore-control:DeleteOauth2CredentialProvider",
+                    "bedrock-agentcore-control:GetOauth2CredentialProvider",
                 ],
                 resources=["*"],
             ),
             iam.PolicyStatement(
-                actions=["secretsmanager:*"],
-                resources=["*"],
+                actions=[
+                    "secretsmanager:CreateSecret",
+                    "secretsmanager:DeleteSecret",
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:PutSecretValue",
+                ],
+                resources=[f"arn:aws:secretsmanager:{PRIMARY_REGION}:{Aws.ACCOUNT_ID}:secret:{PROJECT}-*"],
             ),
         ])
 

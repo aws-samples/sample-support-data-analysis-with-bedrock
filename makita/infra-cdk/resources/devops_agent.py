@@ -22,6 +22,9 @@ from config import (
     TAGS,
     PRIMARY_REGION,
     FAILOVER_ROLE_NAME,
+    PRECHECK_ROLE_NAME,
+    POSTCHECK_ROLE_NAME,
+    SSM_PREFIX,
 )
 
 AGENT_SPACE_NAME = f"{PROJECT}-agentspace"
@@ -75,28 +78,54 @@ class DevOpsAgentOperatorRole(Construct):
         # Inline policy for additional permissions
         self.role.add_to_policy(iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["devops-agent:*"],
-            resources=["*"],
+            actions=[
+                "devops-agent:GetAgentSpace",
+                "devops-agent:ListAgentSpaces",
+                "devops-agent:InvokeAgent",
+            ],
+            resources=[f"arn:aws:aidevops:{PRIMARY_REGION}:{account_id}:agentspace/*"],
         ))
         self.role.add_to_policy(iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=[
-                "bedrock-agentcore:*",
+                "bedrock-agentcore:InvokeAgentRuntime",
+                "bedrock-agentcore:GetAgentRuntime",
+                "bedrock-agentcore:GetGateway",
+                "bedrock-agentcore:InvokeGateway",
             ],
-            resources=["*"],
+            resources=[
+                f"arn:aws:bedrock-agentcore:{PRIMARY_REGION}:{account_id}:runtime/*",
+                f"arn:aws:bedrock-agentcore:{PRIMARY_REGION}:{account_id}:gateway/*",
+            ],
         ))
         self.role.add_to_policy(iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=[
                 "rds:DescribeDBInstances",
                 "rds:DescribeDBClusters",
-                "ssm:GetParameter",
+            ],
+            resources=[
+                f"arn:aws:rds:*:{account_id}:db:{PROJECT}-*",
+                f"arn:aws:rds:*:{account_id}:cluster:{PROJECT}-*",
+            ],
+        ))
+        self.role.add_to_policy(iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["ssm:GetParameter"],
+            resources=[f"arn:aws:ssm:*:{account_id}:parameter{SSM_PREFIX}/*"],
+        ))
+        self.role.add_to_policy(iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
                 "cloudwatch:GetMetricData",
                 "cloudwatch:DescribeAlarms",
                 "logs:GetLogEvents",
                 "logs:DescribeLogGroups",
             ],
-            resources=["*"],
+            resources=[
+                f"arn:aws:cloudwatch:{PRIMARY_REGION}:{account_id}:alarm:{PROJECT}-*",
+                f"arn:aws:logs:{PRIMARY_REGION}:{account_id}:log-group:/{PROJECT}/*",
+            ],
         ))
 
 
@@ -125,21 +154,32 @@ class DevOpsAgentSpace(Construct):
         custom_resource_policy = cr.AwsCustomResourcePolicy.from_statements([
             iam.PolicyStatement(
                 actions=[
-                    "aidevops:*",
-                    "devops-agent:*",
+                    "aidevops:CreateAgentSpace",
+                    "aidevops:DeleteAgentSpace",
+                    "aidevops:GetAgentSpace",
+                    "devops-agent:CreateAgentSpace",
+                    "devops-agent:DeleteAgentSpace",
+                    "devops-agent:GetAgentSpace",
                 ],
-                resources=["*"],
+                resources=[f"arn:aws:aidevops:{PRIMARY_REGION}:{account_id}:agentspace/*"],
             ),
             iam.PolicyStatement(
                 actions=[
-                    "bedrock-agentcore:*",
-                    "bedrock-agentcore-control:*",
+                    "bedrock-agentcore-control:GetGateway",
+                    "bedrock-agentcore-control:ListGateways",
                 ],
-                resources=["*"],
+                resources=[f"arn:aws:bedrock-agentcore:{PRIMARY_REGION}:{account_id}:gateway/*"],
             ),
             iam.PolicyStatement(
-                actions=["iam:PassRole", "iam:CreateServiceLinkedRole"],
-                resources=["*"],
+                actions=["iam:PassRole"],
+                resources=[
+                    operator_role.role_arn,
+                    failover_role_arn,
+                ],
+            ),
+            iam.PolicyStatement(
+                actions=["iam:CreateServiceLinkedRole"],
+                resources=[f"arn:aws:iam::{account_id}:role/aws-service-role/*"],
             ),
         ])
 

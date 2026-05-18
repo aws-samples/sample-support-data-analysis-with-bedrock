@@ -18,6 +18,9 @@ from models import FailoverResult, FailoverState, HealthCheckResult
 
 mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 
+ALLOWED_REGIONS = {"us-east-1", "us-west-2"}
+ALLOWED_CLUSTERS = {"makita-pg-cluster"}
+
 # ---------------------------------------------------------------------------
 # Runtime configuration — loaded from Parameter Store on first use
 # ---------------------------------------------------------------------------
@@ -97,6 +100,13 @@ def execute_failover(
     Returns:
         A dict matching the FailoverResult schema.
     """
+    if primary_region not in ALLOWED_REGIONS:
+        return asdict(FailoverResult(success=False, error=f"Invalid primary_region: {primary_region}"))
+    if dr_region not in ALLOWED_REGIONS:
+        return asdict(FailoverResult(success=False, error=f"Invalid dr_region: {dr_region}"))
+    if cluster_name not in ALLOWED_CLUSTERS:
+        return asdict(FailoverResult(success=False, error=f"Invalid cluster_name: {cluster_name}"))
+
     start = time.monotonic()
     started_at = datetime.now(timezone.utc).isoformat()
 
@@ -219,6 +229,11 @@ def health_check(cluster_name: str) -> dict:
     Returns:
         A dict matching the HealthCheckResult schema.
     """
+    if cluster_name not in ALLOWED_CLUSTERS:
+        return {"cluster_name": cluster_name, "primary_status": "unknown",
+                "replica_status": "unknown", "replication_lag_seconds": -1,
+                "replication_healthy": False, "error": f"Invalid cluster_name: {cluster_name}"}
+
     try:
         # Read regions from Parameter Store
         ssm = _ssm_client()

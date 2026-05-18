@@ -19,6 +19,7 @@ import json
 import os
 from constructs import Construct
 from aws_cdk import (
+    Aws,
     Fn,
     RemovalPolicy,
     aws_iam as iam,
@@ -29,6 +30,8 @@ from config import (
     TAGS,
     PRIMARY_REGION,
     FAILOVER_ROLE_NAME,
+    PRECHECK_ROLE_NAME,
+    POSTCHECK_ROLE_NAME,
 )
 
 GATEWAY_NAME = f"{PROJECT}-mcp-gateway"
@@ -105,17 +108,26 @@ class AgentCoreRuntime(Construct):
         agentcore_policy = cr.AwsCustomResourcePolicy.from_statements([
             iam.PolicyStatement(
                 actions=[
-                    "bedrock-agentcore:*",
-                    "bedrock-agentcore-control:*",
+                    "bedrock-agentcore-control:CreateAgentRuntime",
+                    "bedrock-agentcore-control:GetAgentRuntime",
+                    "bedrock-agentcore-control:DeleteAgentRuntime",
+                    "bedrock-agentcore-control:UpdateAgentRuntime",
                 ],
-                resources=["*"],
+                resources=[f"arn:aws:bedrock-agentcore:{PRIMARY_REGION}:{Aws.ACCOUNT_ID}:runtime/*"],
             ),
             iam.PolicyStatement(
                 actions=[
                     "iam:PassRole",
-                    "iam:CreateServiceLinkedRole",
                 ],
-                resources=["*"],
+                resources=[
+                    f"arn:aws:iam::{Aws.ACCOUNT_ID}:role/{FAILOVER_ROLE_NAME}",
+                    f"arn:aws:iam::{Aws.ACCOUNT_ID}:role/{PRECHECK_ROLE_NAME}",
+                    f"arn:aws:iam::{Aws.ACCOUNT_ID}:role/{POSTCHECK_ROLE_NAME}",
+                ],
+            ),
+            iam.PolicyStatement(
+                actions=["iam:CreateServiceLinkedRole"],
+                resources=[f"arn:aws:iam::{Aws.ACCOUNT_ID}:role/aws-service-role/*"],
             ),
             iam.PolicyStatement(
                 actions=[
@@ -230,17 +242,24 @@ class AgentCoreGateway(Construct):
         gateway_policy = cr.AwsCustomResourcePolicy.from_statements([
             iam.PolicyStatement(
                 actions=[
-                    "bedrock-agentcore:*",
-                    "bedrock-agentcore-control:*",
+                    "bedrock-agentcore-control:CreateGateway",
+                    "bedrock-agentcore-control:GetGateway",
+                    "bedrock-agentcore-control:DeleteGateway",
+                    "bedrock-agentcore-control:UpdateGateway",
                 ],
-                resources=["*"],
+                resources=[f"arn:aws:bedrock-agentcore:{PRIMARY_REGION}:{Aws.ACCOUNT_ID}:gateway/*"],
             ),
             iam.PolicyStatement(
-                actions=[
-                    "iam:PassRole",
-                    "iam:CreateServiceLinkedRole",
+                actions=["iam:PassRole"],
+                resources=[
+                    f"arn:aws:iam::{Aws.ACCOUNT_ID}:role/{FAILOVER_ROLE_NAME}",
+                    f"arn:aws:iam::{Aws.ACCOUNT_ID}:role/{PRECHECK_ROLE_NAME}",
+                    f"arn:aws:iam::{Aws.ACCOUNT_ID}:role/{POSTCHECK_ROLE_NAME}",
                 ],
-                resources=["*"],
+            ),
+            iam.PolicyStatement(
+                actions=["iam:CreateServiceLinkedRole"],
+                resources=[f"arn:aws:iam::{Aws.ACCOUNT_ID}:role/aws-service-role/*"],
             ),
         ])
 
@@ -314,14 +333,16 @@ class AgentCoreGatewayTarget(Construct):
         target_policy = cr.AwsCustomResourcePolicy.from_statements([
             iam.PolicyStatement(
                 actions=[
-                    "bedrock-agentcore:*",
-                    "bedrock-agentcore-control:*",
+                    "bedrock-agentcore-control:CreateGatewayTarget",
+                    "bedrock-agentcore-control:GetGatewayTarget",
+                    "bedrock-agentcore-control:DeleteGatewayTarget",
+                    "bedrock-agentcore-control:UpdateGatewayTarget",
                 ],
-                resources=["*"],
+                resources=[f"arn:aws:bedrock-agentcore:{PRIMARY_REGION}:{Aws.ACCOUNT_ID}:gateway/*"],
             ),
             iam.PolicyStatement(
                 actions=["secretsmanager:GetSecretValue"],
-                resources=["*"],
+                resources=[f"arn:aws:secretsmanager:{PRIMARY_REGION}:{Aws.ACCOUNT_ID}:secret:{PROJECT}-*"],
             ),
         ])
 

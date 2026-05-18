@@ -15,6 +15,9 @@ from models import VerificationResult
 
 mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 
+ALLOWED_REGIONS = {"us-east-1", "us-west-2"}
+ALLOWED_CLUSTERS = {"makita-pg-cluster"}
+
 # ---------------------------------------------------------------------------
 # Helper — boto3 clients per region
 # ---------------------------------------------------------------------------
@@ -49,6 +52,11 @@ def verify_new_primary_health(cluster_name: str, dr_region: str) -> dict:
     Returns:
         A dict matching the VerificationResult schema.
     """
+    if cluster_name not in ALLOWED_CLUSTERS:
+        return asdict(VerificationResult(check_name="new_primary_health", passed=False, details={}, error=f"Invalid cluster_name: {cluster_name}"))
+    if dr_region not in ALLOWED_REGIONS:
+        return asdict(VerificationResult(check_name="new_primary_health", passed=False, details={}, error=f"Invalid dr_region: {dr_region}"))
+
     try:
         rds = _rds_client(dr_region)
         # After promotion the replica becomes the new primary; its instance
@@ -103,6 +111,9 @@ def verify_endpoints(cluster_name: str) -> dict:
     Returns:
         A dict matching the VerificationResult schema.
     """
+    if cluster_name not in ALLOWED_CLUSTERS:
+        return asdict(VerificationResult(check_name="endpoint_verification", passed=False, details={}, error=f"Invalid cluster_name: {cluster_name}"))
+
     try:
         ssm = _ssm_client()
         primary_endpoint = ssm.get_parameter(Name="/makita/db/primary-endpoint")[
@@ -163,6 +174,9 @@ def verify_replication_established(cluster_name: str) -> dict:
     Returns:
         A dict matching the VerificationResult schema.
     """
+    if cluster_name not in ALLOWED_CLUSTERS:
+        return asdict(VerificationResult(check_name="replication_established", passed=False, details={}, error=f"Invalid cluster_name: {cluster_name}"))
+
     try:
         ssm = _ssm_client()
         primary_region = ssm.get_parameter(Name="/makita/db/primary-region")[

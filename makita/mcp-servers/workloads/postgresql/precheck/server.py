@@ -15,6 +15,9 @@ from models import VerificationResult
 
 mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 
+ALLOWED_REGIONS = {"us-east-1", "us-west-2"}
+ALLOWED_CLUSTERS = {"makita-pg-cluster"}
+
 # ---------------------------------------------------------------------------
 # Helper — boto3 clients per region
 # ---------------------------------------------------------------------------
@@ -48,6 +51,9 @@ def verify_replication_health(cluster_name: str) -> dict:
     Returns:
         A dict matching the VerificationResult schema.
     """
+    if cluster_name not in ALLOWED_CLUSTERS:
+        return asdict(VerificationResult(check_name="replication_health", passed=False, details={}, error=f"Invalid cluster_name: {cluster_name}"))
+
     try:
         ssm = _ssm_client()
         primary_region = ssm.get_parameter(Name="/makita/db/primary-region")[
@@ -134,6 +140,11 @@ def verify_primary_status(cluster_name: str, primary_region: str) -> dict:
     Returns:
         A dict matching the VerificationResult schema.
     """
+    if cluster_name not in ALLOWED_CLUSTERS:
+        return asdict(VerificationResult(check_name="primary_status", passed=False, details={}, error=f"Invalid cluster_name: {cluster_name}"))
+    if primary_region not in ALLOWED_REGIONS:
+        return asdict(VerificationResult(check_name="primary_status", passed=False, details={}, error=f"Invalid primary_region: {primary_region}"))
+
     try:
         rds = _rds_client(primary_region)
         primary_id = cluster_name.replace("makita-pg-cluster", "makita-pg-primary")
@@ -188,6 +199,11 @@ def verify_replica_readiness(cluster_name: str, dr_region: str) -> dict:
     Returns:
         A dict matching the VerificationResult schema.
     """
+    if cluster_name not in ALLOWED_CLUSTERS:
+        return asdict(VerificationResult(check_name="replica_readiness", passed=False, details={}, error=f"Invalid cluster_name: {cluster_name}"))
+    if dr_region not in ALLOWED_REGIONS:
+        return asdict(VerificationResult(check_name="replica_readiness", passed=False, details={}, error=f"Invalid dr_region: {dr_region}"))
+
     try:
         rds = _rds_client(dr_region)
         replica_id = cluster_name.replace("makita-pg-cluster", "makita-pg-replica")
