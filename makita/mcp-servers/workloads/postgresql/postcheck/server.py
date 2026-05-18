@@ -18,6 +18,16 @@ mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 ALLOWED_REGIONS = {"us-east-1", "us-west-2"}
 ALLOWED_CLUSTERS = {"makita-pg-cluster"}
 
+
+def _safe_error(exc: Exception) -> str:
+    """Return error type and message with internal details like ARNs and endpoints redacted."""
+    import re
+    msg = str(exc)
+    msg = re.sub(r"arn:aws[a-zA-Z0-9:/_.*-]+", "[REDACTED_ARN]", msg)
+    msg = re.sub(r"https?://[^\s\"',]+", "[REDACTED_URL]", msg)
+    msg = re.sub(r"\b\d{12}\b", "[REDACTED_ACCOUNT]", msg)
+    return f"{type(exc).__name__}: {msg}"
+
 # ---------------------------------------------------------------------------
 # Helper — boto3 clients per region
 # ---------------------------------------------------------------------------
@@ -88,7 +98,7 @@ def verify_new_primary_health(cluster_name: str, dr_region: str) -> dict:
                 check_name="new_primary_health",
                 passed=False,
                 details={},
-                error=str(exc),
+                error=_safe_error(exc),
             )
         )
 
@@ -151,7 +161,7 @@ def verify_endpoints(cluster_name: str) -> dict:
                 check_name="endpoint_verification",
                 passed=False,
                 details={},
-                error=str(exc),
+                error=_safe_error(exc),
             )
         )
 
@@ -239,7 +249,7 @@ def verify_replication_established(cluster_name: str) -> dict:
                 check_name="replication_established",
                 passed=False,
                 details={},
-                error=str(exc),
+                error=_safe_error(exc),
             )
         )
 

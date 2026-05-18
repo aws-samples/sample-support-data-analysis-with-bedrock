@@ -21,6 +21,16 @@ mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 ALLOWED_REGIONS = {"us-east-1", "us-west-2"}
 ALLOWED_CLUSTERS = {"makita-pg-cluster"}
 
+
+def _safe_error(exc: Exception) -> str:
+    """Return error type and message with internal details like ARNs and endpoints redacted."""
+    import re
+    msg = str(exc)
+    msg = re.sub(r"arn:aws[a-zA-Z0-9:/_.*-]+", "[REDACTED_ARN]", msg)
+    msg = re.sub(r"https?://[^\s\"',]+", "[REDACTED_URL]", msg)
+    msg = re.sub(r"\b\d{12}\b", "[REDACTED_ACCOUNT]", msg)
+    return f"{type(exc).__name__}: {msg}"
+
 # ---------------------------------------------------------------------------
 # Runtime configuration — loaded from Parameter Store on first use
 # ---------------------------------------------------------------------------
@@ -203,11 +213,11 @@ def execute_failover(
 
     except Exception as exc:
         state.status = "failed"
-        state.error = str(exc)
+        state.error = _safe_error(exc)
         return asdict(
             FailoverResult(
                 success=False,
-                error=str(exc),
+                error=_safe_error(exc),
             )
         )
 
@@ -286,7 +296,7 @@ def health_check(cluster_name: str) -> dict:
             "replica_status": "unknown",
             "replication_lag_seconds": -1,
             "replication_healthy": False,
-            "error": str(exc),
+            "error": _safe_error(exc),
         }
 
 

@@ -21,7 +21,7 @@ Resources:
   M2MDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
-      Domain: makita-m2m-auth
+      Domain: !Sub "makita-m2m-${AWS::AccountId}"
       UserPoolId: !Ref M2MUserPool
 
   # ---------------------------------------------------------------------------
@@ -80,6 +80,6 @@ Outputs:
 
   TokenEndpoint:
     Description: OAuth2 Token Endpoint
-    Value: !Sub "https://makita-m2m-auth.auth.${AWS::Region}.amazoncognito.com/oauth2/token"
+    Value: !Sub "https://makita-m2m-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com/oauth2/token"
     Export:
       Name: makita-m2m-token-endpoint
