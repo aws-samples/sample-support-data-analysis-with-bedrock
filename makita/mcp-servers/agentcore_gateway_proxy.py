@@ -1,6 +1,6 @@
-"""AgentCore Gateway stdio proxy for Kiro CLI.
+"""AgentCore Gateway stdio proxy.
 
-Bridges Kiro's stdio MCP transport to a remote AgentCore Gateway
+Bridges a local stdio MCP transport to a remote AgentCore Gateway
 using IAM SigV4 authentication. On startup, discovers all tools
 from the gateway via tools/list and registers them locally.
 """

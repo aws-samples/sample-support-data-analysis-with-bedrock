@@ -1,7 +1,7 @@
 """Event logging module for MAKITA disaster recovery operations.
 
-Creates and appends to markdown event log files for AWS Support cases
-and ServiceNow tickets.
+Creates and appends to markdown event log files for tracking
+disaster recovery cases and incidents.
 """
 
 import os

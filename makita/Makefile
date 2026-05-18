@@ -1,5 +1,5 @@
 .PHONY: help install synth diff deploy deploy-primary deploy-replica \
-       deploy-kiro-agent deploy-mcp-servers destroy destroy-primary destroy-replica \
+       deploy-mcp-servers destroy destroy-primary destroy-replica \
        test lint clean generate-iam-policy build-skill-zip
 
 # ---------------------------------------------------------------------------
@@ -76,10 +76,6 @@ register-targets: ## Register MCP runtimes as gateway targets (run after deploy-
 
 attach-runtime-permissions: ## Attach IAM permissions to AgentCore runtime roles
 	$(SCRIPTS_DIR)/attach-runtime-permissions.sh
-
-deploy-kiro-agent: install ## Deploy Kiro agent config
-	@echo "[kiro-agent] Deploying Kiro agent config..."
-	$(PYTHON) $(SCRIPTS_DIR)/deploy_kiro_agent.py
 
 # ---------------------------------------------------------------------------
 # Destroy (reverse order)
