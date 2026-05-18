@@ -59,11 +59,11 @@ deploy: generate-iam-policy build-skill-zip deploy-primary deploy-replica ## Dep
 
 deploy-primary: install ## Deploy Makita nested stack (PostgreSQL + AgentCore + DevOps Agent)
 	@echo "[makita] Deploying to $(PRIMARY_REGION)..."
-	cd $(CDK_DIR) && $(CDK) deploy Makita --require-approval never
+	cd $(CDK_DIR) && $(CDK) deploy Makita --require-approval broadening
 
 deploy-replica: install ## Deploy cross-region PostgreSQL replica to us-west-2
 	@echo "[makita] Deploying replica to $(DR_REGION)..."
-	cd $(CDK_DIR) && $(CDK) deploy MakitaPostgresqlReplica --exclusively --require-approval never
+	cd $(CDK_DIR) && $(CDK) deploy MakitaPostgresqlReplica --exclusively --require-approval broadening
 
 deploy-mcp-servers: ## Deploy MCP servers to AgentCore Runtime (requires agentcore CLI)
 	@echo "[makita] Deploying MCP servers to AgentCore Runtime..."

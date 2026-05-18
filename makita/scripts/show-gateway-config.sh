@@ -34,15 +34,13 @@ CLIENT_ID=$(aws cloudformation list-exports --region "$REGION" \
 TOKEN_ENDPOINT=$(aws cloudformation list-exports --region "$REGION" \
   --query "Exports[?Name=='makita-CognitoTokenEndpoint'].Value" --output text 2>/dev/null || echo "")
 
-# Cognito Client Secret
-CLIENT_SECRET=""
+# Cognito Client Secret — retrieve command (not printed to avoid leaking to logs)
+CLIENT_SECRET_CMD=""
 if [ -n "$CLIENT_ID" ] && [ "$CLIENT_ID" != "None" ]; then
   POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --region "$REGION" \
     --query "UserPools[?starts_with(Name, 'makita')].Id" --output text 2>/dev/null || echo "")
   if [ -n "$POOL_ID" ] && [ "$POOL_ID" != "None" ]; then
-    CLIENT_SECRET=$(aws cognito-idp describe-user-pool-client --region "$REGION" \
-      --user-pool-id "$POOL_ID" --client-id "$CLIENT_ID" \
-      --query "UserPoolClient.ClientSecret" --output text 2>/dev/null || echo "")
+    CLIENT_SECRET_CMD="aws cognito-idp describe-user-pool-client --region ${REGION} --user-pool-id ${POOL_ID} --client-id ${CLIENT_ID} --query UserPoolClient.ClientSecret --output text"
   fi
 fi
 
@@ -57,9 +55,12 @@ echo "── OAuth Client Credentials ──────────────
 echo ""
 echo "  Auth Flow:      OAuth Client Credentials"
 echo "  Client ID:      ${CLIENT_ID:-NOT FOUND}"
-echo "  Client Secret:  ${CLIENT_SECRET:-NOT FOUND}"
+echo "  Client Secret:  (not printed — run the command below to retrieve)"
 echo "  Exchange URL:   ${TOKEN_ENDPOINT:-NOT FOUND}"
 echo "  Scope:          makita-mcp/invoke"
+echo ""
+echo "  To retrieve the client secret, run:"
+echo "    ${CLIENT_SECRET_CMD:-NOT AVAILABLE — Cognito pool not found}"
 echo ""
 echo "── Tools to Allowlist ──────────────────────────────────────"
 echo ""

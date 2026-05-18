@@ -213,7 +213,7 @@ Then open the DevOps Agent console and register the gateway:
    - **Description**: `MAKITA PostgreSQL DR failover via AgentCore Gateway`
    - **Authorization Flow**: OAuth Client Credentials
    - **Client ID**: from `make show-config` output
-   - **Client Secret**: from `make show-config` output
+   - **Client Secret**: run the retrieval command shown by `make show-config` (the secret is not printed directly to avoid leaking to logs)
    - **Exchange URL**: from `make show-config` output
    - **Scope**: `makita-mcp/invoke`
    - Leave **Enable Dynamic Client Registration** unchecked

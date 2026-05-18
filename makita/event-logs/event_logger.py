@@ -5,15 +5,23 @@ and ServiceNow tickets.
 """
 
 import os
+import re
 from datetime import datetime, timezone
 
 # Directory where event log files are stored
 EVENT_LOGS_DIR = os.path.dirname(os.path.abspath(__file__))
 
+_SAFE_IDENTIFIER = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$")
+
 
 def _get_log_path(identifier: str) -> str:
     """Return the file path for an event log given a case/ticket identifier."""
-    return os.path.join(EVENT_LOGS_DIR, f"event-log-{identifier}.md")
+    if not _SAFE_IDENTIFIER.match(identifier):
+        raise ValueError(f"Invalid identifier: must be alphanumeric/dash/dot/underscore, got {identifier!r}")
+    path = os.path.join(EVENT_LOGS_DIR, f"event-log-{identifier}.md")
+    if not os.path.realpath(path).startswith(os.path.realpath(EVENT_LOGS_DIR)):
+        raise ValueError(f"Path traversal detected for identifier: {identifier!r}")
+    return path
 
 
 def _utc_timestamp() -> str:
