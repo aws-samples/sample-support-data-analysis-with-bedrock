@@ -12,7 +12,17 @@ be overridden via dependency injection for testing.
 from __future__ import annotations
 
 import importlib
+import re
 from typing import Callable
+
+
+def _safe_error(exc: Exception) -> str:
+    """Return error type and message with internal details like ARNs and endpoints redacted."""
+    msg = str(exc)
+    msg = re.sub(r"arn:aws[a-zA-Z0-9:/_.*-]+", "[REDACTED_ARN]", msg)
+    msg = re.sub(r"https?://[^\s\"',]+", "[REDACTED_URL]", msg)
+    msg = re.sub(r"\b\d{12}\b", "[REDACTED_ACCOUNT]", msg)
+    return f"{type(exc).__name__}: {msg}"
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +139,7 @@ def run_failover_sequence(
                 "check_name": check_name,
                 "passed": False,
                 "details": {},
-                "error": str(exc),
+                "error": _safe_error(exc),
             }
 
         result["pre_check_results"].append(check_result)
@@ -155,7 +165,7 @@ def run_failover_sequence(
             cluster_name=cluster_name,
         )
     except Exception as exc:
-        failover_result = {"success": False, "error": str(exc)}
+        failover_result = {"success": False, "error": _safe_error(exc)}
 
     result["failover_result"] = failover_result
 
@@ -201,7 +211,7 @@ def run_failover_sequence(
                 "check_name": check_name,
                 "passed": False,
                 "details": {},
-                "error": str(exc),
+                "error": _safe_error(exc),
             }
 
         result["post_check_results"].append(check_result)
